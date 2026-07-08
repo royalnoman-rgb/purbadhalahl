@@ -1,0 +1,6 @@
+{
+  "name": "Purbadhala Smart Helpline",
+  "description": "A fast, mobile-responsive phone directory web app for Purbadhala.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

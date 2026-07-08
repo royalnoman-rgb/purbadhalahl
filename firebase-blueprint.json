@@ -1,0 +1,83 @@
+{
+  "collections": [
+    {
+      "collectionId": "categories",
+      "description": "Categories for the directory.",
+      "securityRules": {
+        "read": "true",
+        "create": "true",
+        "update": "false",
+        "delete": "false"
+      },
+      "schema": {
+        "title": {
+          "type": "string",
+          "description": "Bengali title of the category",
+          "required": true
+        },
+        "englishTitle": {
+          "type": "string",
+          "description": "English title of the category",
+          "required": true
+        },
+        "iconName": {
+          "type": "string",
+          "description": "Lucide icon name",
+          "required": true
+        },
+        "color": {
+          "type": "string",
+          "description": "Tailwind color classes",
+          "required": true
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the category, either pending or approved",
+          "required": true
+        }
+      }
+    },
+    {
+      "collectionId": "contacts",
+      "description": "Contacts listed under categories.",
+      "securityRules": {
+        "read": "true",
+        "create": "true",
+        "update": "false",
+        "delete": "false"
+      },
+      "schema": {
+        "name": {
+          "type": "string",
+          "description": "Name of the person or business",
+          "required": true
+        },
+        "details": {
+          "type": "string",
+          "description": "Primary details",
+          "required": true
+        },
+        "subDetails": {
+          "type": "string",
+          "description": "Secondary details like address",
+          "required": true
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number",
+          "required": true
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to the category",
+          "required": true
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the contact, either pending or approved",
+          "required": true
+        }
+      }
+    }
+  ]
+}
