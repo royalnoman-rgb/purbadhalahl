@@ -80,6 +80,7 @@ export default function App() {
   const [contributorContacts, setContributorContacts] = useState<any[]>([]);
   const [contributorMessages, setContributorMessages] = useState<any[]>([]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [userMessageText, setUserMessageText] = useState('');
   const [feedbackReplyText, setFeedbackReplyText] = useState<{[key: string]: string}>({});
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
@@ -334,6 +335,32 @@ export default function App() {
       setHasUnreadMessages(false);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSendUserMessage = async () => {
+    if (!contributorPhone || !userMessageText.trim()) return;
+    try {
+      const contributorRef = doc(db, 'contributors', contributorPhone);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const contributorData = contributorDoc.data();
+        const newMessage = {
+          id: Date.now().toString(),
+          sender: 'user',
+          message: userMessageText.trim(),
+          createdAt: new Date().toISOString()
+        };
+        const newMessages = [...(contributorData.messages || []), newMessage];
+        await updateDoc(contributorRef, {
+          messages: newMessages
+        });
+        setContributorMessages(newMessages);
+        setUserMessageText('');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ম্যাসেজ পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
     }
   };
 
@@ -1218,7 +1245,52 @@ export default function App() {
                   </div>
 
                   <div className="mb-4">
-                    <div className="flex justify-between items-center mb-3"><h3 className="font-semibold text-gray-900">অ্যাডমিন থেকে ম্যাসেজ</h3>{hasUnreadMessages && (<button onClick={handleMarkMessagesAsRead} className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium hover:bg-red-200">মার্ক এজ রিড</button>)}</div>{contributorMessages.length === 0 ? (<p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>) : (<div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">{contributorMessages.map(msg => (<div key={msg.id} className="bg-white p-3 rounded shadow-sm"><div className="flex justify-between items-center mb-1 border-b border-gray-50 pb-1"><span className="font-semibold text-[11px] text-emerald-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'}</span><span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span></div><p className="text-gray-800 text-xs whitespace-pre-wrap">{msg.message}</p></div>))}</div>)}</div><div className="mb-4"><h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="font-semibold text-gray-900">অ্যাডমিন থেকে ম্যাসেজ</h3>
+                      {hasUnreadMessages && (
+                        <button onClick={handleMarkMessagesAsRead} className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium hover:bg-red-200">
+                          মার্ক এজ রিড
+                        </button>
+                      )}
+                    </div>
+                    {contributorMessages.length === 0 ? (
+                      <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
+                    ) : (
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        {contributorMessages.map(msg => (
+                          <div key={msg.id} className="bg-white p-3 rounded shadow-sm">
+                            <div className="flex justify-between items-center mb-1 border-b border-gray-50 pb-1">
+                              <span className="font-semibold text-[11px] text-emerald-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'}</span>
+                              <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
+                            </div>
+                            <p className="text-gray-800 text-xs whitespace-pre-wrap">{msg.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        value={userMessageText}
+                        onChange={(e) => setUserMessageText(e.target.value)}
+                        placeholder="রিপ্লাই লিখুন..."
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') handleSendUserMessage();
+                        }}
+                      />
+                      <button
+                        onClick={handleSendUserMessage}
+                        disabled={!userMessageText.trim()}
+                        className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
                     {contributorContacts.length === 0 ? (
                       <p className="text-sm text-gray-500">আপনি এখনও কোনো নাম্বার যোগ করেননি।</p>
                     ) : (
