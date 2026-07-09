@@ -7,11 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
-import { collection, addDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 import MapTracker from './MapTracker';
@@ -30,16 +30,18 @@ export default function App() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   
   const [requestStatus, setRequestStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   // Dynamic Data
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
+  const [ratedFeedbacks, setRatedFeedbacks] = useState<any[]>([]);
 
   // Form states - Contact
   const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
+  const [newPhone, setNewPhone] = useState('+88');
   const [newDetails, setNewDetails] = useState('');
   const [newSubDetails, setNewSubDetails] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -54,6 +56,27 @@ export default function App() {
   // Form states - Feedback
   const [newFeedbackName, setNewFeedbackName] = useState('');
   const [newFeedbackMessage, setNewFeedbackMessage] = useState('');
+
+  // Contributor Modals and State
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isContributorProfileOpen, setIsContributorProfileOpen] = useState(false);
+  const [contributorName, setContributorName] = useState('');
+  const [contributorPhone, setContributorPhone] = useState('');
+  const [contributorFacebook, setContributorFacebook] = useState('');
+  const [topContributors, setTopContributors] = useState<any[]>([]);
+  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [loginPhone, setLoginPhone] = useState('');
+  const [contributorPoints, setContributorPoints] = useState(0);
+  const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
+
+  useEffect(() => {
+    const savedName = localStorage.getItem('contributorName');
+    const savedPhone = localStorage.getItem('contributorPhone');
+    const savedFb = localStorage.getItem('contributorFacebook');
+    if (savedName) setContributorName(savedName);
+    if (savedPhone) setContributorPhone(savedPhone);
+    if (savedFb) setContributorFacebook(savedFb);
+  }, []);
 
   useEffect(() => {
     // Fetch approved categories
@@ -70,9 +93,17 @@ export default function App() {
       setDynamicContacts(conts);
     });
 
+    // Fetch rated feedbacks
+    const qFeedback = query(collection(db, 'feedback'), where('status', '==', 'approved'));
+    const unsubFeedback = onSnapshot(qFeedback, (snapshot) => {
+      const fbs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRatedFeedbacks(fbs);
+    });
+
     return () => {
       unsubCat();
       unsubContact();
+      unsubFeedback();
     }
   }, []);
 
@@ -90,6 +121,13 @@ export default function App() {
     return matchesCategory && matchesSearch;
   });
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    val = val.replace(/[০-৯]/g, (w) => bengaliDigits.indexOf(w).toString());
+    setNewPhone(val);
+  };
+
   const handleSuggestEdit = (contact: any) => {
     setNewName(contact.name);
     setNewPhone(contact.phone);
@@ -102,7 +140,7 @@ export default function App() {
 
   const openNewRequestModal = () => {
     setNewName('');
-    setNewPhone('');
+    setNewPhone('+88');
     setNewDetails('');
     setNewSubDetails('');
     setNewCategory('');
@@ -121,7 +159,10 @@ export default function App() {
         details: newDetails,
         subDetails: newSubDetails,
         categoryId: newCategory,
-        status: 'pending'
+        status: 'pending',
+        contributorName: contributorName || null,
+        contributorPhone: contributorPhone || null,
+        contributorFacebook: contributorFacebook || null,
       };
       
       if (editingContactId) {
@@ -135,7 +176,7 @@ export default function App() {
         setIsRequestModalOpen(false);
         setRequestStatus('idle');
         setNewName('');
-        setNewPhone('');
+        setNewPhone('+88');
         setNewDetails('');
         setNewSubDetails('');
         setNewCategory('');
@@ -184,7 +225,10 @@ export default function App() {
       await addDoc(collection(db, 'feedback'), {
         name: newFeedbackName,
         message: newFeedbackMessage,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        contributorPhone: contributorPhone || null,
+        contributorName: contributorName || null,
+        status: 'pending'
       });
       
       setRequestStatus('success');
@@ -199,6 +243,81 @@ export default function App() {
       alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
       setRequestStatus('idle');
     }
+  };
+
+  const fetchLeaderboard = async () => {
+    try {
+      const q = query(collection(db, 'contributors'), orderBy('approvedCount', 'desc'), limit(10));
+      const snapshot = await getDocs(q);
+      setTopContributors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err) {
+      console.error("Error fetching leaderboard", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isLeaderboardOpen) {
+      fetchLeaderboard();
+    }
+  }, [isLeaderboardOpen]);
+
+  const fetchContributorStats = async () => {
+    if (contributorPhone) {
+      try {
+        const docRef = doc(db, 'contributors', contributorPhone);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setContributorPoints(data.points || (data.approvedCount || 0) * 10);
+          setContributorApprovedCount(data.approvedCount || 0);
+        }
+      } catch (err) {
+        console.error("Error fetching stats", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isContributorProfileOpen) {
+      fetchContributorStats();
+    }
+  }, [isContributorProfileOpen, contributorPhone]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const docRef = doc(db, 'contributors', loginPhone);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setContributorName(data.name || '');
+        setContributorPhone(data.phone || loginPhone);
+        setContributorFacebook(data.facebookUrl || '');
+        
+        localStorage.setItem('contributorName', data.name || '');
+        localStorage.setItem('contributorPhone', data.phone || loginPhone);
+        localStorage.setItem('contributorFacebook', data.facebookUrl || '');
+        
+        setIsContributorProfileOpen(false);
+        setIsLoginMode(false);
+        setLoginPhone('');
+        alert(`স্বাগতম ${data.name}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
+      } else {
+        alert('এই নাম্বারে কোনো অবদানকারীর তথ্য পাওয়া যায়নি। দয়া করে নতুন প্রোফাইল তৈরি করুন।');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে। আবার চেষ্টা করুন।');
+    }
+  };
+
+  const saveContributorProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('contributorName', contributorName);
+    localStorage.setItem('contributorPhone', contributorPhone);
+    localStorage.setItem('contributorFacebook', contributorFacebook);
+    setIsContributorProfileOpen(false);
+    alert('প্রোফাইল সেইভ হয়েছে! এখন থেকে আপনার যুক্ত করা নাম্বারগুলো অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বাড়বে।');
   };
 
   return (
@@ -230,6 +349,20 @@ export default function App() {
           <h1 className="text-xl font-semibold tracking-tight truncate flex-1">
             {showMap ? 'গাড়ির লাইভ অবস্থান' : selectedCategory ? selectedCategory.title : 'পূর্বধলা হেল্পলাইন'}
           </h1>
+          <button 
+            onClick={() => setIsLeaderboardOpen(true)}
+            className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
+            title="শীর্ষ অবদানকারী"
+          >
+            <Trophy className="w-6 h-6" />
+          </button>
+          <button 
+            onClick={() => setIsContributorProfileOpen(true)}
+            className="ml-1 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
+            title="আমার প্রোফাইল"
+          >
+            <UserCircle className="w-6 h-6" />
+          </button>
         </div>
       </header>
 
@@ -337,11 +470,21 @@ export default function App() {
                       className="flex-shrink-0 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 p-3 rounded-full transition-colors flex items-center justify-center"
                       aria-label={`Call ${contact.name}`}
                     >
-                      <Phone className="w-6 h-6" />
+                      <Phone className="w-5 h-5" />
+                    </a>
+                    <a
+                      href={`https://wa.me/${contact.phone.replace(/[^0-9+]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 bg-green-50 hover:bg-green-100 active:bg-green-200 text-green-600 p-3 rounded-full transition-colors flex items-center justify-center"
+                      aria-label={`WhatsApp ${contact.name}`}
+                      title="হোয়াটসঅ্যাপে মেসেজ দিন"
+                    >
+                      <MessageCircle className="w-5 h-5" />
                     </a>
                     <button 
                       onClick={() => handleSuggestEdit(contact)}
-                      className="flex-shrink-0 bg-gray-50 hover:bg-emerald-50 active:bg-emerald-100 text-gray-500 hover:text-emerald-600 p-2 rounded-full transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="flex-shrink-0 bg-gray-50 hover:bg-emerald-50 active:bg-emerald-100 text-gray-500 hover:text-emerald-600 p-3 rounded-full transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       title="নাম্বারটি সংশোধন করুন"
                     >
                       <Edit3 className="w-5 h-5" />
@@ -360,8 +503,15 @@ export default function App() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-gray-400 text-sm">
-        <p>&copy; {new Date().getFullYear()} পূর্বধলা হেল্পলাইন</p>
-        <div className="mt-2 flex justify-center">
+        <p>
+          &copy; {new Date().getFullYear()} পূর্বধলা হেল্পলাইন
+          <br />
+          <a href="https://pdonline.com.bd" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors font-medium">পূর্বধলার দর্পন আইটি সহায়তায়</a>
+        </p>
+        <div className="mt-3 flex justify-center items-center gap-4">
+          <button onClick={() => setIsReviewsModalOpen(true)} className="flex items-center gap-1 hover:text-emerald-500 transition-colors">
+            <Star className="w-3 h-3" /> রেটিংস ও রিভিও
+          </button>
           <Link to="/admin" className="flex items-center gap-1 hover:text-emerald-500 transition-colors">
             <Lock className="w-3 h-3" /> এডমিন প্যানেল
           </Link>
@@ -424,9 +574,9 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
                     <input
-                      type="tel" required value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
+                      type="tel" required value={newPhone} onChange={handlePhoneChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="01XXXXXXXXX"
+                      placeholder="+8801XXXXXXXXX"
                     />
                   </div>
                   <div>
@@ -596,6 +746,226 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Contributor Profile Modal */}
+      {isContributorProfileOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <UserCircle className="w-5 h-5 text-emerald-600" /> {isLoginMode ? 'লগইন' : 'আমার প্রোফাইল'}
+              </h2>
+              <button
+                onClick={() => { setIsContributorProfileOpen(false); setIsLoginMode(false); }}
+                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-5">
+              {isLoginMode ? (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    আপনার পূর্বের ব্যবহৃত মোবাইল নাম্বারটি দিয়ে লগইন করুন। কোনো পাসওয়ার্ডের প্রয়োজন নেই।
+                  </p>
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
+                      <input
+                        type="tel" required value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="01XXXXXXXXX"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
+                    >
+                      লগইন করুন
+                    </button>
+                  </form>
+                  <div className="mt-4 text-center">
+                    <button onClick={() => setIsLoginMode(false)} className="text-sm text-emerald-600 hover:underline">
+                      নতুন প্রোফাইল তৈরি করতে চান?
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {contributorName && (
+                    <div className="bg-emerald-50 rounded-xl p-4 mb-6 border border-emerald-100">
+                      <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                          <p className="text-sm text-gray-500 mb-1">এপ্রুভড নাম্বার</p>
+                          <p className="text-2xl font-bold text-emerald-600">{contributorApprovedCount}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                          <p className="text-sm text-gray-500 mb-1">মোট পয়েন্ট</p>
+                          <p className="text-2xl font-bold text-emerald-600">{contributorPoints}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600 mb-4">
+                    এখানে আপনার তথ্য সেভ করে রাখলে, পরবর্তীতে নতুন কোনো নাম্বার যুক্ত করলে বারবার আপনার নাম ও নাম্বার দিতে হবে না। আপনার যুক্ত করা নাম্বার অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বৃদ্ধি পাবে।
+                  </p>
+                  <form onSubmit={saveContributorProfile} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
+                      <input
+                        type="text" required value={contributorName} onChange={(e) => setContributorName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="আপনার নাম"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার মোবাইল নাম্বার *</label>
+                      <input
+                        type="tel" required value={contributorPhone} onChange={(e) => setContributorPhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="01XXXXXXXXX"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ফেসবুক প্রোফাইল লিংক (ঐচ্ছিক)</label>
+                      <input
+                        type="url" value={contributorFacebook} onChange={(e) => setContributorFacebook(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="https://facebook.com/..."
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
+                    >
+                      প্রোফাইল সেভ করুন
+                    </button>
+                  </form>
+                  <div className="mt-4 flex items-center justify-between">
+                    <button type="button" onClick={() => setIsLoginMode(true)} className="text-sm text-emerald-600 hover:underline">
+                      আগের একাউন্ট থাকলে নাম্বার দিয়ে লগইন করুন
+                    </button>
+                    {contributorName && (
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          localStorage.removeItem('contributorName');
+                          localStorage.removeItem('contributorPhone');
+                          localStorage.removeItem('contributorFacebook');
+                          setContributorName('');
+                          setContributorPhone('');
+                          setContributorFacebook('');
+                          setContributorPoints(0);
+                          setContributorApprovedCount(0);
+                          setIsContributorProfileOpen(false);
+                          alert('লগআউট সফল হয়েছে');
+                        }} 
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        লগআউট করুন
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Modal */}
+      {isReviewsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> রেটিংস ও রিভিও</h2>
+              <button
+                onClick={() => setIsReviewsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
+              {ratedFeedbacks.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>এখনও কোনো রিভিও নেই।</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {ratedFeedbacks.map((review) => (
+                    <div key={review.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900">{review.name}</h3>
+                        <div className="flex gap-0.5">
+                          {[...Array(review.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.message}</p>
+                      <p className="text-xs text-gray-400 mt-2">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leaderboard Modal */}
+      {isLeaderboardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> শীর্ষ অবদানকারীগণ</h2>
+              <button
+                onClick={() => setIsLeaderboardOpen(false)}
+                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
+              {topContributors.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>এখনও কোনো অবদানকারী নেই।</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {topContributors.map((user, idx) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 leading-tight">
+                            {user.facebookUrl ? (
+                              <a href={user.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
+                                {user.name}
+                              </a>
+                            ) : (
+                              user.name
+                            )}
+                          </h3>
+                          <p className="text-xs text-gray-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.approvedCount}</span></p>
+                        </div>
+                      </div>
+                      {idx < 3 && (
+                        <Trophy className={`w-5 h-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

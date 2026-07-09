@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, Trash2, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, ArrowLeft, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Admin() {
@@ -49,7 +49,31 @@ export default function Admin() {
   };
 
   const handleApproveContact = async (id: string) => {
-    await updateDoc(doc(db, 'contacts', id), { status: 'approved' });
+    const contactRef = doc(db, 'contacts', id);
+    const contactSnap = await getDoc(contactRef);
+    if (contactSnap.exists()) {
+      const contactData = contactSnap.data();
+      await updateDoc(contactRef, { status: 'approved' });
+      
+      if (contactData.contributorPhone && contactData.contributorName) {
+        const contributorRef = doc(db, 'contributors', contactData.contributorPhone);
+        const contributorDoc = await getDoc(contributorRef);
+        if (contributorDoc.exists()) {
+          await updateDoc(contributorRef, {
+            approvedCount: increment(1),
+            points: increment(10)
+          });
+        } else {
+          await setDoc(contributorRef, {
+            name: contactData.contributorName,
+            phone: contactData.contributorPhone,
+            facebookUrl: contactData.contributorFacebook || '',
+            approvedCount: 1,
+            points: 10
+          });
+        }
+      }
+    }
     fetchData();
   };
 
@@ -77,6 +101,23 @@ export default function Admin() {
       await deleteDoc(doc(db, 'feedback', id));
       fetchData();
     }
+  };
+
+  const handleRateFeedback = async (id: string, stars: number, contributorPhone?: string) => {
+    await updateDoc(doc(db, 'feedback', id), {
+      status: 'approved',
+      rating: stars
+    });
+    if (contributorPhone) {
+      const contributorRef = doc(db, 'contributors', contributorPhone);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        await updateDoc(contributorRef, {
+          points: increment(stars * 2)
+        });
+      }
+    }
+    fetchData();
   };
 
   if (!isAuthenticated) {
@@ -184,15 +225,39 @@ export default function Admin() {
           {feedbacks.length === 0 ? <p className="text-gray-500">কোনো মতামত নেই।</p> : (
             <div className="grid gap-4">
               {feedbacks.map(feedback => (
-                <div key={feedback.id} className="bg-white p-4 rounded-lg shadow-sm flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{feedback.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">{new Date(feedback.createdAt).toLocaleString('bn-BD')}</p>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{feedback.message}</p>
+                <div key={feedback.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-bold text-gray-900">{feedback.name}</h3>
+                      <p className="text-xs text-gray-500 mb-2">{new Date(feedback.createdAt).toLocaleString('bn-BD')}</p>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{feedback.message}</p>
+                    </div>
+                    <button onClick={() => handleDeleteFeedback(feedback.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex-shrink-0" title="Delete">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button onClick={() => handleDeleteFeedback(feedback.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex-shrink-0" title="Delete">
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {!feedback.rating ? (
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-600">রেটিং দিন:</span>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => handleRateFeedback(feedback.id, star, feedback.contributorPhone)}
+                          className="text-gray-300 hover:text-yellow-500 transition-colors"
+                          title={`${star} Star${star > 1 ? 's' : ''}`}
+                        >
+                          <Star className="w-5 h-5" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-600 mr-2">রেটিং দেওয়া হয়েছে:</span>
+                      {[...Array(feedback.rating)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
