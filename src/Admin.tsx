@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Admin() {
@@ -283,6 +283,37 @@ export default function Admin() {
       setContributors(prev => prev.map(cont => cont.id === id ? { ...cont, hasUnreadAdminMessage: false } : cont));
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleResetPassword = async (id: string) => {
+    const newPassword = prompt('নতুন পাসওয়ার্ড দিন (ব্যবহারকারীকে এই পাসওয়ার্ডটি ম্যাসেজের মাধ্যমে পাঠানো হবে):');
+    if (newPassword) {
+      try {
+        const contributorRef = doc(db, 'contributors', id);
+        const contributorDoc = await getDoc(contributorRef);
+        if (contributorDoc.exists()) {
+          const contributorData = contributorDoc.data();
+          const newMessages = [...(contributorData.messages || []), {
+            id: Date.now().toString(),
+            sender: 'admin',
+            message: `আপনার পাসওয়ার্ড রিকোভারি রিকোয়েস্ট গ্রহণ করা হয়েছে। আপনার নতুন পাসওয়ার্ড: ${newPassword}`,
+            createdAt: new Date().toISOString()
+          }];
+          await updateDoc(contributorRef, {
+            password: newPassword,
+            passwordResetRequested: false,
+            messages: newMessages,
+            hasUnreadMessage: true
+          });
+          await logAdminAction(`Password reset for contributor: ${contributorData.name || 'Unknown'}`);
+          alert('পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে এবং ব্যবহারকারীকে ম্যাসেজ পাঠানো হয়েছে।');
+          fetchData();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('ত্রুটি হয়েছে!');
+      }
     }
   };
 
@@ -692,6 +723,19 @@ export default function Admin() {
                       >
                         <Send className="w-5 h-5" />
                         {cont.hasUnreadAdminMessage && (
+                          <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                          </span>
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => handleResetPassword(cont.id)} 
+                        className="p-2 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-100 relative" 
+                        title="Reset Password"
+                      >
+                        <Key className="w-5 h-5" />
+                        {cont.passwordResetRequested && (
                           <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>

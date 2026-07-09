@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
@@ -15,6 +15,7 @@ import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, 
 import { db } from './firebase';
 
 import MapTracker from './MapTracker';
+import Community from './Community';
 
 // Map icon strings to actual React components from lucide-react
 const iconMap: Record<string, React.ElementType> = {
@@ -25,6 +26,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
+  const [showCommunity, setShowCommunity] = useState(false);
   
   // Modals
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -73,7 +75,15 @@ export default function App() {
   const [contributorAvatar, setContributorAvatar] = useState('');
   const [topContributors, setTopContributors] = useState<any[]>([]);
   const [isLoginMode, setIsLoginMode] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isOtpMode, setIsOtpMode] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [isResetPasswordMode, setIsResetPasswordMode] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [contributorPassword, setContributorPassword] = useState('');
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
@@ -510,6 +520,60 @@ export default function App() {
     };
   }, [isContributorProfileOpen, contributorPhone]);
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginPhone) {
+      alert('দয়া করে আপনার মোবাইল নাম্বার দিন।');
+      return;
+    }
+    try {
+      const docRef = doc(db, 'contributors', loginPhone);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        setGeneratedOtp(otp);
+        setIsForgotPassword(false);
+        setIsOtpMode(true);
+        alert(`আপনার নাম্বারে একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।\n\n(ডেমো কোড: ${otp})`);
+      } else {
+        alert('এই নাম্বারে কোনো একাউন্ট পাওয়া যায়নি।');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে। আবার চেষ্টা করুন।');
+    }
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredOtp === generatedOtp) {
+      setIsOtpMode(false);
+      setIsResetPasswordMode(true);
+      setEnteredOtp('');
+    } else {
+      alert('ভেরিফিকেশন কোড ভুল হয়েছে!');
+    }
+  };
+
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 4) {
+      alert('পাসওয়ার্ড অন্তত ৪ অক্ষরের হতে হবে।');
+      return;
+    }
+    try {
+      const docRef = doc(db, 'contributors', loginPhone);
+      await updateDoc(docRef, { password: newPassword, passwordResetRequested: false });
+      alert('আপনার পাসওয়ার্ড সফলভাবে রিস্টোর হয়েছে! এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।');
+      setIsResetPasswordMode(false);
+      setIsLoginMode(true);
+      setNewPassword('');
+    } catch (err) {
+      console.error(err);
+      alert('পাসওয়ার্ড রিস্টোর করতে সমস্যা হয়েছে।');
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -517,9 +581,16 @@ export default function App() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        
+        if (data.password && data.password !== loginPassword) {
+          alert('পাসওয়ার্ড ভুল হয়েছে!');
+          return;
+        }
+        
         setContributorName(data.name || '');
         setContributorPhone(data.phone || loginPhone);
         setContributorFacebook(data.facebookUrl || '');
+        setContributorPassword(data.password || '');
         
         localStorage.setItem('contributorName', data.name || '');
         localStorage.setItem('contributorPhone', data.phone || loginPhone);
@@ -529,7 +600,13 @@ export default function App() {
         setIsContributorProfileOpen(false);
         setIsLoginMode(false);
         setLoginPhone('');
-        alert(`স্বাগতম ${data.name}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
+        setLoginPassword('');
+        
+        if (!data.password) {
+          alert(`স্বাগতম ${data.name}! আপনার প্রোফাইলটি সুরক্ষিত রাখতে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করে নিন।`);
+        } else {
+          alert(`স্বাগতম ${data.name}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
+        }
       } else {
         alert('এই নাম্বারে কোনো অবদানকারীর তথ্য পাওয়া যায়নি। দয়া করে নতুন প্রোফাইল তৈরি করুন।');
       }
@@ -591,8 +668,16 @@ export default function App() {
       if (contributorAvatar) {
         updateData.avatar = contributorAvatar;
       }
+      
+      if (contributorPassword) {
+        updateData.password = contributorPassword;
+      }
 
       if (!docSnap.exists()) {
+        if (!contributorPassword) {
+            alert("নতুন প্রোফাইল তৈরি করার জন্য পাসওয়ার্ড দেওয়া বাধ্যতামূলক।");
+            return;
+        }
         await setDoc(docRef, {
           ...updateData,
           phone: contributorPhone,
@@ -624,9 +709,9 @@ export default function App() {
       {/* Header */}
       <header className="bg-emerald-600 text-white shadow-md sticky top-0 z-10 transition-all">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center">
-          {selectedCategory || showMap ? (
+          {selectedCategory || showMap || showCommunity ? (
             <button
-              onClick={() => { setSelectedCategory(null); setShowMap(false); }}
+              onClick={() => { setSelectedCategory(null); setShowMap(false); setShowCommunity(false); }}
               className="mr-3 p-2 hover:bg-emerald-700 active:bg-emerald-800 rounded-full transition-colors"
               aria-label="Go back"
             >
@@ -646,7 +731,7 @@ export default function App() {
             </div>
           )}
           <h1 className="text-xl font-semibold tracking-tight truncate flex-1">
-            {showMap ? 'গাড়ির লাইভ অবস্থান' : selectedCategory ? selectedCategory.title : 'পূর্বধলা হেল্পলাইন'}
+            {showCommunity ? 'কমিউনিটি' : showMap ? 'গাড়ির লাইভ অবস্থান' : selectedCategory ? selectedCategory.title : 'পূর্বধলা হেল্পলাইন'}
           </h1>
           <button 
             onClick={() => setIsLeaderboardOpen(true)}
@@ -677,7 +762,7 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         {/* Search Bar - only show if no category is selected or if there are many contacts */}
-        {!selectedCategory && !showMap && (
+        {!selectedCategory && !showMap && !showCommunity && (
           <div className="relative mb-6">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
@@ -693,7 +778,7 @@ export default function App() {
         )}
 
         {/* Contribution Banner */}
-        {!selectedCategory && !showMap && !searchQuery && (
+        {!selectedCategory && !showMap && !showCommunity && !searchQuery && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-6 text-emerald-900 shadow-sm">
             <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-emerald-600" />
@@ -720,15 +805,33 @@ export default function App() {
         )}
 
         {/* Live Tracking Map */}
-        {showMap && (
+        {showMap && !showCommunity && (
           <div className="mb-8">
             <MapTracker />
           </div>
         )}
 
+        {/* Community */}
+        {showCommunity && (
+          <Community 
+            contributorPhone={contributorPhone}
+            contributorName={contributorName}
+            contributorAvatar={contributorAvatar}
+            onLoginClick={() => setIsContributorProfileOpen(true)}
+            onBack={() => setShowCommunity(false)}
+          />
+        )}
+
         {/* Dashboard Grid (Shown when no category is selected and no search typed) */}
-        {!selectedCategory && !showMap && !searchQuery && (
+        {!selectedCategory && !showMap && !showCommunity && !searchQuery && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+            <button
+              onClick={() => setShowCommunity(true)}
+              className="bg-blue-50 text-blue-700 border border-blue-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              <Users className="w-10 h-10 mb-1" strokeWidth={1.5} />
+              <span className="text-sm sm:text-base font-medium text-center">কমিউনিটি</span>
+            </button>
             <button
               onClick={() => setShowMap(true)}
               className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50"
@@ -753,7 +856,7 @@ export default function App() {
         )}
 
         {/* Contacts List (Shown when searching or inside a category) */}
-        {(selectedCategory || searchQuery) && (
+        {(selectedCategory || searchQuery) && !showCommunity && !showMap && (
           <div className="space-y-3">
             {filteredContacts.length > 0 ? (
               filteredContacts.map((contact) => (
@@ -1067,17 +1170,94 @@ export default function App() {
                 <UserCircle className="w-5 h-5 text-emerald-600" /> {isLoginMode ? 'লগইন' : 'আমার প্রোফাইল'}
               </h2>
               <button
-                onClick={() => { setIsContributorProfileOpen(false); setIsLoginMode(false); }}
+                onClick={() => { setIsContributorProfileOpen(false); setIsLoginMode(false); setIsForgotPassword(false); setIsOtpMode(false); setIsResetPasswordMode(false); }}
                 className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
             <div className="p-5">
-              {isLoginMode ? (
+              {isResetPasswordMode ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    আপনার পূর্বের ব্যবহৃত মোবাইল নাম্বারটি দিয়ে লগইন করুন। কোনো পাসওয়ার্ডের প্রয়োজন নেই।
+                    আপনার নতুন পাসওয়ার্ড সেট করুন।
+                  </p>
+                  <form onSubmit={handleSaveNewPassword} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">নতুন পাসওয়ার্ড *</label>
+                      <input
+                        type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="নতুন পাসওয়ার্ড"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
+                    >
+                      সেভ করুন
+                    </button>
+                  </form>
+                </>
+              ) : isOtpMode ? (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    আপনার মোবাইল নাম্বারে পাঠানো ৪-ডিজিটের কোডটি এখানে লিখুন।
+                  </p>
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ভেরিফিকেশন কোড *</label>
+                      <input
+                        type="text" required value={enteredOtp} onChange={(e) => setEnteredOtp(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-center tracking-widest text-lg font-bold"
+                        placeholder="----"
+                        maxLength={4}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
+                    >
+                      ভেরিফাই করুন
+                    </button>
+                  </form>
+                  <div className="mt-4 text-center">
+                    <button onClick={() => { setIsOtpMode(false); setIsForgotPassword(true); }} className="text-sm text-gray-600 hover:underline">
+                      ফিরে যান
+                    </button>
+                  </div>
+                </>
+              ) : isForgotPassword ? (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    আপনার মোবাইল নাম্বারটি দিন। আমরা আপনার নাম্বারে একটি ভেরিফিকেশন কোড পাঠাবো।
+                  </p>
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
+                      <input
+                        type="tel" required value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="01XXXXXXXXX"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
+                    >
+                      কোড পাঠান
+                    </button>
+                  </form>
+                  <div className="mt-4 text-center">
+                    <button onClick={() => setIsForgotPassword(false)} className="text-sm text-gray-600 hover:underline">
+                      ফিরে যান
+                    </button>
+                  </div>
+                </>
+              ) : isLoginMode ? (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    আপনার মোবাইল নাম্বার ও পাসওয়ার্ড দিয়ে লগইন করুন। আপনি যদি আগে থেকে একাউন্ট করে থাকেন কিন্তু পাসওয়ার্ড সেট না করে থাকেন, তবে শুধু নাম্বার দিয়ে লগইন করে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করুন।
                   </p>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
@@ -1086,6 +1266,17 @@ export default function App() {
                         type="tel" required value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="01XXXXXXXXX"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium text-gray-700">পাসওয়ার্ড</label>
+                        <button type="button" onClick={() => setIsForgotPassword(true)} className="text-xs text-emerald-600 hover:underline">পাসওয়ার্ড ভুলে গেছেন?</button>
+                      </div>
+                      <input
+                        type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="আপনার পাসওয়ার্ড দিন (যদি থাকে)"
                       />
                     </div>
                     <button
@@ -1103,6 +1294,17 @@ export default function App() {
                 </>
               ) : contributorName && !isEditProfileMode ? (
                 <>
+                  {!contributorPassword && (
+                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg mb-4 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <p className="font-medium">আপনার একাউন্টটি সুরক্ষিত নয়!</p>
+                        <button onClick={() => setIsEditProfileMode(true)} className="bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors">
+                          পাসওয়ার্ড সেট করুন
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs opacity-90">আপনার একাউন্টটি সুরক্ষিত রাখতে এখনই প্রোফাইল আপডেট করে একটি পাসওয়ার্ড সেট করে নিন।</p>
+                    </div>
+                  )}
                   <div className="bg-emerald-50 rounded-xl p-4 mb-4 border border-emerald-100">
                     <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
                     <div className="grid grid-cols-2 gap-4">
@@ -1343,6 +1545,7 @@ export default function App() {
                         setContributorName('');
                         setContributorPhone('');
                         setContributorFacebook('');
+                        setContributorPassword('');
                         setContributorPoints(0);
                         setContributorApprovedCount(0);
                         setIsEditProfileMode(true);
@@ -1386,6 +1589,15 @@ export default function App() {
                         type="url" value={contributorFacebook} onChange={(e) => setContributorFacebook(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="https://facebook.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">পাসওয়ার্ড {contributorName ? '(পরিবর্তন করতে চাইলে লিখুন)' : '*'}</label>
+                      <input
+                        type="password" value={contributorPassword} onChange={(e) => setContributorPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder={contributorName ? "নতুন পাসওয়ার্ড" : "আপনার পাসওয়ার্ড সেট করুন"}
+                        required={!contributorName} // Required for new users
                       />
                     </div>
                     <div>
@@ -1589,13 +1801,16 @@ export default function App() {
                           </div>
                         )}
                         <div>
-                          <h3 className="font-semibold text-gray-900 leading-tight">
+                          <h3 className="font-semibold text-gray-900 leading-tight flex items-center gap-1">
                             {user.facebookUrl ? (
                               <a href={user.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
                                 {user.name}
                               </a>
                             ) : (
-                              user.name
+                              <span>{user.name}</span>
+                            )}
+                            {idx < 5 && (
+                              <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/20" title="শীর্ষ অবদানকারী" />
                             )}
                           </h3>
                           <p className="text-xs text-gray-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.points || 0}</span></p>
