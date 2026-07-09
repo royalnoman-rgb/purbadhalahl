@@ -103,17 +103,26 @@ export default function Admin() {
     }
   };
 
-  const handleRateFeedback = async (id: string, stars: number, contributorPhone?: string) => {
+  const handleRateFeedback = async (id: string, stars: number, contributorPhone?: string, contributorName?: string) => {
     await updateDoc(doc(db, 'feedback', id), {
       status: 'approved',
       rating: stars
     });
+
     if (contributorPhone) {
       const contributorRef = doc(db, 'contributors', contributorPhone);
       const contributorDoc = await getDoc(contributorRef);
       if (contributorDoc.exists()) {
         await updateDoc(contributorRef, {
           points: increment(stars * 2)
+        });
+      } else {
+        await setDoc(contributorRef, {
+          name: contributorName || 'Unknown',
+          phone: contributorPhone,
+          facebookUrl: '',
+          approvedCount: 0,
+          points: stars * 2
         });
       }
     }
@@ -242,7 +251,7 @@ export default function Admin() {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
-                          onClick={() => handleRateFeedback(feedback.id, star, feedback.contributorPhone)}
+                          onClick={() => handleRateFeedback(feedback.id, star, feedback.contributorPhone, feedback.name)}
                           className="text-gray-300 hover:text-yellow-500 transition-colors"
                           title={`${star} Star${star > 1 ? 's' : ''}`}
                         >
