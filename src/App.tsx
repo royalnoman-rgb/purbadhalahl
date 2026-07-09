@@ -77,6 +77,8 @@ export default function App() {
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
   const [contributorContacts, setContributorContacts] = useState<any[]>([]);
+  const [contributorMessages, setContributorMessages] = useState<any[]>([]);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [feedbackReplyText, setFeedbackReplyText] = useState<{[key: string]: string}>({});
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
@@ -320,6 +322,18 @@ export default function App() {
     }
   };
 
+  const handleMarkMessagesAsRead = async () => {
+    if (!contributorPhone || !hasUnreadMessages) return;
+    try {
+      await updateDoc(doc(db, 'contributors', contributorPhone), {
+        hasUnreadMessage: false
+      });
+      setHasUnreadMessages(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRequestStatus('submitting');
@@ -427,6 +441,8 @@ export default function App() {
           const data = docSnap.data();
           setContributorPoints(data.points || (data.approvedCount || 0) * 10);
           setContributorApprovedCount(data.approvedCount || 0);
+          setContributorMessages(data.messages || []);
+          setHasUnreadMessages(data.hasUnreadMessage || false);
         }
 
         const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
@@ -552,7 +568,7 @@ export default function App() {
             title="আমার প্রোফাইল"
           >
             <UserCircle className="w-6 h-6" />
-            {hasUnreadReply && (
+            {(hasUnreadReply || hasUnreadMessages) && (
               <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
@@ -1148,7 +1164,7 @@ export default function App() {
                   </div>
 
                   <div className="mb-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
+                    <div className="flex justify-between items-center mb-3"><h3 className="font-semibold text-gray-900">অ্যাডমিন থেকে ম্যাসেজ</h3>{hasUnreadMessages && (<button onClick={handleMarkMessagesAsRead} className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium hover:bg-red-200">মার্ক এজ রিড</button>)}</div>{contributorMessages.length === 0 ? (<p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>) : (<div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">{contributorMessages.map(msg => (<div key={msg.id} className="bg-white p-3 rounded shadow-sm"><div className="flex justify-between items-center mb-1 border-b border-gray-50 pb-1"><span className="font-semibold text-[11px] text-emerald-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'}</span><span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span></div><p className="text-gray-800 text-xs whitespace-pre-wrap">{msg.message}</p></div>))}</div>)}</div><div className="mb-4"><h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
                     {contributorContacts.length === 0 ? (
                       <p className="text-sm text-gray-500">আপনি এখনও কোনো নাম্বার যোগ করেননি।</p>
                     ) : (

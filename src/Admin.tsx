@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,10 +14,23 @@ export default function Admin() {
   const [replyText, setReplyText] = useState<{[key: string]: string}>({});
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editReplyText, setEditReplyText] = useState('');
+  const [contributorMessageText, setContributorMessageText] = useState<{[key: string]: string}>({});
+  const [expandedContributorId, setExpandedContributorId] = useState<string | null>(null);
   
-  const [approvedContacts, setApprovedContacts] = useState<any[]>([]);
+  const [adminHistory, setAdminHistory] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [contributors, setContributors] = useState<any[]>([]);
+
+  const logAdminAction = async (actionDesc: string) => {
+    try {
+      await addDoc(collection(db, 'admin_history'), {
+        action: actionDesc,
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -36,11 +49,21 @@ export default function Admin() {
       fbList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setFeedbacks(fbList);
 
-      const appContactsQuery = query(collection(db, 'contacts'), where('status', '==', 'approved'));
-      const appContactsSnapshot = await getDocs(appContactsQuery);
-      let appContactsList = appContactsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      appContactsList.sort((a, b) => (a.order || 0) - (b.order || 0));
-      setApprovedContacts(appContactsList);
+      const historyQuery = collection(db, 'admin_history');
+      const historySnapshot = await getDocs(historyQuery);
+      let historyList = historySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      historyList = historyList.filter(item => {
+        const itemTime = new Date(item.createdAt).getTime();
+        if (itemTime < thirtyDaysAgo) {
+          deleteDoc(doc(db, 'admin_history', item.id)).catch(console.error);
+          return false;
+        }
+        return true;
+      });
+      historyList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setAdminHistory(historyList);
 
       const reviewsQuery = collection(db, 'public_reviews');
       const reviewsSnapshot = await getDocs(reviewsQuery);
@@ -79,6 +102,7 @@ export default function Admin() {
     if (contactSnap.exists()) {
       const contactData = contactSnap.data();
       await updateDoc(contactRef, { status: 'approved' });
+      await logAdminAction(`Contact approved: ${contactData.name || 'Unknown'}`);
       
       if (contactData.contributorPhone && contactData.contributorName) {
         const contributorRef = doc(db, 'contributors', contactData.contributorPhone);
@@ -104,19 +128,21 @@ export default function Admin() {
 
   const handleDeleteContact = async (id: string) => {
     if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      await deleteDoc(doc(db, 'contacts', id));
+      const contactRef = doc(db, 'contacts', id);
+      const contactSnap = await getDoc(contactRef);
+      if (contactSnap.exists()) {
+        const data = contactSnap.data();
+        await deleteDoc(contactRef);
+        await logAdminAction(`Contact deleted: ${data.name || 'Unknown'}`);
+      }
       fetchData();
     }
-  };
-
-  const handleUpdateContactOrder = async (id: string, currentOrder: number, change: number) => {
-    await updateDoc(doc(db, 'contacts', id), { order: (currentOrder || 0) + change });
-    fetchData();
   };
 
   const handleDeletePublicReview = async (id: string) => {
     if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
       await deleteDoc(doc(db, 'public_reviews', id));
+      await logAdminAction(`Public review deleted (ID: ${id})`);
       fetchData();
     }
   };
@@ -124,25 +150,35 @@ export default function Admin() {
   const handleDeleteContributor = async (id: string) => {
     if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
       await deleteDoc(doc(db, 'contributors', id));
+      await logAdminAction(`Contributor deleted (ID: ${id})`);
       fetchData();
     }
   };
 
   const handleApproveCategory = async (id: string) => {
-    await updateDoc(doc(db, 'categories', id), { status: 'approved' });
+    const catRef = doc(db, 'categories', id);
+    const catSnap = await getDoc(catRef);
+    await updateDoc(catRef, { status: 'approved' });
+    if(catSnap.exists()) await logAdminAction(`Category approved: ${catSnap.data().title || 'Unknown'}`);
     fetchData();
   };
 
   const handleDeleteCategory = async (id: string) => {
     if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      await deleteDoc(doc(db, 'categories', id));
+      const catRef = doc(db, 'categories', id);
+      const catSnap = await getDoc(catRef);
+      await deleteDoc(catRef);
+      if(catSnap.exists()) await logAdminAction(`Category deleted: ${catSnap.data().title || 'Unknown'}`);
       fetchData();
     }
   };
 
   const handleDeleteFeedback = async (id: string) => {
     if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      await deleteDoc(doc(db, 'feedback', id));
+      const fbRef = doc(db, 'feedback', id);
+      const fbSnap = await getDoc(fbRef);
+      await deleteDoc(fbRef);
+      if(fbSnap.exists()) await logAdminAction(`Feedback deleted from: ${fbSnap.data().name || 'Unknown'}`);
       fetchData();
     }
   };
@@ -152,6 +188,8 @@ export default function Admin() {
       status: 'approved',
       rating: stars
     });
+    
+    await logAdminAction(`Feedback rated ${stars} stars for: ${contributorName || 'Unknown'}`);
 
     if (contributorPhone) {
       const contributorRef = doc(db, 'contributors', contributorPhone);
@@ -191,7 +229,35 @@ export default function Admin() {
           hasUnreadAdminReply: false,
           hasUnreadUserReply: true
         });
+        await logAdminAction(`Replied to feedback from: ${feedback.name || 'Unknown'}`);
         setReplyText(prev => ({ ...prev, [feedbackId]: '' }));
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+    }
+  };
+
+  const handleSendMessageToContributor = async (id: string) => {
+    if (!contributorMessageText[id]?.trim()) return;
+    try {
+      const contributorRef = doc(db, 'contributors', id);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const contributorData = contributorDoc.data();
+        const newMessages = [...(contributorData.messages || []), {
+          id: Date.now().toString(),
+          sender: 'admin',
+          message: contributorMessageText[id].trim(),
+          createdAt: new Date().toISOString()
+        }];
+        await updateDoc(contributorRef, {
+          messages: newMessages,
+          hasUnreadMessage: true
+        });
+        await logAdminAction(`Message sent to contributor: ${contributorData.name || 'Unknown'}`);
+        setContributorMessageText(prev => ({ ...prev, [id]: '' }));
         fetchData();
       }
     } catch (err) {
@@ -526,42 +592,19 @@ export default function Admin() {
           )}
         </section>
 
-        {/* Approved Contacts */}
+        {/* Admin History */}
         <section>
-          <h2 className="text-lg font-semibold mb-4 border-b pb-2">অনুমোদিত নাম্বার সমূহ - {approvedContacts.length}</h2>
-          {approvedContacts.length === 0 ? <p className="text-gray-500">কোনো অনুমোদিত নাম্বার নেই।</p> : (
-            <div className="grid gap-4">
-              {approvedContacts.map(contact => (
-                <div key={contact.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{contact.name}</h3>
-                    <p className="text-sm font-medium text-gray-700">{contact.phone}</p>
-                    <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
-                    {contact.contributorName && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs">
-                        <p className="text-gray-500 font-medium mb-1">প্রেরক:</p>
-                        <p className="text-gray-800">{contact.contributorName} ({contact.contributorPhone})</p>
-                        {contact.contributorFacebook && (
-                          <a href={contact.contributorFacebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Facebook</a>
-                        )}
-                      </div>
-                    )}
+          <h2 className="text-lg font-semibold mb-4 border-b pb-2">অ্যাডমিন হিস্ট্রি (গত ৩০ দিন)</h2>
+          {adminHistory.length === 0 ? <p className="text-gray-500">কোনো হিস্ট্রি নেই।</p> : (
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="max-h-96 overflow-y-auto p-4 space-y-3">
+                {adminHistory.map(item => (
+                  <div key={item.id} className="flex justify-between items-start border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                    <p className="text-sm font-medium text-gray-800">{item.action}</p>
+                    <p className="text-xs text-gray-500 whitespace-nowrap ml-4">{new Date(item.createdAt).toLocaleString('bn-BD')}</p>
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <div className="flex flex-col gap-1 mr-2">
-                      <button onClick={() => handleUpdateContactOrder(contact.id, contact.order, -1)} className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Move Up (Lower number)">
-                        <ArrowUp className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleUpdateContactOrder(contact.id, contact.order, 1)} className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Move Down (Higher number)">
-                        <ArrowDown className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <button onClick={() => handleDeleteContact(contact.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </section>
@@ -599,20 +642,73 @@ export default function Admin() {
           {contributors.length === 0 ? <p className="text-gray-500">কোনো অবদানকারী নেই।</p> : (
             <div className="grid gap-4">
               {contributors.map(cont => (
-                <div key={cont.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                      <UserCircle className="w-5 h-5 text-emerald-600" /> {cont.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">{cont.phone}</p>
-                    <div className="flex gap-4 mt-1 text-sm font-medium text-gray-700">
-                      <span>Points: <span className="text-emerald-600">{cont.points || 0}</span></span>
-                      <span>Approved: <span className="text-blue-600">{cont.approvedCount || 0}</span></span>
+                <div key={cont.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                        <UserCircle className="w-5 h-5 text-emerald-600" /> {cont.name}
+                      </h3>
+                      <p className="text-sm text-gray-600">{cont.phone}</p>
+                      <div className="flex gap-4 mt-1 text-sm font-medium text-gray-700">
+                        <span>Points: <span className="text-emerald-600">{cont.points || 0}</span></span>
+                        <span>Approved: <span className="text-blue-600">{cont.approvedCount || 0}</span></span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setExpandedContributorId(expandedContributorId === cont.id ? null : cont.id)} 
+                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100" 
+                        title="Messages"
+                      >
+                        <Send className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => handleDeleteContributor(cont.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteContributor(cont.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  
+                  {expandedContributorId === cont.id && (
+                    <div className="mt-2 pt-3 border-t border-gray-100">
+                      {cont.messages && cont.messages.length > 0 ? (
+                        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto pr-2">
+                          {cont.messages.map((msg: any) => (
+                            <div key={msg.id} className={`p-2 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-emerald-50 ml-6' : 'bg-gray-50 mr-6'}`}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-semibold text-[11px] text-gray-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : cont.name}</span>
+                                <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
+                              </div>
+                              <p className="text-gray-800 text-xs">{msg.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 mb-2">কোনো ম্যাসেজ নেই।</p>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={contributorMessageText[cont.id] || ''}
+                          onChange={(e) => setContributorMessageText({ ...contributorMessageText, [cont.id]: e.target.value })}
+                          placeholder="ম্যাসেজ লিখুন..."
+                          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSendMessageToContributor(cont.id);
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSendMessageToContributor(cont.id)}
+                          disabled={!contributorMessageText[cont.id]?.trim()}
+                          className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
