@@ -646,7 +646,12 @@ export default function Admin() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                        <UserCircle className="w-5 h-5 text-emerald-600" /> {cont.name}
+                        {cont.avatar ? (
+                          <img src={cont.avatar} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-emerald-200" />
+                        ) : (
+                          <UserCircle className="w-6 h-6 text-emerald-600" />
+                        )}
+                        {cont.name}
                       </h3>
                       <p className="text-sm text-gray-600">{cont.phone}</p>
                       <div className="flex gap-4 mt-1 text-sm font-medium text-gray-700">

@@ -70,6 +70,7 @@ export default function App() {
   const [contributorName, setContributorName] = useState('');
   const [contributorPhone, setContributorPhone] = useState('');
   const [contributorFacebook, setContributorFacebook] = useState('');
+  const [contributorAvatar, setContributorAvatar] = useState('');
   const [topContributors, setTopContributors] = useState<any[]>([]);
   const [isLoginMode, setIsLoginMode] = useState(false);
   const [loginPhone, setLoginPhone] = useState('');
@@ -89,9 +90,11 @@ export default function App() {
     const savedName = localStorage.getItem('contributorName');
     const savedPhone = localStorage.getItem('contributorPhone');
     const savedFb = localStorage.getItem('contributorFacebook');
+    const savedAvatar = localStorage.getItem('contributorAvatar');
     if (savedName) setContributorName(savedName);
     if (savedPhone) setContributorPhone(savedPhone);
     if (savedFb) setContributorFacebook(savedFb);
+    if (savedAvatar) setContributorAvatar(savedAvatar);
   }, []);
 
   useEffect(() => {
@@ -493,29 +496,76 @@ export default function App() {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 150;
+        const MAX_HEIGHT = 150;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setContributorAvatar(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const saveContributorProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const docRef = doc(db, 'contributors', contributorPhone);
       const docSnap = await getDoc(docRef);
+      
+      const updateData: any = {
+        name: contributorName,
+        facebookUrl: contributorFacebook,
+      };
+      if (contributorAvatar) {
+        updateData.avatar = contributorAvatar;
+      }
+
       if (!docSnap.exists()) {
         await setDoc(docRef, {
-          name: contributorName,
+          ...updateData,
           phone: contributorPhone,
-          facebookUrl: contributorFacebook,
           approvedCount: 0,
           points: 0,
           createdAt: new Date().toISOString()
         });
       } else {
-        await updateDoc(docRef, {
-          name: contributorName,
-          facebookUrl: contributorFacebook,
-        });
+        await updateDoc(docRef, updateData);
       }
       localStorage.setItem('contributorName', contributorName);
       localStorage.setItem('contributorPhone', contributorPhone);
       localStorage.setItem('contributorFacebook', contributorFacebook);
+      if (contributorAvatar) {
+        localStorage.setItem('contributorAvatar', contributorAvatar);
+      }
       setIsContributorProfileOpen(false);
       alert('প্রোফাইল সেইভ হয়েছে! এখন থেকে আপনার যুক্ত করা নাম্বারগুলো অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বাড়বে।');
     } catch (err) {
@@ -567,7 +617,11 @@ export default function App() {
             className="ml-1 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white relative"
             title="আমার প্রোফাইল"
           >
-            <UserCircle className="w-6 h-6" />
+            {contributorAvatar ? (
+              <img src={contributorAvatar} alt="Profile" className="w-7 h-7 rounded-full object-cover border border-emerald-500 bg-white" />
+            ) : (
+              <UserCircle className="w-6 h-6" />
+            )}
             {(hasUnreadReply || hasUnreadMessages) && (
               <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -1246,6 +1300,24 @@ export default function App() {
                         placeholder="https://facebook.com/..."
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">প্রোফাইল ছবি (ঐচ্ছিক)</label>
+                      <div className="flex items-center gap-3">
+                        {contributorAvatar ? (
+                          <img src={contributorAvatar} alt="Profile" className="w-12 h-12 rounded-full object-cover border border-gray-200" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                            <UserCircle className="w-6 h-6 text-gray-400" />
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                        />
+                      </div>
+                    </div>
                     <button
                       type="submit"
                       className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
@@ -1418,9 +1490,16 @@ export default function App() {
                   {topContributors.map((user, idx) => (
                     <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
                           {idx + 1}
                         </div>
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
+                            <UserCircle className="w-6 h-6" />
+                          </div>
+                        )}
                         <div>
                           <h3 className="font-semibold text-gray-900 leading-tight">
                             {user.facebookUrl ? (
