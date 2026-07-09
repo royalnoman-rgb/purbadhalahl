@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Admin() {
@@ -11,6 +11,7 @@ export default function Admin() {
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
   const [pendingCategories, setPendingCategories] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [replyText, setReplyText] = useState<{[key: string]: string}>({});
   
   const [approvedContacts, setApprovedContacts] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
@@ -170,6 +171,44 @@ export default function Admin() {
     fetchData();
   };
 
+  const handleReplyFeedback = async (feedbackId: string) => {
+    if (!replyText[feedbackId]?.trim()) return;
+    try {
+      const feedbackRef = doc(db, 'feedback', feedbackId);
+      const feedbackDoc = await getDoc(feedbackRef);
+      if (feedbackDoc.exists()) {
+        const feedback = feedbackDoc.data();
+        const newReplies = [...(feedback.replies || []), {
+          id: Date.now().toString(),
+          sender: 'admin',
+          message: replyText[feedbackId].trim(),
+          createdAt: new Date().toISOString()
+        }];
+        await updateDoc(feedbackRef, {
+          replies: newReplies,
+          hasUnreadAdminReply: false,
+          hasUnreadUserReply: true
+        });
+        setReplyText(prev => ({ ...prev, [feedbackId]: '' }));
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+    }
+  };
+
+  const handleMarkFeedbackAsReadAdmin = async (feedbackId: string) => {
+    try {
+      await updateDoc(doc(db, 'feedback', feedbackId), {
+        hasUnreadAdminReply: false
+      });
+      setFeedbacks(prev => prev.map(fb => fb.id === feedbackId ? { ...fb, hasUnreadAdminReply: false } : fb));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -287,7 +326,15 @@ export default function Admin() {
                 <div key={feedback.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-bold text-gray-900">{feedback.name}</h3>
+                      <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                        {feedback.name}
+                        {feedback.hasUnreadAdminReply && (
+                          <span className="flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-xs text-gray-500 mb-2">{new Date(feedback.createdAt).toLocaleString('bn-BD')}</p>
                       <p className="text-sm text-gray-800 whitespace-pre-wrap">{feedback.message}</p>
                     </div>
@@ -324,6 +371,57 @@ export default function Admin() {
                       ))}
                     </div>
                   )}
+
+                  {/* Replies Section */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    {feedback.replies && feedback.replies.length > 0 && (
+                      <div className="space-y-2 mb-3 max-h-40 overflow-y-auto pr-2">
+                        {feedback.replies.map((reply: any) => (
+                          <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'admin' ? 'bg-emerald-50 ml-6' : 'bg-gray-50 mr-6'}`}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-semibold text-xs text-gray-700">{reply.sender === 'admin' ? 'অ্যাডমিন' : feedback.name}</span>
+                              <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleString('bn-BD')}</span>
+                            </div>
+                            <p className="text-gray-800">{reply.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 relative">
+                      <input
+                        type="text"
+                        value={replyText[feedback.id] || ''}
+                        onClick={() => {
+                          if (feedback.hasUnreadAdminReply) {
+                            handleMarkFeedbackAsReadAdmin(feedback.id);
+                          }
+                        }}
+                        onChange={(e) => setReplyText({ ...replyText, [feedback.id]: e.target.value })}
+                        placeholder="রিপ্লাই লিখুন..."
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleReplyFeedback(feedback.id);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => handleReplyFeedback(feedback.id)}
+                        disabled={!replyText[feedback.id]?.trim()}
+                        className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                      {feedback.hasUnreadAdminReply && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               ))}
             </div>

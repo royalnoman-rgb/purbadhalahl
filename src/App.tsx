@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
@@ -77,6 +77,8 @@ export default function App() {
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
   const [contributorContacts, setContributorContacts] = useState<any[]>([]);
+  const [feedbackReplyText, setFeedbackReplyText] = useState<{[key: string]: string}>({});
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
   const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
 
   useEffect(() => {
@@ -224,6 +226,45 @@ export default function App() {
       console.error(err);
       alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
       setRequestStatus('idle');
+    }
+  };
+
+  const handleFeedbackReplyUser = async (feedbackId: string) => {
+    if (!feedbackReplyText[feedbackId]?.trim()) return;
+    try {
+      const feedbackRef = doc(db, 'feedback', feedbackId);
+      const feedbackDoc = await getDoc(feedbackRef);
+      if (feedbackDoc.exists()) {
+        const feedback = feedbackDoc.data();
+        const newReplies = [...(feedback.replies || []), {
+          id: Date.now().toString(),
+          sender: 'user',
+          message: feedbackReplyText[feedbackId].trim(),
+          createdAt: new Date().toISOString()
+        }];
+        await updateDoc(feedbackRef, {
+          replies: newReplies,
+          hasUnreadAdminReply: true,
+          hasUnreadUserReply: false
+        });
+        setFeedbackReplyText(prev => ({ ...prev, [feedbackId]: '' }));
+        // Update local state so it reflects instantly if no onSnapshot is used for user dashboard
+        setContributorFeedbacks(prev => prev.map(fb => fb.id === feedbackId ? { ...fb, replies: newReplies, hasUnreadUserReply: false } : fb));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+    }
+  };
+
+  const handleMarkFeedbackAsRead = async (feedbackId: string) => {
+    try {
+      await updateDoc(doc(db, 'feedback', feedbackId), {
+        hasUnreadUserReply: false
+      });
+      setContributorFeedbacks(prev => prev.map(fb => fb.id === feedbackId ? { ...fb, hasUnreadUserReply: false } : fb));
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -415,6 +456,8 @@ export default function App() {
     }
   };
 
+  const hasUnreadReply = contributorFeedbacks.some(fb => fb.hasUnreadUserReply);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       {/* Header */}
@@ -453,10 +496,16 @@ export default function App() {
           </button>
           <button 
             onClick={() => setIsContributorProfileOpen(true)}
-            className="ml-1 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
+            className="ml-1 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white relative"
             title="আমার প্রোফাইল"
           >
             <UserCircle className="w-6 h-6" />
+            {hasUnreadReply && (
+              <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -922,6 +971,76 @@ export default function App() {
                               )}
                             </div>
                             <p className="text-sm text-gray-800 whitespace-pre-wrap">{fb.message}</p>
+                            
+                            {/* Replies Section Toggle */}
+                            <div className="mt-2 pt-2 border-t border-gray-200">
+                              <button 
+                                onClick={() => {
+                                  if (expandedFeedbackId === fb.id) {
+                                    setExpandedFeedbackId(null);
+                                  } else {
+                                    setExpandedFeedbackId(fb.id);
+                                    if (fb.hasUnreadUserReply) {
+                                      handleMarkFeedbackAsRead(fb.id);
+                                    }
+                                  }
+                                }}
+                                className="flex items-center gap-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 relative"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                <span>রিপ্লাই দেখুন {fb.replies?.length ? `(${fb.replies.length})` : ''}</span>
+                                {fb.hasUnreadUserReply && (
+                                  <span className="flex h-2.5 w-2.5 ml-1">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Replies Thread */}
+                            {expandedFeedbackId === fb.id && (
+                              <div className="mt-3 bg-white p-2 rounded border border-gray-100">
+                                {fb.replies && fb.replies.length > 0 ? (
+                                  <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
+                                    {fb.replies.map((reply: any) => (
+                                      <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'user' ? 'bg-emerald-50 ml-4' : 'bg-gray-50 mr-4'}`}>
+                                        <div className="flex justify-between items-center mb-1">
+                                          <span className="font-semibold text-[11px] text-gray-700">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'}</span>
+                                          <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
+                                        </div>
+                                        <p className="text-gray-800 text-xs">{reply.message}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400 mb-2">এখনও কোনো রিপ্লাই নেই।</p>
+                                )}
+                                
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={feedbackReplyText[fb.id] || ''}
+                                    onChange={(e) => setFeedbackReplyText({ ...feedbackReplyText, [fb.id]: e.target.value })}
+                                    placeholder="আপনার রিপ্লাই..."
+                                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleFeedbackReplyUser(fb.id);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => handleFeedbackReplyUser(fb.id)}
+                                    disabled={!feedbackReplyText[fb.id]?.trim()}
+                                    className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                  >
+                                    <Send className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
                           </div>
                         ))}
                       </div>
