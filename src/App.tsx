@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
@@ -37,7 +37,7 @@ export default function App() {
   // Dynamic Data
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
-  const [ratedFeedbacks, setRatedFeedbacks] = useState<any[]>([]);
+  const [publicReviews, setPublicReviews] = useState<any[]>([]);
 
   // Form states - Contact
   const [newName, setNewName] = useState('');
@@ -56,6 +56,13 @@ export default function App() {
   // Form states - Feedback
   const [newFeedbackName, setNewFeedbackName] = useState('');
   const [newFeedbackMessage, setNewFeedbackMessage] = useState('');
+
+  // Form states - Public Review
+  const [isWritingReview, setIsWritingReview] = useState(false);
+  const [newReviewName, setNewReviewName] = useState('');
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewMessage, setNewReviewMessage] = useState('');
+  const [reviewSubmitStatus, setReviewSubmitStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   // Contributor Modals and State
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
@@ -95,17 +102,17 @@ export default function App() {
       setDynamicContacts(conts);
     });
 
-    // Fetch rated feedbacks
-    const qFeedback = query(collection(db, 'feedback'), where('status', '==', 'approved'));
-    const unsubFeedback = onSnapshot(qFeedback, (snapshot) => {
-      const fbs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRatedFeedbacks(fbs);
+    // Fetch public reviews
+    const qReview = query(collection(db, 'public_reviews'), orderBy('createdAt', 'desc'));
+    const unsubReview = onSnapshot(qReview, (snapshot) => {
+      const revs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPublicReviews(revs);
     });
 
     return () => {
       unsubCat();
       unsubContact();
-      unsubFeedback();
+      unsubReview();
     }
   }, []);
 
@@ -121,7 +128,7 @@ export default function App() {
     const matchesCategory = selectedCategory ? c.categoryId === selectedCategory.id : true;
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery);
     return matchesCategory && matchesSearch;
-  });
+  }).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -243,6 +250,52 @@ export default function App() {
       console.error(err);
       alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
       setRequestStatus('idle');
+    }
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewSubmitStatus('submitting');
+    
+    try {
+      await addDoc(collection(db, 'public_reviews'), {
+        name: contributorName || newReviewName,
+        rating: newReviewRating,
+        message: newReviewMessage,
+        createdAt: new Date().toISOString(),
+        likes: 0
+      });
+      
+      setReviewSubmitStatus('success');
+      setTimeout(() => {
+        setIsWritingReview(false);
+        setReviewSubmitStatus('idle');
+        setNewReviewName('');
+        setNewReviewMessage('');
+        setNewReviewRating(5);
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+      setReviewSubmitStatus('idle');
+    }
+  };
+
+  const handleLikeReview = async (id: string, currentLikes: number) => {
+    const likedReviews = JSON.parse(localStorage.getItem('likedReviews') || '[]');
+    if (likedReviews.includes(id)) {
+      alert('আপনি ইতিমধ্যে এই রিভিওটিতে লাইক দিয়েছেন।');
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, 'public_reviews', id), {
+        likes: (currentLikes || 0) + 1
+      });
+      likedReviews.push(id);
+      localStorage.setItem('likedReviews', JSON.stringify(likedReviews));
+    } catch (err) {
+      console.error("Error liking review", err);
     }
   };
 
@@ -926,38 +979,120 @@ export default function App() {
       {/* Reviews Modal */}
       {isReviewsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100 flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> রেটিংস ও রিভিও</h2>
               <button
-                onClick={() => setIsReviewsModalOpen(false)}
+                onClick={() => { setIsReviewsModalOpen(false); setIsWritingReview(false); }}
                 className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-5 max-h-[60vh] overflow-y-auto">
-              {ratedFeedbacks.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>এখনও কোনো রিভিও নেই।</p>
+            <div className="p-5 overflow-y-auto flex-grow">
+              {reviewSubmitStatus === 'success' ? (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">ধন্যবাদ!</h3>
+                  <p className="text-gray-500">আপনার রিভিও সফলভাবে প্রকাশিত হয়েছে।</p>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {ratedFeedbacks.map((review) => (
-                    <div key={review.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900">{review.name}</h3>
-                        <div className="flex gap-0.5">
-                          {[...Array(review.rating || 5)].map((_, i) => (
-                            <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.message}</p>
-                      <p className="text-xs text-gray-400 mt-2">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
+              ) : isWritingReview ? (
+                <form onSubmit={handleReviewSubmit} className="space-y-4">
+                  {!contributorName && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
+                      <input
+                        type="text" required value={newReviewName} onChange={(e) => setNewReviewName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="আপনার নাম"
+                      />
                     </div>
-                  ))}
-                </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">রেটিং *</label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setNewReviewRating(star)}
+                          className="focus:outline-none transition-transform hover:scale-110"
+                        >
+                          <Star className={`w-8 h-8 ${star <= newReviewRating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">আপনার রিভিও *</label>
+                    <textarea
+                      required value={newReviewMessage} onChange={(e) => setNewReviewMessage(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                      placeholder="অ্যাপটি সম্পর্কে আপনার মতামত লিখুন..."
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      type="button" onClick={() => setIsWritingReview(false)}
+                      className="flex-1 py-3 px-4 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      বাতিল
+                    </button>
+                    <button
+                      type="submit" disabled={reviewSubmitStatus === 'submitting'}
+                      className={`flex-1 py-3 px-4 rounded-xl text-white font-medium flex justify-center items-center transition-colors ${
+                        reviewSubmitStatus === 'submitting' ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
+                      }`}
+                    >
+                      {reviewSubmitStatus === 'submitting' ? 'প্রকাশ করা হচ্ছে...' : 'রিভিও দিন'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <button 
+                      onClick={() => setIsWritingReview(true)}
+                      className="w-full py-3 px-4 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl font-medium transition-colors border border-emerald-200 flex items-center justify-center gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" /> নিজে একটি রিভিও দিন
+                    </button>
+                  </div>
+                  
+                  {publicReviews.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>এখনও কোনো রিভিও নেই। প্রথম রিভিওটি আপনিই দিন!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {publicReviews.map((review) => (
+                        <div key={review.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-gray-900">{review.name}</h3>
+                            <div className="flex gap-0.5">
+                              {[...Array(review.rating || 5)].map((_, i) => (
+                                <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.message}</p>
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/60">
+                            <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
+                            <button 
+                              onClick={() => handleLikeReview(review.id, review.likes)}
+                              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
+                            >
+                              <ThumbsUp className={`w-3.5 h-3.5 ${JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-emerald-600 fill-emerald-600' : ''}`} />
+                              <span>{review.likes || 0}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
