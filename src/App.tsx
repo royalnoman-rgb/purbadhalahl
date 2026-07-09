@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
-import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 import MapTracker from './MapTracker';
@@ -370,13 +370,35 @@ export default function App() {
     }
   };
 
-  const saveContributorProfile = (e: React.FormEvent) => {
+  const saveContributorProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('contributorName', contributorName);
-    localStorage.setItem('contributorPhone', contributorPhone);
-    localStorage.setItem('contributorFacebook', contributorFacebook);
-    setIsContributorProfileOpen(false);
-    alert('প্রোফাইল সেইভ হয়েছে! এখন থেকে আপনার যুক্ত করা নাম্বারগুলো অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বাড়বে।');
+    try {
+      const docRef = doc(db, 'contributors', contributorPhone);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          name: contributorName,
+          phone: contributorPhone,
+          facebookUrl: contributorFacebook,
+          approvedCount: 0,
+          points: 0,
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        await updateDoc(docRef, {
+          name: contributorName,
+          facebookUrl: contributorFacebook,
+        });
+      }
+      localStorage.setItem('contributorName', contributorName);
+      localStorage.setItem('contributorPhone', contributorPhone);
+      localStorage.setItem('contributorFacebook', contributorFacebook);
+      setIsContributorProfileOpen(false);
+      alert('প্রোফাইল সেইভ হয়েছে! এখন থেকে আপনার যুক্ত করা নাম্বারগুলো অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বাড়বে।');
+    } catch (err) {
+      console.error(err);
+      alert('প্রোফাইল সেইভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    }
   };
 
   return (
@@ -924,8 +946,8 @@ export default function App() {
                   <p className="text-sm text-gray-600 mb-4">
                     এখানে আপনার তথ্য সেভ করে রাখলে, পরবর্তীতে নতুন কোনো নাম্বার যুক্ত করলে বারবার আপনার নাম ও নাম্বার দিতে হবে না। আপনার যুক্ত করা নাম্বার অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বৃদ্ধি পাবে।
                   </p>
-                  <form onSubmit={(e) => {
-                    saveContributorProfile(e);
+                  <form onSubmit={async (e) => {
+                    await saveContributorProfile(e);
                     setIsEditProfileMode(false);
                   }} className="space-y-4">
                     <div>
