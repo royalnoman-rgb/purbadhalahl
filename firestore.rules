@@ -1,34 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Check if user is an admin
-    function isAdmin() {
-      return request.auth != null && request.auth.token.email == 'admin@purbadhala.com';
-    }
-
-    match /categories/{category} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
-    }
-    
-    match /contacts/{contact} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
-    }
-    
-    match /feedback/{docId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if isAdmin();
-    }
-    
-    match /locations/{locationId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if isAdmin();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
