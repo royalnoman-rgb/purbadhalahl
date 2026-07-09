@@ -76,7 +76,7 @@ export default function App() {
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
-  const [isEditProfileMode, setIsEditProfileMode] = useState(false);
+  const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
 
   useEffect(() => {
     const savedName = localStorage.getItem('contributorName');
@@ -356,6 +356,7 @@ export default function App() {
         localStorage.setItem('contributorPhone', data.phone || loginPhone);
         localStorage.setItem('contributorFacebook', data.facebookUrl || '');
         
+        setIsEditProfileMode(false);
         setIsContributorProfileOpen(false);
         setIsLoginMode(false);
         setLoginPhone('');
@@ -908,6 +909,7 @@ export default function App() {
                         setContributorFacebook('');
                         setContributorPoints(0);
                         setContributorApprovedCount(0);
+                        setIsEditProfileMode(true);
                         setIsContributorProfileOpen(false);
                         alert('লগআউট সফল হয়েছে');
                       }} 
