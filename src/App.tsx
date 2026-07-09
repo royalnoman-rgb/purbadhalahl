@@ -68,6 +68,8 @@ export default function App() {
   const [loginPhone, setLoginPhone] = useState('');
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
+  const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
+  const [isEditProfileMode, setIsEditProfileMode] = useState(false);
 
   useEffect(() => {
     const savedName = localStorage.getItem('contributorName');
@@ -271,6 +273,10 @@ export default function App() {
           setContributorPoints(data.points || (data.approvedCount || 0) * 10);
           setContributorApprovedCount(data.approvedCount || 0);
         }
+
+        const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
+        const feedbackSnap = await getDocs(feedbackQuery);
+        setContributorFeedbacks(feedbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (err) {
         console.error("Error fetching stats", err);
       }
@@ -790,27 +796,82 @@ export default function App() {
                     </button>
                   </div>
                 </>
-              ) : (
+              ) : contributorName && !isEditProfileMode ? (
                 <>
-                  {contributorName && (
-                    <div className="bg-emerald-50 rounded-xl p-4 mb-6 border border-emerald-100">
-                      <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                          <p className="text-sm text-gray-500 mb-1">এপ্রুভড নাম্বার</p>
-                          <p className="text-2xl font-bold text-emerald-600">{contributorApprovedCount}</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                          <p className="text-sm text-gray-500 mb-1">মোট পয়েন্ট</p>
-                          <p className="text-2xl font-bold text-emerald-600">{contributorPoints}</p>
-                        </div>
+                  <div className="bg-emerald-50 rounded-xl p-4 mb-4 border border-emerald-100">
+                    <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                        <p className="text-sm text-gray-500 mb-1">এপ্রুভড নাম্বার</p>
+                        <p className="text-2xl font-bold text-emerald-600">{contributorApprovedCount}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                        <p className="text-sm text-gray-500 mb-1">মোট পয়েন্ট</p>
+                        <p className="text-2xl font-bold text-emerald-600">{contributorPoints}</p>
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-gray-900 mb-3">আমার মতামত ও আইডিয়া</h3>
+                    {contributorFeedbacks.length === 0 ? (
+                      <p className="text-sm text-gray-500">আপনি এখনও কোনো মতামত দেননি।</p>
+                    ) : (
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                        {contributorFeedbacks.map(fb => (
+                          <div key={fb.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <div className="flex justify-between items-start mb-1">
+                              <p className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleDateString('bn-BD')}</p>
+                              {fb.status === 'approved' ? (
+                                <div className="flex gap-0.5">
+                                  {[...Array(fb.rating || 1)].map((_, i) => (
+                                    <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-medium">পেন্ডিং</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{fb.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                    <button type="button" onClick={() => setIsEditProfileMode(true)} className="text-sm text-emerald-600 hover:underline font-medium">
+                      প্রোফাইল আপডেট করুন
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        localStorage.removeItem('contributorName');
+                        localStorage.removeItem('contributorPhone');
+                        localStorage.removeItem('contributorFacebook');
+                        setContributorName('');
+                        setContributorPhone('');
+                        setContributorFacebook('');
+                        setContributorPoints(0);
+                        setContributorApprovedCount(0);
+                        setIsContributorProfileOpen(false);
+                        alert('লগআউট সফল হয়েছে');
+                      }} 
+                      className="text-sm text-red-600 hover:underline font-medium"
+                    >
+                      লগআউট করুন
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
                   <p className="text-sm text-gray-600 mb-4">
                     এখানে আপনার তথ্য সেভ করে রাখলে, পরবর্তীতে নতুন কোনো নাম্বার যুক্ত করলে বারবার আপনার নাম ও নাম্বার দিতে হবে না। আপনার যুক্ত করা নাম্বার অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বৃদ্ধি পাবে।
                   </p>
-                  <form onSubmit={saveContributorProfile} className="space-y-4">
+                  <form onSubmit={(e) => {
+                    saveContributorProfile(e);
+                    setIsEditProfileMode(false);
+                  }} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
                       <input
@@ -843,27 +904,14 @@ export default function App() {
                     </button>
                   </form>
                   <div className="mt-4 flex items-center justify-between">
-                    <button type="button" onClick={() => setIsLoginMode(true)} className="text-sm text-emerald-600 hover:underline">
-                      আগের একাউন্ট থাকলে নাম্বার দিয়ে লগইন করুন
-                    </button>
+                    {!contributorName && (
+                      <button type="button" onClick={() => setIsLoginMode(true)} className="text-sm text-emerald-600 hover:underline">
+                        আগের একাউন্ট থাকলে নাম্বার দিয়ে লগইন করুন
+                      </button>
+                    )}
                     {contributorName && (
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          localStorage.removeItem('contributorName');
-                          localStorage.removeItem('contributorPhone');
-                          localStorage.removeItem('contributorFacebook');
-                          setContributorName('');
-                          setContributorPhone('');
-                          setContributorFacebook('');
-                          setContributorPoints(0);
-                          setContributorApprovedCount(0);
-                          setIsContributorProfileOpen(false);
-                          alert('লগআউট সফল হয়েছে');
-                        }} 
-                        className="text-sm text-red-600 hover:underline"
-                      >
-                        লগআউট করুন
+                      <button type="button" onClick={() => setIsEditProfileMode(false)} className="text-sm text-gray-600 hover:underline">
+                        বাতিল করুন
                       </button>
                     )}
                   </div>
