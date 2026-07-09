@@ -225,11 +225,10 @@ export default function App() {
     
     try {
       await addDoc(collection(db, 'feedback'), {
-        name: newFeedbackName,
+        name: contributorName || newFeedbackName,
         message: newFeedbackMessage,
         createdAt: new Date().toISOString(),
         contributorPhone: contributorPhone || null,
-        contributorName: contributorName || null,
         status: 'pending'
       });
       
@@ -720,14 +719,16 @@ export default function App() {
                 </div>
               ) : (
                 <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
-                    <input
-                      type="text" required value={newFeedbackName} onChange={(e) => setNewFeedbackName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="আপনার নাম"
-                    />
-                  </div>
+                  {!contributorName && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
+                      <input
+                        type="text" required value={newFeedbackName} onChange={(e) => setNewFeedbackName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="আপনার নাম"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">আপনার মতামত বা আইডিয়া *</label>
                     <textarea
