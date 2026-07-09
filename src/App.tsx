@@ -79,6 +79,8 @@ export default function App() {
   const [contributorContacts, setContributorContacts] = useState<any[]>([]);
   const [feedbackReplyText, setFeedbackReplyText] = useState<{[key: string]: string}>({});
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editReplyText, setEditReplyText] = useState('');
   const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
 
   useEffect(() => {
@@ -254,6 +256,56 @@ export default function App() {
     } catch (err) {
       console.error(err);
       alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+    }
+  };
+
+  const handleEditReplyUser = async (feedbackId: string, replyId: string) => {
+    if (!editReplyText.trim()) return;
+    try {
+      const feedbackRef = doc(db, 'feedback', feedbackId);
+      const feedbackDoc = await getDoc(feedbackRef);
+      if (feedbackDoc.exists()) {
+        const feedback = feedbackDoc.data();
+        const updatedReplies = (feedback.replies || []).map((reply: any) => 
+          reply.id === replyId ? { ...reply, message: editReplyText.trim(), edited: true } : reply
+        );
+        await updateDoc(feedbackRef, {
+          replies: updatedReplies
+        });
+        setContributorFeedbacks(prev => prev.map(fb => fb.id === feedbackId ? { ...fb, replies: updatedReplies } : fb));
+        setEditingReplyId(null);
+        setEditReplyText('');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLikeReplyUser = async (feedbackId: string, replyId: string) => {
+    try {
+      const feedbackRef = doc(db, 'feedback', feedbackId);
+      const feedbackDoc = await getDoc(feedbackRef);
+      if (feedbackDoc.exists()) {
+        const feedback = feedbackDoc.data();
+        const updatedReplies = (feedback.replies || []).map((reply: any) => {
+          if (reply.id === replyId) {
+            const likes = reply.likes || [];
+            const userIdentifier = contributorPhone || 'anonymous';
+            if (likes.includes(userIdentifier)) {
+                return { ...reply, likes: likes.filter((id: string) => id !== userIdentifier) };
+            } else {
+                return { ...reply, likes: [...likes, userIdentifier] };
+            }
+          }
+          return reply;
+        });
+        await updateDoc(feedbackRef, {
+          replies: updatedReplies
+        });
+        setContributorFeedbacks(prev => prev.map(fb => fb.id === feedbackId ? { ...fb, replies: updatedReplies } : fb));
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -1003,15 +1055,63 @@ export default function App() {
                               <div className="mt-3 bg-white p-2 rounded border border-gray-100">
                                 {fb.replies && fb.replies.length > 0 ? (
                                   <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
-                                    {fb.replies.map((reply: any) => (
+                                    {fb.replies.map((reply: any) => {
+                                      const userIdentifier = contributorPhone || 'anonymous';
+                                      const isLiked = reply.likes?.includes(userIdentifier);
+                                      return (
                                       <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'user' ? 'bg-emerald-50 ml-4' : 'bg-gray-50 mr-4'}`}>
                                         <div className="flex justify-between items-center mb-1">
                                           <span className="font-semibold text-[11px] text-gray-700">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'}</span>
-                                          <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
+                                          <div className="flex items-center gap-2">
+                                            {reply.edited && <span className="text-[9px] text-gray-400 italic">edited</span>}
+                                            <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
+                                          </div>
                                         </div>
-                                        <p className="text-gray-800 text-xs">{reply.message}</p>
+                                        {editingReplyId === reply.id ? (
+                                          <div className="mt-1 flex gap-1">
+                                            <input
+                                              type="text"
+                                              value={editReplyText}
+                                              onChange={(e) => setEditReplyText(e.target.value)}
+                                              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none"
+                                              onKeyPress={(e) => {
+                                                if (e.key === 'Enter') handleEditReplyUser(fb.id, reply.id);
+                                              }}
+                                            />
+                                            <button onClick={() => handleEditReplyUser(fb.id, reply.id)} className="text-emerald-600 hover:text-emerald-700">
+                                              <CheckCircle2 className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => setEditingReplyId(null)} className="text-gray-400 hover:text-red-500">
+                                              <X className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <p className="text-gray-800 text-xs">{reply.message}</p>
+                                            <div className="flex justify-end gap-2 mt-1">
+                                              <button 
+                                                onClick={() => handleLikeReplyUser(fb.id, reply.id)}
+                                                className={`flex items-center gap-1 text-[10px] ${isLiked ? 'text-emerald-600' : 'text-gray-400 hover:text-emerald-500'}`}
+                                              >
+                                                <ThumbsUp className={`w-3 h-3 ${isLiked ? 'fill-emerald-600' : ''}`} />
+                                                {reply.likes?.length > 0 && <span>{reply.likes.length}</span>}
+                                              </button>
+                                              {reply.sender === 'user' && (
+                                                <button 
+                                                  onClick={() => {
+                                                    setEditingReplyId(reply.id);
+                                                    setEditReplyText(reply.message);
+                                                  }}
+                                                  className="text-gray-400 hover:text-blue-500"
+                                                >
+                                                  <Edit3 className="w-3 h-3" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
-                                    ))}
+                                    )})}
                                   </div>
                                 ) : (
                                   <p className="text-xs text-gray-400 mb-2">এখনও কোনো রিপ্লাই নেই।</p>
