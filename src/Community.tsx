@@ -3,15 +3,39 @@ import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc,
 import { db } from './firebase';
 import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft } from 'lucide-react';
 
+const VerifiedBadge = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-[18px] h-[18px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    title="Verified Contributor"
+  >
+    <path
+      d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"
+      fill="currentColor"
+    />
+    <path
+      d="M12 0l2.766 2.05L18.17 1.44l1.39 3.123 3.328 1.054-.366 3.4 2.585 2.23-1.61 3.01 1.61 3.01-2.585 2.23.366 3.4-3.328 1.054-1.39 3.123L18.17 22.56l-3.404-.61L12 24l-2.766-2.05-3.404.61-1.39-3.123-3.328-1.054.366-3.4-2.585-2.23 1.61-3.01-1.61-3.01 2.585-2.23-.366-3.4 3.328-1.054 1.39-3.123 3.404.61L12 0z"
+      fill="currentColor"
+    />
+    <path
+      d="M9.81 16.29l-4.1-4.1 1.42-1.42 2.68 2.68 6.68-6.68 1.42 1.42-8.1 8.1z"
+      fill="white"
+    />
+  </svg>
+);
+
 interface CommunityProps {
   contributorPhone: string;
   contributorName: string;
   contributorAvatar: string;
+  topContributors: any[];
   onLoginClick: () => void;
   onBack: () => void;
 }
 
-export default function Community({ contributorPhone, contributorName, contributorAvatar, onLoginClick, onBack }: CommunityProps) {
+export default function Community({ contributorPhone, contributorName, contributorAvatar, topContributors, onLoginClick, onBack }: CommunityProps) {
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostText, setNewPostText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +50,10 @@ export default function Community({ contributorPhone, contributorName, contribut
     });
     return () => unsub();
   }, [contributorPhone]);
+
+  const isVerifiedContributor = (phone: string, name: string) => {
+    return topContributors.slice(0, 5).some(c => c.phone === phone || c.name === name);
+  };
 
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,7 +181,10 @@ export default function Community({ contributorPhone, contributorName, contribut
                   </div>
                 )}
                 <div>
-                  <h3 className="font-semibold text-gray-900 leading-tight">{post.authorName}</h3>
+                  <h3 className="font-semibold text-gray-900 leading-tight flex items-center">
+                    {post.authorName}
+                    {isVerifiedContributor(post.authorPhone, post.authorName) && <VerifiedBadge />}
+                  </h3>
                   <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('bn-BD')}</p>
                 </div>
               </div>
@@ -173,7 +204,10 @@ export default function Community({ contributorPhone, contributorName, contribut
                     {post.comments.map((comment: any) => (
                       <div key={comment.id} className="bg-gray-50 rounded-lg p-3 text-sm">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="font-semibold text-gray-900">{comment.authorName}</span>
+                          <span className="font-semibold text-gray-900 flex items-center">
+                            {comment.authorName}
+                            {isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />}
+                          </span>
                           <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
                         </div>
                         <p className="text-gray-700">{comment.text}</p>

@@ -4,6 +4,29 @@ import { db } from './firebase';
 import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const VerifiedBadge = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-[18px] h-[18px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    title="Verified Contributor"
+  >
+    <path
+      d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"
+      fill="currentColor"
+    />
+    <path
+      d="M12 0l2.766 2.05L18.17 1.44l1.39 3.123 3.328 1.054-.366 3.4 2.585 2.23-1.61 3.01 1.61 3.01-2.585 2.23.366 3.4-3.328 1.054-1.39 3.123L18.17 22.56l-3.404-.61L12 24l-2.766-2.05-3.404.61-1.39-3.123-3.328-1.054.366-3.4-2.585-2.23 1.61-3.01-1.61-3.01 2.585-2.23-.366-3.4 3.328-1.054 1.39-3.123 3.404.61L12 0z"
+      fill="currentColor"
+    />
+    <path
+      d="M9.81 16.29l-4.1-4.1 1.42-1.42 2.68 2.68 6.68-6.68 1.42 1.42-8.1 8.1z"
+      fill="white"
+    />
+  </svg>
+);
+
 export default function Admin() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,6 +43,10 @@ export default function Admin() {
   const [adminHistory, setAdminHistory] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [contributors, setContributors] = useState<any[]>([]);
+
+  const isVerifiedContributor = (name: string, phone?: string) => {
+    return contributors.slice(0, 5).some(c => (phone && c.phone === phone) || (!phone && c.name === name));
+  };
 
   const logAdminAction = async (actionDesc: string) => {
     try {
@@ -495,7 +522,10 @@ export default function Admin() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                        {feedback.name}
+                        <span className="flex items-center">
+                          {feedback.name}
+                          {isVerifiedContributor(feedback.name, feedback.contributorPhone) && <VerifiedBadge />}
+                        </span>
                         {feedback.hasUnreadAdminReply && (
                           <span className="flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400 opacity-75"></span>
@@ -702,7 +732,10 @@ export default function Admin() {
                         ) : (
                           <UserCircle className="w-6 h-6 text-emerald-600" />
                         )}
-                        {cont.name}
+                        <span className="flex items-center">
+                          {cont.name}
+                          {isVerifiedContributor(cont.name, cont.phone) && <VerifiedBadge />}
+                        </span>
                       </h3>
                       <p className="text-sm text-gray-600">{cont.phone}</p>
                       <div className="flex gap-4 mt-1 text-sm font-medium text-gray-700">

@@ -22,6 +22,29 @@ const iconMap: Record<string, React.ElementType> = {
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper,
 };
 
+const VerifiedBadge = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-[18px] h-[18px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    title="Verified Contributor"
+  >
+    <path
+      d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"
+      fill="currentColor"
+    />
+    <path
+      d="M12 0l2.766 2.05L18.17 1.44l1.39 3.123 3.328 1.054-.366 3.4 2.585 2.23-1.61 3.01 1.61 3.01-2.585 2.23.366 3.4-3.328 1.054-1.39 3.123L18.17 22.56l-3.404-.61L12 24l-2.766-2.05-3.404.61-1.39-3.123-3.328-1.054.366-3.4-2.585-2.23 1.61-3.01-1.61-3.01 2.585-2.23-.366-3.4 3.328-1.054 1.39-3.123 3.404.61L12 0z"
+      fill="currentColor"
+    />
+    <path
+      d="M9.81 16.29l-4.1-4.1 1.42-1.42 2.68 2.68 6.68-6.68 1.42 1.42-8.1 8.1z"
+      fill="white"
+    />
+  </svg>
+);
+
 export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,10 +153,19 @@ export default function App() {
       setPublicReviews(revs);
     });
 
+    // Fetch top 10 contributors for verified badges and leaderboard globally
+    const qTopContributors = query(collection(db, 'contributors'), orderBy('points', 'desc'), limit(20));
+    const unsubTopContributors = onSnapshot(qTopContributors, (snapshot) => {
+      const contributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      const activeContributors = contributors.filter(c => c.points > 0 || c.approvedCount > 0);
+      setTopContributors(activeContributors.slice(0, 10));
+    });
+
     return () => {
       unsubCat();
       unsubContact();
       unsubReview();
+      unsubTopContributors();
     }
   }, []);
 
@@ -472,6 +504,10 @@ export default function App() {
       fetchLeaderboard();
     }
   }, [isLeaderboardOpen]);
+
+  const isVerifiedContributor = (name: string) => {
+    return topContributors.slice(0, 5).some(c => c.name === name);
+  };
 
   const fetchContributorStats = async () => {
     if (contributorPhone) {
@@ -817,6 +853,7 @@ export default function App() {
             contributorPhone={contributorPhone}
             contributorName={contributorName}
             contributorAvatar={contributorAvatar}
+            topContributors={topContributors}
             onLoginClick={() => setIsContributorProfileOpen(true)}
             onBack={() => setShowCommunity(false)}
           />
@@ -1167,7 +1204,11 @@ export default function App() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <UserCircle className="w-5 h-5 text-emerald-600" /> {isLoginMode ? 'লগইন' : 'আমার প্রোফাইল'}
+                <UserCircle className="w-5 h-5 text-emerald-600" /> 
+                <span className="flex items-center">
+                  {isLoginMode ? 'লগইন' : 'আমার প্রোফাইল'}
+                  {!isLoginMode && contributorName && isVerifiedContributor(contributorName) && <VerifiedBadge />}
+                </span>
               </h2>
               <button
                 onClick={() => { setIsContributorProfileOpen(false); setIsLoginMode(false); setIsForgotPassword(false); setIsOtpMode(false); setIsResetPasswordMode(false); }}
@@ -1738,7 +1779,10 @@ export default function App() {
                       {publicReviews.map((review) => (
                         <div key={review.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900">{review.name}</h3>
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              {review.name}
+                              {isVerifiedContributor(review.name) && <VerifiedBadge />}
+                            </h3>
                             <div className="flex gap-0.5">
                               {[...Array(review.rating || 5)].map((_, i) => (
                                 <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
@@ -1810,7 +1854,7 @@ export default function App() {
                               <span>{user.name}</span>
                             )}
                             {idx < 5 && (
-                              <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/20" title="শীর্ষ অবদানকারী" />
+                              <VerifiedBadge />
                             )}
                           </h3>
                           <p className="text-xs text-gray-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.points || 0}</span></p>
