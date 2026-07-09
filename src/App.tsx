@@ -353,7 +353,8 @@ export default function App() {
         };
         const newMessages = [...(contributorData.messages || []), newMessage];
         await updateDoc(contributorRef, {
-          messages: newMessages
+          messages: newMessages,
+          hasUnreadAdminMessage: true
         });
         setContributorMessages(newMessages);
         setUserMessageText('');
@@ -489,9 +490,24 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (isContributorProfileOpen) {
+    let unsubContributor: any = null;
+    if (isContributorProfileOpen && contributorPhone) {
       fetchContributorStats();
+      
+      const docRef = doc(db, 'contributors', contributorPhone);
+      unsubContributor = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setContributorPoints(data.points || (data.approvedCount || 0) * 10);
+          setContributorApprovedCount(data.approvedCount || 0);
+          setContributorMessages(data.messages || []);
+          setHasUnreadMessages(data.hasUnreadMessage || false);
+        }
+      });
     }
+    return () => {
+      if (unsubContributor) unsubContributor();
+    };
   }, [isContributorProfileOpen, contributorPhone]);
 
   const handleLogin = async (e: React.FormEvent) => {

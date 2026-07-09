@@ -84,6 +84,14 @@ export default function Admin() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchData();
+      
+      const q = query(collection(db, 'contributors'));
+      const unsub = onSnapshot(q, (snapshot) => {
+        const contList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        contList.sort((a, b) => (b.points || 0) - (a.points || 0));
+        setContributors(contList);
+      });
+      return () => unsub();
     }
   }, [isAuthenticated]);
 
@@ -254,7 +262,8 @@ export default function Admin() {
         }];
         await updateDoc(contributorRef, {
           messages: newMessages,
-          hasUnreadMessage: true
+          hasUnreadMessage: true,
+          hasUnreadAdminMessage: false
         });
         await logAdminAction(`Message sent to contributor: ${contributorData.name || 'Unknown'}`);
         setContributorMessageText(prev => ({ ...prev, [id]: '' }));
@@ -263,6 +272,17 @@ export default function Admin() {
     } catch (err) {
       console.error(err);
       alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+    }
+  };
+
+  const handleMarkContributorMessageAsRead = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'contributors', id), {
+        hasUnreadAdminMessage: false
+      });
+      setContributors(prev => prev.map(cont => cont.id === id ? { ...cont, hasUnreadAdminMessage: false } : cont));
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -661,11 +681,22 @@ export default function Admin() {
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => setExpandedContributorId(expandedContributorId === cont.id ? null : cont.id)} 
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100" 
+                        onClick={() => {
+                          setExpandedContributorId(expandedContributorId === cont.id ? null : cont.id);
+                          if (cont.hasUnreadAdminMessage) {
+                            handleMarkContributorMessageAsRead(cont.id);
+                          }
+                        }} 
+                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 relative" 
                         title="Messages"
                       >
                         <Send className="w-5 h-5" />
+                        {cont.hasUnreadAdminMessage && (
+                          <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                          </span>
+                        )}
                       </button>
                       <button onClick={() => handleDeleteContributor(cont.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
                         <Trash2 className="w-5 h-5" />
