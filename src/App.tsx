@@ -76,6 +76,7 @@ export default function App() {
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
+  const [contributorContacts, setContributorContacts] = useState<any[]>([]);
   const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
 
   useEffect(() => {
@@ -263,7 +264,8 @@ export default function App() {
         rating: newReviewRating,
         message: newReviewMessage,
         createdAt: new Date().toISOString(),
-        likes: 0
+        likes: 0,
+        authorPhone: contributorPhone || ''
       });
       
       setReviewSubmitStatus('success');
@@ -281,18 +283,23 @@ export default function App() {
     }
   };
 
-  const handleLikeReview = async (id: string, currentLikes: number) => {
+  const handleLikeReview = async (review: any) => {
+    if (contributorPhone && review.authorPhone === contributorPhone) {
+      alert('আপনি নিজের রিভিওটিতে রেটিং/লাইক দিতে পারবেন না।');
+      return;
+    }
+
     const likedReviews = JSON.parse(localStorage.getItem('likedReviews') || '[]');
-    if (likedReviews.includes(id)) {
-      alert('আপনি ইতিমধ্যে এই রিভিওটিতে লাইক দিয়েছেন।');
+    if (likedReviews.includes(review.id)) {
+      alert('আপনি ইতিমধ্যে এই রিভিওটিতে রেটিং/লাইক দিয়েছেন।');
       return;
     }
 
     try {
-      await updateDoc(doc(db, 'public_reviews', id), {
-        likes: (currentLikes || 0) + 1
+      await updateDoc(doc(db, 'public_reviews', review.id), {
+        likes: (review.likes || 0) + 1
       });
-      likedReviews.push(id);
+      likedReviews.push(review.id);
       localStorage.setItem('likedReviews', JSON.stringify(likedReviews));
     } catch (err) {
       console.error("Error liking review", err);
@@ -301,9 +308,12 @@ export default function App() {
 
   const fetchLeaderboard = async () => {
     try {
-      const q = query(collection(db, 'contributors'), orderBy('approvedCount', 'desc'), limit(10));
+      const q = query(collection(db, 'contributors'), orderBy('points', 'desc'), limit(20));
       const snapshot = await getDocs(q);
-      setTopContributors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const contributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      // Filter out those with 0 points and 0 approved count
+      const activeContributors = contributors.filter(c => c.points > 0 || c.approvedCount > 0);
+      setTopContributors(activeContributors.slice(0, 10));
     } catch (err) {
       console.error("Error fetching leaderboard", err);
     }
@@ -329,6 +339,10 @@ export default function App() {
         const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
         const feedbackSnap = await getDocs(feedbackQuery);
         setContributorFeedbacks(feedbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        const contactsQuery = query(collection(db, 'contacts'), where('contributorPhone', '==', contributorPhone));
+        const contactsSnap = await getDocs(contactsQuery);
+        setContributorContacts(contactsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (err) {
         console.error("Error fetching stats", err);
       }
@@ -899,17 +913,40 @@ export default function App() {
                           <div key={fb.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                             <div className="flex justify-between items-start mb-1">
                               <p className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleDateString('bn-BD')}</p>
-                              {fb.status === 'approved' ? (
+                              {fb.status === 'approved' && (
                                 <div className="flex gap-0.5">
                                   {[...Array(fb.rating || 1)].map((_, i) => (
                                     <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                                   ))}
                                 </div>
-                              ) : (
-                                <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-medium">পেন্ডিং</span>
                               )}
                             </div>
                             <p className="text-sm text-gray-800 whitespace-pre-wrap">{fb.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
+                    {contributorContacts.length === 0 ? (
+                      <p className="text-sm text-gray-500">আপনি এখনও কোনো নাম্বার যোগ করেননি।</p>
+                    ) : (
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                        {contributorContacts.map(contact => (
+                          <div key={contact.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <div>
+                              <p className="font-medium text-gray-900">{contact.name}</p>
+                              <p className="text-sm text-gray-500">{contact.phone}</p>
+                            </div>
+                            <div>
+                              {contact.status === 'approved' ? (
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full font-medium">অ্যাপ্রুভড</span>
+                              ) : (
+                                <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">পেন্ডিং</span>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1105,7 +1142,7 @@ export default function App() {
                           <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/60">
                             <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
                             <button 
-                              onClick={() => handleLikeReview(review.id, review.likes)}
+                              onClick={() => handleLikeReview(review)}
                               className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
                             >
                               <ThumbsUp className={`w-3.5 h-3.5 ${JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-emerald-600 fill-emerald-600' : ''}`} />
@@ -1159,7 +1196,7 @@ export default function App() {
                               user.name
                             )}
                           </h3>
-                          <p className="text-xs text-gray-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.approvedCount}</span></p>
+                          <p className="text-xs text-gray-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.points || 0}</span></p>
                         </div>
                       </div>
                       {idx < 3 && (

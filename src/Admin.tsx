@@ -254,6 +254,15 @@ export default function Admin() {
                     <p className="text-sm font-medium text-gray-700">{contact.phone}</p>
                     <p className="text-sm text-gray-500">{contact.details} - {contact.subDetails}</p>
                     <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
+                    {contact.contributorName && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs">
+                        <p className="text-gray-500 font-medium mb-1">প্রেরক:</p>
+                        <p className="text-gray-800">{contact.contributorName} ({contact.contributorPhone})</p>
+                        {contact.contributorFacebook && (
+                          <a href={contact.contributorFacebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Facebook</a>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleApproveContact(contact.id)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="Approve">
@@ -332,6 +341,15 @@ export default function Admin() {
                     <h3 className="font-bold text-gray-900">{contact.name}</h3>
                     <p className="text-sm font-medium text-gray-700">{contact.phone}</p>
                     <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
+                    {contact.contributorName && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs">
+                        <p className="text-gray-500 font-medium mb-1">প্রেরক:</p>
+                        <p className="text-gray-800">{contact.contributorName} ({contact.contributorPhone})</p>
+                        {contact.contributorFacebook && (
+                          <a href={contact.contributorFacebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Facebook</a>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 items-center">
                     <div className="flex flex-col gap-1 mr-2">
