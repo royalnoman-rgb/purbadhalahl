@@ -3,6 +3,7 @@ import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, s
 import { db } from './firebase';
 import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ConfirmDialog } from './components/ConfirmDialog';
 
 const VerifiedBadge = () => (
   <svg
@@ -33,7 +34,13 @@ export default function Admin() {
   const [adminHistory, setAdminHistory] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [contributors, setContributors] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history'>('requests');
+  const [deletedPosts, setDeletedPosts] = useState<any[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
+
+  const confirmAction = (message: string, action: () => void) => {
+    setConfirmConfig({ isOpen: true, message, action });
+  };
+  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle'>('requests');
 
   const isVerifiedContributor = (name: string, phone?: string) => {
     return contributors.slice(0, 5).some(c => (phone && c.phone === phone) || (!phone && c.name === name));
@@ -59,6 +66,26 @@ export default function Admin() {
       const categoriesQuery = query(collection(db, 'categories'), where('status', '==', 'pending'));
       const categoriesSnapshot = await getDocs(categoriesQuery);
       setPendingCategories(categoriesSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      const deletedPostsQuery = query(collection(db, 'community_posts'), where('isDeleted', '==', true));
+      const deletedPostsSnapshot = await getDocs(deletedPostsQuery);
+      const now = new Date();
+      const validDeletedPosts: any[] = [];
+      
+      for (const d of deletedPostsSnapshot.docs) {
+        const data = d.data();
+        if (data.deletedAt) {
+          const deletedDate = new Date(data.deletedAt);
+          const diffDays = Math.floor((now.getTime() - deletedDate.getTime()) / (1000 * 3600 * 24));
+          // If older than 30 days, permanently delete it
+          if (diffDays > 30) {
+            await deleteDoc(d.ref);
+            continue;
+          }
+        }
+        validDeletedPosts.push({ id: d.id, ...data });
+      }
+      setDeletedPosts(validDeletedPosts);
 
       const feedbacksQuery = collection(db, 'feedback');
       const feedbacksSnapshot = await getDocs(feedbacksQuery);
@@ -153,27 +180,51 @@ export default function Admin() {
     fetchData();
   };
 
-  const handleDeleteContact = async (id: string) => {
-    const contactRef = doc(db, 'contacts', id);
-    const contactSnap = await getDoc(contactRef);
-    if (contactSnap.exists()) {
-      const data = contactSnap.data();
-      await deleteDoc(contactRef);
-      await logAdminAction(`Contact deleted: ${data.name || 'Unknown'}`);
-    }
-    fetchData();
+  const handleDeleteContact = (id: string) => {
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      const contactRef = doc(db, 'contacts', id);
+      const contactSnap = await getDoc(contactRef);
+      if (contactSnap.exists()) {
+        const data = contactSnap.data();
+        await deleteDoc(contactRef);
+        await logAdminAction(`Contact deleted: ${data.name || 'Unknown'}`);
+      }
+      fetchData();
+    });
   };
 
-  const handleDeletePublicReview = async (id: string) => {
-    await deleteDoc(doc(db, 'public_reviews', id));
-    await logAdminAction(`Public review deleted (ID: ${id})`);
+
+  const handleRestorePost = async (id: string) => {
+    await updateDoc(doc(db, 'community_posts', id), {
+      isDeleted: false,
+      deletedAt: null
+    });
+    await logAdminAction(`Post restored (ID: ${id})`);
     fetchData();
   };
+  
+  const handlePermanentDeletePost = (id: string) => {
+    confirmAction('পোস্টটি চিরতরে মুছে ফেলতে চান?', async () => {
+      await deleteDoc(doc(db, 'community_posts', id));
+      await logAdminAction(`Post permanently deleted (ID: ${id})`);
+      fetchData();
+    });
+  };
 
-  const handleDeleteContributor = async (id: string) => {
-    await deleteDoc(doc(db, 'contributors', id));
-    await logAdminAction(`Contributor deleted (ID: ${id})`);
-    fetchData();
+  const handleDeletePublicReview = (id: string) => {
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      await deleteDoc(doc(db, 'public_reviews', id));
+      await logAdminAction(`Public review deleted (ID: ${id})`);
+      fetchData();
+    });
+  };
+
+  const handleDeleteContributor = (id: string) => {
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      await deleteDoc(doc(db, 'contributors', id));
+      await logAdminAction(`Contributor deleted (ID: ${id})`);
+      fetchData();
+    });
   };
 
   const handleApproveCategory = async (id: string) => {
@@ -184,20 +235,24 @@ export default function Admin() {
     fetchData();
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    const catRef = doc(db, 'categories', id);
-    const catSnap = await getDoc(catRef);
-    await deleteDoc(catRef);
-    if(catSnap.exists()) await logAdminAction(`Category deleted: ${catSnap.data().title || 'Unknown'}`);
-    fetchData();
+  const handleDeleteCategory = (id: string) => {
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      const catRef = doc(db, 'categories', id);
+      const catSnap = await getDoc(catRef);
+      await deleteDoc(catRef);
+      if(catSnap.exists()) await logAdminAction(`Category deleted: ${catSnap.data().title || 'Unknown'}`);
+      fetchData();
+    });
   };
 
-  const handleDeleteFeedback = async (id: string) => {
-    const fbRef = doc(db, 'feedback', id);
-    const fbSnap = await getDoc(fbRef);
-    await deleteDoc(fbRef);
-    if(fbSnap.exists()) await logAdminAction(`Feedback deleted from: ${fbSnap.data().name || 'Unknown'}`);
-    fetchData();
+  const handleDeleteFeedback = (id: string) => {
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      const fbRef = doc(db, 'feedback', id);
+      const fbSnap = await getDoc(fbRef);
+      await deleteDoc(fbRef);
+      if(fbSnap.exists()) await logAdminAction(`Feedback deleted from: ${fbSnap.data().name || 'Unknown'}`);
+      fetchData();
+    });
   };
 
   const handleRateFeedback = async (id: string, stars: number, contributorPhone?: string, contributorName?: string) => {
@@ -444,8 +499,18 @@ export default function Admin() {
           <button onClick={() => setActiveTab('history')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'history' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             অ্যাডমিন হিস্ট্রি
           </button>
+          <button onClick={() => setActiveTab('recycle')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'recycle' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            রিসাইকেল বিন ({deletedPosts.length})
+          </button>
         </div>
 
+        
+        <ConfirmDialog 
+          isOpen={confirmConfig.isOpen} 
+          message={confirmConfig.message} 
+          onConfirm={() => { confirmConfig.action(); setConfirmConfig({...confirmConfig, isOpen: false}); }} 
+          onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
+        />
         <div className="space-y-8">
         
         {/* Pending Categories */}
@@ -674,6 +739,40 @@ export default function Admin() {
                     </div>
                   </div>
 
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        )}
+
+        {/* Recycle Bin */}
+        {activeTab === 'recycle' && (
+          <section>
+          <h2 className="text-lg font-semibold mb-4 border-b pb-2">রিসাইকেল বিন (মুছে ফেলা পোস্টসমূহ) - {deletedPosts.length}</h2>
+          {deletedPosts.length === 0 ? <p className="text-gray-500">রিসাইকেল বিনে কোনো পোস্ট নেই।</p> : (
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
+              {deletedPosts.map(post => (
+                <div key={post.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{post.authorName}</p>
+                    <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{post.text}</p>
+                    <p className="text-xs text-gray-400 mt-2">মুছে ফেলা হয়েছে: {new Date(post.deletedAt).toLocaleString('bn-BD')}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleRestorePost(post.id)}
+                      className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-200"
+                    >
+                      রিস্টোর
+                    </button>
+                    <button 
+                      onClick={() => handlePermanentDeletePost(post.id)}
+                      className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-200"
+                    >
+                      ডিলিট
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

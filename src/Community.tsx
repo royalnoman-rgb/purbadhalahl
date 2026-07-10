@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft, ThumbsUp, Heart, Trash2 } from 'lucide-react';
+import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft, ThumbsUp, Heart, Trash2, Edit2, CheckCircle2, XCircle } from 'lucide-react';
 
 const VerifiedBadge = () => (
   <svg
@@ -36,35 +37,56 @@ interface CommunityProps {
   topContributors: any[];
   onLoginClick: () => void;
   onBack: () => void;
+  onUserClick: (phone: string) => void;
 }
 
-export default function Community({ contributorPhone, contributorName, contributorAvatar, topContributors, onLoginClick, onBack }: CommunityProps) {
+export default function Community({ contributorPhone, contributorName, contributorAvatar, topContributors, onLoginClick, onBack, onUserClick }: CommunityProps) {
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostText, setNewPostText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editPostText, setEditPostText] = useState('');
+  const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
+
+  const confirmAction = (message: string, action: () => void) => {
+    setConfirmConfig({ isOpen: true, message, action });
+  };
 
   const isAdmin = localStorage.getItem('adminAuth') === 'true';
   const effectivePhone = isAdmin ? 'admin' : contributorPhone;
   const effectiveName = isAdmin ? 'অ্যাডমিন' : contributorName;
   const effectiveAvatar = isAdmin ? '/logo.png' : contributorAvatar;
-  const handleDeletePost = async (postId: string) => {
-    await deleteDoc(doc(db, 'community_posts', postId));
+  const handleUpdatePost = async (postId: string) => {
+    if (!editPostText.trim()) return;
+    await updateDoc(doc(db, 'community_posts', postId), { text: editPostText.trim() });
+    setEditingPostId(null);
   };
-  const handleDeleteComment = async (postId: string, commentId: string) => {
-    const postRef = doc(db, 'community_posts', postId);
-    const postDoc = await getDoc(postRef);
-    if(postDoc.exists()) {
-      const comments = postDoc.data().comments || [];
-      await updateDoc(postRef, { comments: comments.filter((c: any) => c.id !== commentId) });
-    }
+
+  const handleDeletePost = (postId: string) => {
+    confirmAction('পোস্টটি মুছে ফেলতে চান?', async () => {
+      await updateDoc(doc(db, 'community_posts', postId), { 
+        isDeleted: true, 
+        deletedAt: new Date().toISOString() 
+      });
+    });
+  };
+  const handleDeleteComment = (postId: string, commentId: string) => {
+    confirmAction('মন্তব্যটি মুছে ফেলতে চান?', async () => {
+      const postRef = doc(db, 'community_posts', postId);
+      const postDoc = await getDoc(postRef);
+      if(postDoc.exists()) {
+        const comments = postDoc.data().comments || [];
+        await updateDoc(postRef, { comments: comments.map((c: any) => c.id === commentId ? { ...c, isDeleted: true, deletedAt: new Date().toISOString() } : c) });
+      }
+    });
   };
   useEffect(() => {
     if (!effectivePhone) return;
     
     const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
-      setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((p: any) => !p.isDeleted));
     });
     return () => unsub();
   }, [effectivePhone]);
@@ -108,6 +130,7 @@ export default function Community({ contributorPhone, contributorName, contribut
           id: Date.now().toString(),
           authorName: effectiveName || 'Unknown',
           authorPhone: effectivePhone,
+          authorAvatar: effectiveAvatar || '',
           text: text,
           createdAt: new Date().toISOString(),
           likes: [],
@@ -227,10 +250,17 @@ export default function Community({ contributorPhone, contributorName, contribut
             </button>
         </div>
       </div>
-    );
-  }
+  );
+}
 
   return (
+    <>
+      <ConfirmDialog 
+        isOpen={confirmConfig.isOpen} 
+        message={confirmConfig.message} 
+        onConfirm={() => { confirmConfig.action(); setConfirmConfig({...confirmConfig, isOpen: false}); }} 
+        onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
+      />
     <div className="mt-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
         <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100 flex items-center justify-between">
@@ -276,7 +306,10 @@ export default function Community({ contributorPhone, contributorName, contribut
         ) : (
           posts.map(post => (
             <div key={post.id} className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-              <div className="flex items-center gap-3 mb-3">
+              <div 
+                className={`flex items-center gap-3 mb-3 ${post.authorPhone !== 'admin' ? 'cursor-pointer hover:bg-gray-50 p-1 -m-1 rounded-lg transition-colors' : ''}`}
+                onClick={() => post.authorPhone !== 'admin' && onUserClick(post.authorPhone)}
+              >
                 {post.authorPhone === 'admin' ? (
                   <div className="w-10 h-10 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
                     <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
@@ -296,19 +329,56 @@ export default function Community({ contributorPhone, contributorName, contribut
                   <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('bn-BD')}</p>
                 </div>
               </div>
-              {isAdmin && (
-                <button 
-                  onClick={() => handleDeletePost(post.id)} 
-                  className="absolute top-4 right-4 text-red-500 hover:bg-red-50 p-1.5 rounded"
-                  title="Delete Post"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              {(isAdmin || post.authorPhone === effectivePhone) && (
+                <div className="absolute top-4 right-4 flex gap-2">
+                  {post.authorPhone === effectivePhone && (
+                    <button 
+                      onClick={() => {
+                        if (editingPostId === post.id) {
+                          setEditingPostId(null);
+                        } else {
+                          setEditingPostId(post.id);
+                          setEditPostText(post.text);
+                        }
+                      }} 
+                      className="text-blue-500 hover:bg-blue-50 p-1.5 rounded"
+                      title="Edit Post"
+                    >
+                      {editingPostId === post.id ? <XCircle className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleDeletePost(post.id)} 
+                    className="text-red-500 hover:bg-red-50 p-1.5 rounded"
+                    title="Delete Post"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               )}
               
-              <p className="text-gray-800 whitespace-pre-wrap mb-4 text-sm md:text-base leading-relaxed">
-                {post.text}
-              </p>
+              {editingPostId === post.id ? (
+                <div className="mb-4">
+                  <textarea
+                    value={editPostText}
+                    onChange={(e) => setEditPostText(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm md:text-base"
+                    rows={4}
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={() => handleUpdatePost(post.id)}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> সেভ করুন
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-800 whitespace-pre-wrap mb-4 text-sm md:text-base leading-relaxed">
+                  {post.text}
+                </p>
+              )}
               
               <div className="flex items-center gap-4 mb-3 px-1">
                 <button
@@ -343,16 +413,93 @@ export default function Community({ contributorPhone, contributorName, contribut
                 
                 {post.comments && post.comments.length > 0 && (
                   <div className="space-y-3 mb-3 max-h-48 overflow-y-auto pr-2">
-                    {post.comments.map((comment: any) => (
+                    {post.comments.filter((c: any) => !c.isDeleted).map((comment: any) => (
                       <div key={comment.id} className="bg-gray-50 rounded-lg p-3 text-sm">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-semibold text-gray-900 flex items-center">
-                            {comment.authorName}
-                            {comment.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />)}
-                          </span>
-                          <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
+                        <div className="flex items-start gap-2 mb-1">
+                          <div 
+                            className={`flex items-start gap-2 ${comment.authorPhone !== 'admin' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                            onClick={() => comment.authorPhone !== 'admin' && onUserClick(comment.authorPhone)}
+                          >
+                            {comment.authorPhone === 'admin' ? (
+                              <div className="w-6 h-6 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white shrink-0">
+                                <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
+                              </div>
+                            ) : comment.authorAvatar ? (
+                              <img src={comment.authorAvatar} alt={comment.authorName} className="w-6 h-6 rounded-full object-cover border border-gray-200 shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                                <UserCircle className="w-4 h-4" />
+                              </div>
+                            )}
+                            <span className="font-semibold text-gray-900 flex items-center mt-0.5">
+                              {comment.authorName}
+                              {comment.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />)}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-end items-start">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
+                                {(isAdmin || comment.authorPhone === effectivePhone) && (
+                                  <div className="flex gap-1">
+                                {comment.authorPhone === effectivePhone && (
+                                  <button
+                                    onClick={() => {
+                                      if (editingPostId === comment.id) {
+                                        setEditingPostId(null);
+                                      } else {
+                                        setEditingPostId(comment.id);
+                                        setEditPostText(comment.text);
+                                      }
+                                    }}
+                                    className="text-blue-500 hover:bg-blue-50 p-0.5 rounded"
+                                    title="Edit"
+                                  >
+                                    {editingPostId === comment.id ? <XCircle className="w-3 h-3" /> : <Edit2 className="w-3 h-3" />}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteComment(post.id, comment.id)}
+                                  className="text-red-500 hover:bg-red-50 p-0.5 rounded"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-gray-700 mb-1.5">{comment.text}</p>
+                        {editingPostId === comment.id ? (
+                          <div className="mb-2 mt-1">
+                            <textarea
+                              value={editPostText}
+                              onChange={(e) => setEditPostText(e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-xs"
+                              rows={2}
+                            />
+                            <div className="flex justify-end mt-1">
+                              <button
+                                onClick={async () => {
+                                  if (!editPostText.trim()) return;
+                                  const postRef = doc(db, 'community_posts', post.id);
+                                  const postDoc = await getDoc(postRef);
+                                  if (postDoc.exists()) {
+                                    const comments = postDoc.data().comments || [];
+                                    await updateDoc(postRef, {
+                                      comments: comments.map((c: any) => c.id === comment.id ? { ...c, text: editPostText.trim() } : c)
+                                    });
+                                    setEditingPostId(null);
+                                  }
+                                }}
+                                className="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-medium hover:bg-emerald-700 flex items-center gap-1"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> সেভ
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-gray-700 mb-1.5">{comment.text}</p>
+                        )}
                         <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500">
                           <button
                             onClick={() => handleCommentReaction(post.id, comment.id, 'like')}
@@ -368,6 +515,8 @@ export default function Community({ contributorPhone, contributorName, contribut
                             <Heart className={`w-3.5 h-3.5 ${comment.loves?.includes(effectivePhone) ? 'fill-red-500 text-red-500' : ''}`} />
                             <span>{comment.loves?.length > 0 ? comment.loves.length : 'লাভ'}</span>
                           </button>
+                        </div>
+                        </div>
                         </div>
                       </div>
                     ))}
@@ -399,5 +548,6 @@ export default function Community({ contributorPhone, contributorName, contribut
         )}
       </div>
     </div>
+    </>
   );
 }

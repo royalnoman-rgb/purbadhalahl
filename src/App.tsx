@@ -16,6 +16,8 @@ import { db } from './firebase';
 
 import MapTracker from './MapTracker';
 import Community from './Community';
+import UserProfileModal from './UserProfileModal';
+import { ConfirmDialog } from './components/ConfirmDialog';
 
 // Map icon strings to actual React components from lucide-react
 const iconMap: Record<string, React.ElementType> = {
@@ -41,6 +43,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
+  const [selectedUserProfile, setSelectedUserProfile] = useState<string | null>(null);
   
   // Modals
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -54,6 +57,11 @@ export default function App() {
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
+
+  const confirmAction = (message: string, action: () => void) => {
+    setConfirmConfig({ isOpen: true, message, action });
+  };
 
   // Form states - Contact
   const [newName, setNewName] = useState('');
@@ -104,6 +112,7 @@ export default function App() {
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
   const [contributorContacts, setContributorContacts] = useState<any[]>([]);
   const [contributorMessages, setContributorMessages] = useState<any[]>([]);
+  const [userMessages, setUserMessages] = useState<any[]>([]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [userMessageText, setUserMessageText] = useState('');
   const [feedbackReplyText, setFeedbackReplyText] = useState<{[key: string]: string}>({});
@@ -447,15 +456,15 @@ export default function App() {
   };
 
 
-  const handleDeleteCategoryApp = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteCategoryApp = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await deleteDoc(doc(db, 'categories', id));
-      alert('ক্যাটাগরি মুছে ফেলা হয়েছে');
-    } catch (err) {
-      console.error(err);
-      alert('ত্রুটি হয়েছে');
-    }
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      try {
+        await deleteDoc(doc(db, 'categories', id));
+      } catch (err) {
+        console.error(err);
+      }
+    });
   };
 
 
@@ -480,15 +489,15 @@ export default function App() {
     }
   };
 
-  const handleDeleteContactApp = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteContactApp = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await deleteDoc(doc(db, 'contacts', id));
-      alert('নাম্বার মুছে ফেলা হয়েছে');
-    } catch (err) {
-      console.error(err);
-      alert('ত্রুটি হয়েছে');
-    }
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
+      try {
+        await deleteDoc(doc(db, 'contacts', id));
+      } catch (err) {
+        console.error(err);
+      }
+    });
   };
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
@@ -529,7 +538,8 @@ export default function App() {
         message: newReviewMessage,
         createdAt: new Date().toISOString(),
         likes: 0,
-        authorPhone: contributorPhone || ''
+        authorPhone: contributorPhone || '',
+        authorAvatar: contributorAvatar || ''
       });
       
       setReviewSubmitStatus('success');
@@ -649,6 +659,7 @@ export default function App() {
 
   useEffect(() => {
     let unsubContributor: any = null;
+    let unsubUserMessages: any = null;
     if (isContributorProfileOpen && contributorPhone) {
       fetchContributorStats();
       
@@ -665,9 +676,18 @@ export default function App() {
           else localStorage.removeItem('hasPassword');
         }
       });
+
+      const userMessagesQuery = query(collection(db, 'user_messages'), where('receiverPhone', '==', contributorPhone));
+      unsubUserMessages = onSnapshot(userMessagesQuery, (snapshot) => {
+        const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        // Sort in memory instead of requiring composite index
+        msgs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setUserMessages(msgs);
+      });
     }
     return () => {
       if (unsubContributor) unsubContributor();
+      if (unsubUserMessages) unsubUserMessages();
     };
   }, [isContributorProfileOpen, contributorPhone]);
 
@@ -743,6 +763,7 @@ export default function App() {
         setContributorName(data.name || '');
         setContributorPhone(data.phone || loginPhone);
         setContributorFacebook(data.facebookUrl || '');
+        setContributorAvatar(data.avatar || '');
         setContributorPassword(data.password || '');
         setHasPassword(!!data.password);
           if (data.password) localStorage.setItem('hasPassword', 'true');
@@ -751,6 +772,11 @@ export default function App() {
         localStorage.setItem('contributorName', data.name || '');
         localStorage.setItem('contributorPhone', data.phone || loginPhone);
         localStorage.setItem('contributorFacebook', data.facebookUrl || '');
+        if (data.avatar) {
+          localStorage.setItem('contributorAvatar', data.avatar);
+        } else {
+          localStorage.removeItem('contributorAvatar');
+        }
         
         setIsEditProfileMode(false);
         setIsContributorProfileOpen(false);
@@ -860,6 +886,47 @@ export default function App() {
       if (contributorAvatar) {
         localStorage.setItem('contributorAvatar', contributorAvatar);
       }
+
+      // Update authorName and authorAvatar in all community_posts by this user
+      const postsQuery = query(collection(db, 'community_posts'), where('authorPhone', '==', contributorPhone));
+      const postsSnapshot = await getDocs(postsQuery);
+      const updatePromises = postsSnapshot.docs.map(postDoc => {
+        return updateDoc(doc(db, 'community_posts', postDoc.id), {
+          authorName: contributorName,
+          authorAvatar: contributorAvatar || ''
+        });
+      });
+      
+      // Update public_reviews
+      const reviewsQuery = query(collection(db, 'public_reviews'), where('authorPhone', '==', contributorPhone));
+      const reviewsSnapshot = await getDocs(reviewsQuery);
+      const reviewUpdatePromises = reviewsSnapshot.docs.map(reviewDoc => {
+        return updateDoc(doc(db, 'public_reviews', reviewDoc.id), {
+          name: contributorName,
+          authorAvatar: contributorAvatar || ''
+        });
+      });
+      
+      // Update comments in community_posts
+      const allPostsSnapshot = await getDocs(collection(db, 'community_posts'));
+      const commentUpdatePromises = allPostsSnapshot.docs.map(postDoc => {
+        const postData = postDoc.data();
+        let updated = false;
+        const newComments = (postData.comments || []).map((c) => {
+          if (c.authorPhone === contributorPhone) {
+            updated = true;
+            return { ...c, authorName: contributorName, authorAvatar: contributorAvatar || '' };
+          }
+          return c;
+        });
+        if (updated) {
+          return updateDoc(doc(db, 'community_posts', postDoc.id), { comments: newComments });
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all([...updatePromises, ...reviewUpdatePromises, ...commentUpdatePromises]);
+
       setIsContributorProfileOpen(false);
       alert('প্রোফাইল সেইভ হয়েছে! এখন থেকে আপনার যুক্ত করা নাম্বারগুলো অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বাড়বে।');
     } catch (err) {
@@ -871,6 +938,13 @@ export default function App() {
   const hasUnreadReply = contributorFeedbacks.some(fb => fb.hasUnreadUserReply);
 
   return (
+    <>
+      <ConfirmDialog 
+        isOpen={confirmConfig.isOpen} 
+        message={confirmConfig.message} 
+        onConfirm={() => { confirmConfig.action(); setConfirmConfig({...confirmConfig, isOpen: false}); }} 
+        onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
+      />
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       {/* Header */}
       <header className="bg-emerald-600 text-white shadow-md sticky top-0 z-10 transition-all">
@@ -991,6 +1065,7 @@ export default function App() {
             topContributors={topContributors}
             onLoginClick={() => setIsContributorProfileOpen(true)}
             onBack={() => setShowCommunity(false)}
+            onUserClick={setSelectedUserProfile}
           />
         )}
 
@@ -1032,8 +1107,8 @@ export default function App() {
                     </button>
                   )}
                 </div>
-              );
-            })}
+  );
+})}
           </div>
         )}
 
@@ -1353,6 +1428,7 @@ export default function App() {
       )}
 
       {/* Contributor Profile Modal */}
+      <UserProfileModal isOpen={!!selectedUserProfile} onClose={() => setSelectedUserProfile(null)} userPhone={selectedUserProfile || ""} currentUserId={contributorPhone} currentUserName={contributorName} currentUserAvatar={contributorAvatar} />
       {isContributorProfileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
@@ -1957,18 +2033,34 @@ export default function App() {
                     <div className="space-y-4">
                       {publicReviews.map((review) => (
                         <div key={review.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 flex items-center">
-                              {review.name}
-                              {isVerifiedContributor(review.name) && <VerifiedBadge />}
-                            </h3>
-                            <div className="flex gap-0.5">
-                              {[...Array(review.rating || 5)].map((_, i) => (
-                                <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                              ))}
+                          <div className="flex items-start gap-3 mb-2">
+                            <div 
+                              className={`flex items-start gap-3 ${review.authorPhone ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                              onClick={() => review.authorPhone && setSelectedUserProfile(review.authorPhone)}
+                            >
+                              {review.authorAvatar ? (
+                                <img src={review.authorAvatar} alt={review.name} className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
+                                  <UserCircle className="w-6 h-6" />
+                                </div>
+                              )}
+                              <h3 className="font-semibold text-gray-900 flex items-center mt-2">
+                                {review.name}
+                                {isVerifiedContributor(review.name) && <VerifiedBadge />}
+                              </h3>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-end">
+                                <div className="flex gap-0.5">
+                                  {[...Array(review.rating || 5)].map((_, i) => (
+                                    <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{review.message}</p>
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.message}</p>
                           <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/60">
                             <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
                             <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
@@ -2020,7 +2112,7 @@ export default function App() {
               ) : (
                 <div className="space-y-3">
                   {topContributors.map((user, idx) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                    <div key={user.id} onClick={() => user.phone !== "admin" && setSelectedUserProfile(user.phone)} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
                           {idx + 1}
@@ -2061,5 +2153,6 @@ export default function App() {
       )}
 
     </div>
+    </>
   );
 }
