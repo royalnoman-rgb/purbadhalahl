@@ -1,28 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from './firebase';
-import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft } from 'lucide-react';
+import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft, ThumbsUp, Heart } from 'lucide-react';
 
 const VerifiedBadge = () => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="w-[18px] h-[18px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
     title="Verified Contributor"
   >
-    <path
-      d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"
-      fill="currentColor"
-    />
-    <path
-      d="M12 0l2.766 2.05L18.17 1.44l1.39 3.123 3.328 1.054-.366 3.4 2.585 2.23-1.61 3.01 1.61 3.01-2.585 2.23.366 3.4-3.328 1.054-1.39 3.123L18.17 22.56l-3.404-.61L12 24l-2.766-2.05-3.404.61-1.39-3.123-3.328-1.054.366-3.4-2.585-2.23 1.61-3.01-1.61-3.01 2.585-2.23-.366-3.4 3.328-1.054 1.39-3.123 3.404.61L12 0z"
-      fill="currentColor"
-    />
-    <path
-      d="M9.81 16.29l-4.1-4.1 1.42-1.42 2.68 2.68 6.68-6.68 1.42 1.42-8.1 8.1z"
-      fill="white"
-    />
+    <circle cx="12" cy="12" r="12" fill="currentColor" />
+    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
   </svg>
 );
 
@@ -67,7 +57,9 @@ export default function Community({ contributorPhone, contributorName, contribut
         authorAvatar: contributorAvatar || '',
         text: newPostText.trim(),
         createdAt: new Date().toISOString(),
-        comments: []
+        comments: [],
+        likes: [],
+        loves: []
       });
       setNewPostText('');
     } catch (err) {
@@ -89,10 +81,94 @@ export default function Community({ contributorPhone, contributorName, contribut
           authorName: contributorName || 'Unknown',
           authorPhone: contributorPhone,
           text: text,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          likes: [],
+          loves: []
         })
       });
       setCommentText(prev => ({ ...prev, [postId]: '' }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReaction = async (postId: string, reactionType: 'like' | 'love') => {
+    if (!contributorPhone) return;
+
+    try {
+      const postRef = doc(db, 'community_posts', postId);
+      const postDoc = await getDoc(postRef);
+      if (!postDoc.exists()) return;
+      
+      const data = postDoc.data();
+      let likes = data.likes || [];
+      let loves = data.loves || [];
+
+      const hasLiked = likes.includes(contributorPhone);
+      const hasLoved = loves.includes(contributorPhone);
+
+      if (reactionType === 'like') {
+        if (hasLiked) {
+          likes = likes.filter((p: string) => p !== contributorPhone);
+        } else {
+          likes.push(contributorPhone);
+          loves = loves.filter((p: string) => p !== contributorPhone);
+        }
+      } else if (reactionType === 'love') {
+        if (hasLoved) {
+          loves = loves.filter((p: string) => p !== contributorPhone);
+        } else {
+          loves.push(contributorPhone);
+          likes = likes.filter((p: string) => p !== contributorPhone);
+        }
+      }
+
+      await updateDoc(postRef, { likes, loves });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCommentReaction = async (postId: string, commentId: string, reactionType: 'like' | 'love') => {
+    if (!contributorPhone) return;
+
+    try {
+      const postRef = doc(db, 'community_posts', postId);
+      const postDoc = await getDoc(postRef);
+      if (!postDoc.exists()) return;
+      
+      const data = postDoc.data();
+      const comments = data.comments || [];
+      const commentIndex = comments.findIndex((c: any) => c.id === commentId);
+      
+      if (commentIndex === -1) return;
+      
+      const comment = comments[commentIndex];
+      let likes = comment.likes || [];
+      let loves = comment.loves || [];
+
+      const hasLiked = likes.includes(contributorPhone);
+      const hasLoved = loves.includes(contributorPhone);
+
+      if (reactionType === 'like') {
+        if (hasLiked) {
+          likes = likes.filter((p: string) => p !== contributorPhone);
+        } else {
+          likes.push(contributorPhone);
+          loves = loves.filter((p: string) => p !== contributorPhone);
+        }
+      } else if (reactionType === 'love') {
+        if (hasLoved) {
+          loves = loves.filter((p: string) => p !== contributorPhone);
+        } else {
+          loves.push(contributorPhone);
+          likes = likes.filter((p: string) => p !== contributorPhone);
+        }
+      }
+
+      comments[commentIndex] = { ...comment, likes, loves };
+
+      await updateDoc(postRef, { comments });
     } catch (err) {
       console.error(err);
     }
@@ -193,6 +269,31 @@ export default function Community({ contributorPhone, contributorName, contribut
                 {post.text}
               </p>
               
+              <div className="flex items-center gap-4 mb-3 px-1">
+                <button
+                  onClick={() => handleReaction(post.id, 'like')}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                    post.likes?.includes(contributorPhone) 
+                      ? 'text-blue-600' 
+                      : 'text-gray-500 hover:text-blue-600'
+                  }`}
+                >
+                  <ThumbsUp className={`w-5 h-5 ${post.likes?.includes(contributorPhone) ? 'fill-blue-600' : ''}`} />
+                  <span>{post.likes?.length || 0}</span>
+                </button>
+                <button
+                  onClick={() => handleReaction(post.id, 'love')}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                    post.loves?.includes(contributorPhone) 
+                      ? 'text-red-500' 
+                      : 'text-gray-500 hover:text-red-500'
+                  }`}
+                >
+                  <Heart className={`w-5 h-5 ${post.loves?.includes(contributorPhone) ? 'fill-red-500 text-red-500' : ''}`} />
+                  <span>{post.loves?.length || 0}</span>
+                </button>
+              </div>
+
               <div className="border-t border-gray-100 pt-3">
                 <div className="flex items-center gap-2 mb-3">
                   <MessageCircle className="w-4 h-4 text-gray-400" />
@@ -210,7 +311,23 @@ export default function Community({ contributorPhone, contributorName, contribut
                           </span>
                           <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
                         </div>
-                        <p className="text-gray-700">{comment.text}</p>
+                        <p className="text-gray-700 mb-1.5">{comment.text}</p>
+                        <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500">
+                          <button
+                            onClick={() => handleCommentReaction(post.id, comment.id, 'like')}
+                            className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${comment.likes?.includes(contributorPhone) ? 'text-blue-600' : ''}`}
+                          >
+                            <ThumbsUp className={`w-3.5 h-3.5 ${comment.likes?.includes(contributorPhone) ? 'fill-blue-600' : ''}`} />
+                            <span>{comment.likes?.length > 0 ? comment.likes.length : 'লাইক'}</span>
+                          </button>
+                          <button
+                            onClick={() => handleCommentReaction(post.id, comment.id, 'love')}
+                            className={`flex items-center gap-1 hover:text-red-500 transition-colors ${comment.loves?.includes(contributorPhone) ? 'text-red-500' : ''}`}
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${comment.loves?.includes(contributorPhone) ? 'fill-red-500 text-red-500' : ''}`} />
+                            <span>{comment.loves?.length > 0 ? comment.loves.length : 'লাভ'}</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

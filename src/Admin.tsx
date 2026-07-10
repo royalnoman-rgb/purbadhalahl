@@ -9,21 +9,11 @@ const VerifiedBadge = () => (
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="w-[18px] h-[18px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
     title="Verified Contributor"
   >
-    <path
-      d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"
-      fill="currentColor"
-    />
-    <path
-      d="M12 0l2.766 2.05L18.17 1.44l1.39 3.123 3.328 1.054-.366 3.4 2.585 2.23-1.61 3.01 1.61 3.01-2.585 2.23.366 3.4-3.328 1.054-1.39 3.123L18.17 22.56l-3.404-.61L12 24l-2.766-2.05-3.404.61-1.39-3.123-3.328-1.054.366-3.4-2.585-2.23 1.61-3.01-1.61-3.01 2.585-2.23-.366-3.4 3.328-1.054 1.39-3.123 3.404.61L12 0z"
-      fill="currentColor"
-    />
-    <path
-      d="M9.81 16.29l-4.1-4.1 1.42-1.42 2.68 2.68 6.68-6.68 1.42 1.42-8.1 8.1z"
-      fill="white"
-    />
+    <circle cx="12" cy="12" r="12" fill="currentColor" />
+    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
   </svg>
 );
 

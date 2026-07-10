@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
@@ -27,21 +27,11 @@ const VerifiedBadge = () => (
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="w-[18px] h-[18px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
     title="Verified Contributor"
   >
-    <path
-      d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"
-      fill="currentColor"
-    />
-    <path
-      d="M12 0l2.766 2.05L18.17 1.44l1.39 3.123 3.328 1.054-.366 3.4 2.585 2.23-1.61 3.01 1.61 3.01-2.585 2.23.366 3.4-3.328 1.054-1.39 3.123L18.17 22.56l-3.404-.61L12 24l-2.766-2.05-3.404.61-1.39-3.123-3.328-1.054.366-3.4-2.585-2.23 1.61-3.01-1.61-3.01 2.585-2.23-.366-3.4 3.328-1.054 1.39-3.123 3.404.61L12 0z"
-      fill="currentColor"
-    />
-    <path
-      d="M9.81 16.29l-4.1-4.1 1.42-1.42 2.68 2.68 6.68-6.68 1.42 1.42-8.1 8.1z"
-      fill="white"
-    />
+    <circle cx="12" cy="12" r="12" fill="currentColor" />
+    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
   </svg>
 );
 
@@ -107,6 +97,7 @@ export default function App() {
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [contributorPassword, setContributorPassword] = useState('');
+  const [hasPassword, setHasPassword] = useState(localStorage.getItem('hasPassword') === 'true');
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
@@ -215,6 +206,40 @@ export default function App() {
     setRequestStatus('submitting');
     
     try {
+      // Check for duplicates in static contacts
+      const isStaticDuplicate = staticContacts.some(c => 
+        (c.phone === newPhone || c.name.toLowerCase() === newName.toLowerCase()) && 
+        (!editingContactId || c.id !== editingContactId)
+      );
+      if (isStaticDuplicate) {
+        alert('এই নাম বা নাম্বারটি ইতিমধ্যে যুক্ত করা আছে!');
+        setRequestStatus('idle');
+        return;
+      }
+
+      // Check for duplicates in firestore
+      const qPhone = query(collection(db, 'contacts'), where('phone', '==', newPhone));
+      const phoneSnapshot = await getDocs(qPhone);
+      if (!phoneSnapshot.empty) {
+        const isOnlySelf = phoneSnapshot.docs.every(d => d.id === editingContactId || d.data().replacesId === editingContactId);
+        if (!isOnlySelf) {
+          alert('এই নাম্বারটি ইতিমধ্যে যুক্ত করা আছে!');
+          setRequestStatus('idle');
+          return;
+        }
+      }
+
+      const qName = query(collection(db, 'contacts'), where('name', '==', newName));
+      const nameSnapshot = await getDocs(qName);
+      if (!nameSnapshot.empty) {
+        const isOnlySelf = nameSnapshot.docs.every(d => d.id === editingContactId || d.data().replacesId === editingContactId);
+        if (!isOnlySelf) {
+          alert('এই নামটি ইতিমধ্যে যুক্ত করা আছে!');
+          setRequestStatus('idle');
+          return;
+        }
+      }
+
       const payload: any = {
         name: newName,
         phone: newPhone,
@@ -463,26 +488,51 @@ export default function App() {
     }
   };
 
-  const handleLikeReview = async (review: any) => {
+  const getUserId = () => {
+    if (contributorPhone) return contributorPhone;
+    let did = localStorage.getItem('deviceId');
+    if (!did) {
+      did = 'anon_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('deviceId', did);
+    }
+    return did;
+  };
+
+  const handleReviewReaction = async (review: any, reactionType: 'like' | 'love') => {
     if (contributorPhone && review.authorPhone === contributorPhone) {
-      alert('আপনি নিজের রিভিওটিতে রেটিং/লাইক দিতে পারবেন না।');
+      alert('আপনি নিজের রিভিওটিতে রিয়েক্ট দিতে পারবেন না।');
       return;
     }
-
-    const likedReviews = JSON.parse(localStorage.getItem('likedReviews') || '[]');
-    if (likedReviews.includes(review.id)) {
-      alert('আপনি ইতিমধ্যে এই রিভিওটিতে রেটিং/লাইক দিয়েছেন।');
-      return;
-    }
-
+    const userId = getUserId();
     try {
-      await updateDoc(doc(db, 'public_reviews', review.id), {
-        likes: (review.likes || 0) + 1
-      });
-      likedReviews.push(review.id);
-      localStorage.setItem('likedReviews', JSON.stringify(likedReviews));
+      const reviewRef = doc(db, 'public_reviews', review.id);
+      const reviewDoc = await getDoc(reviewRef);
+      if (!reviewDoc.exists()) return;
+      const data = reviewDoc.data();
+      let likesArray = data.likesArray || [];
+      let lovesArray = data.lovesArray || [];
+      
+      const hasLiked = likesArray.includes(userId);
+      const hasLoved = lovesArray.includes(userId);
+      
+      if (reactionType === 'like') {
+        if (hasLiked) {
+          likesArray = likesArray.filter((id) => id !== userId);
+        } else {
+          likesArray.push(userId);
+          lovesArray = lovesArray.filter((id) => id !== userId);
+        }
+      } else if (reactionType === 'love') {
+        if (hasLoved) {
+          lovesArray = lovesArray.filter((id) => id !== userId);
+        } else {
+          lovesArray.push(userId);
+          likesArray = likesArray.filter((id) => id !== userId);
+        }
+      }
+      await updateDoc(reviewRef, { likesArray, lovesArray, likes: likesArray.length + lovesArray.length });
     } catch (err) {
-      console.error("Error liking review", err);
+      console.error("Error reacting to review", err);
     }
   };
 
@@ -520,6 +570,9 @@ export default function App() {
           setContributorApprovedCount(data.approvedCount || 0);
           setContributorMessages(data.messages || []);
           setHasUnreadMessages(data.hasUnreadMessage || false);
+          setHasPassword(!!data.password);
+          if (data.password) localStorage.setItem('hasPassword', 'true');
+          else localStorage.removeItem('hasPassword');
         }
 
         const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
@@ -548,6 +601,9 @@ export default function App() {
           setContributorApprovedCount(data.approvedCount || 0);
           setContributorMessages(data.messages || []);
           setHasUnreadMessages(data.hasUnreadMessage || false);
+          setHasPassword(!!data.password);
+          if (data.password) localStorage.setItem('hasPassword', 'true');
+          else localStorage.removeItem('hasPassword');
         }
       });
     }
@@ -627,6 +683,9 @@ export default function App() {
         setContributorPhone(data.phone || loginPhone);
         setContributorFacebook(data.facebookUrl || '');
         setContributorPassword(data.password || '');
+        setHasPassword(!!data.password);
+          if (data.password) localStorage.setItem('hasPassword', 'true');
+          else localStorage.removeItem('hasPassword');
         
         localStorage.setItem('contributorName', data.name || '');
         localStorage.setItem('contributorPhone', data.phone || loginPhone);
@@ -638,9 +697,17 @@ export default function App() {
         setLoginPhone('');
         setLoginPassword('');
         
+        if (data.password) {
+          localStorage.setItem('hasPassword', 'true');
+        } else {
+          localStorage.removeItem('hasPassword');
+        }
+        
         if (!data.password) {
           alert(`স্বাগতম ${data.name}! আপনার প্রোফাইলটি সুরক্ষিত রাখতে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করে নিন।`);
         } else {
+          setHasPassword(true);
+          localStorage.setItem('hasPassword', 'true');
           alert(`স্বাগতম ${data.name}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
         }
       } else {
@@ -707,6 +774,8 @@ export default function App() {
       
       if (contributorPassword) {
         updateData.password = contributorPassword;
+        setHasPassword(true);
+        localStorage.setItem('hasPassword', 'true');
       }
 
       if (!docSnap.exists()) {
@@ -1335,7 +1404,7 @@ export default function App() {
                 </>
               ) : contributorName && !isEditProfileMode ? (
                 <>
-                  {!contributorPassword && (
+                  {!hasPassword && (
                     <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg mb-4 text-sm">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <p className="font-medium">আপনার একাউন্টটি সুরক্ষিত নয়!</p>
@@ -1792,13 +1861,22 @@ export default function App() {
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.message}</p>
                           <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/60">
                             <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
-                            <button 
-                              onClick={() => handleLikeReview(review)}
-                              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
-                            >
-                              <ThumbsUp className={`w-3.5 h-3.5 ${JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-emerald-600 fill-emerald-600' : ''}`} />
-                              <span>{review.likes || 0}</span>
-                            </button>
+                            <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+                              <button
+                                onClick={() => handleReviewReaction(review, 'like')}
+                                className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${review.likesArray?.includes(getUserId()) || JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-blue-600' : ''}`}
+                              >
+                                <ThumbsUp className={`w-4 h-4 ${review.likesArray?.includes(getUserId()) || JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'fill-blue-600' : ''}`} />
+                                <span>{review.likesArray?.length > 0 ? review.likesArray.length : (review.likes > 0 ? review.likes : 'লাইক')}</span>
+                              </button>
+                              <button
+                                onClick={() => handleReviewReaction(review, 'love')}
+                                className={`flex items-center gap-1 hover:text-red-500 transition-colors ${review.lovesArray?.includes(getUserId()) ? 'text-red-500' : ''}`}
+                              >
+                                <Heart className={`w-4 h-4 ${review.lovesArray?.includes(getUserId()) ? 'fill-red-500 text-red-500' : ''}`} />
+                                <span>{review.lovesArray?.length > 0 ? review.lovesArray.length : 'লাভ'}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
