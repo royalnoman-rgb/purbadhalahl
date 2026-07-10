@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft, ThumbsUp, Heart } from 'lucide-react';
+import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft, ThumbsUp, Heart, Trash2 } from 'lucide-react';
 
 const VerifiedBadge = () => (
   <svg
@@ -10,6 +10,19 @@ const VerifiedBadge = () => (
     xmlns="http://www.w3.org/2000/svg"
     className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
     title="Verified Contributor"
+  >
+    <circle cx="12" cy="12" r="12" fill="currentColor" />
+    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
+  </svg>
+);
+
+const AdminBadge = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    title="Admin"
   >
     <circle cx="12" cy="12" r="12" fill="currentColor" />
     <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
@@ -31,15 +44,30 @@ export default function Community({ contributorPhone, contributorName, contribut
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
 
+  const isAdmin = localStorage.getItem('adminAuth') === 'true';
+  const effectivePhone = isAdmin ? 'admin' : contributorPhone;
+  const effectiveName = isAdmin ? 'অ্যাডমিন' : contributorName;
+  const effectiveAvatar = isAdmin ? '/logo.png' : contributorAvatar;
+  const handleDeletePost = async (postId: string) => {
+    await deleteDoc(doc(db, 'community_posts', postId));
+  };
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    const postRef = doc(db, 'community_posts', postId);
+    const postDoc = await getDoc(postRef);
+    if(postDoc.exists()) {
+      const comments = postDoc.data().comments || [];
+      await updateDoc(postRef, { comments: comments.filter((c: any) => c.id !== commentId) });
+    }
+  };
   useEffect(() => {
-    if (!contributorPhone) return;
+    if (!effectivePhone) return;
     
     const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsub();
-  }, [contributorPhone]);
+  }, [effectivePhone]);
 
   const isVerifiedContributor = (phone: string, name: string) => {
     return topContributors.slice(0, 5).some(c => c.phone === phone || c.name === name);
@@ -47,14 +75,14 @@ export default function Community({ contributorPhone, contributorName, contribut
 
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostText.trim() || !contributorPhone) return;
+    if (!newPostText.trim() || !effectivePhone) return;
     
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'community_posts'), {
-        authorName: contributorName || 'Unknown',
-        authorPhone: contributorPhone,
-        authorAvatar: contributorAvatar || '',
+        authorName: effectiveName || 'Unknown',
+        authorPhone: effectivePhone,
+        authorAvatar: effectiveAvatar || '',
         text: newPostText.trim(),
         createdAt: new Date().toISOString(),
         comments: [],
@@ -71,15 +99,15 @@ export default function Community({ contributorPhone, contributorName, contribut
 
   const handleCommentSubmit = async (postId: string) => {
     const text = commentText[postId]?.trim();
-    if (!text || !contributorPhone) return;
+    if (!text || !effectivePhone) return;
 
     try {
       const postRef = doc(db, 'community_posts', postId);
       await updateDoc(postRef, {
         comments: arrayUnion({
           id: Date.now().toString(),
-          authorName: contributorName || 'Unknown',
-          authorPhone: contributorPhone,
+          authorName: effectiveName || 'Unknown',
+          authorPhone: effectivePhone,
           text: text,
           createdAt: new Date().toISOString(),
           likes: [],
@@ -93,7 +121,7 @@ export default function Community({ contributorPhone, contributorName, contribut
   };
 
   const handleReaction = async (postId: string, reactionType: 'like' | 'love') => {
-    if (!contributorPhone) return;
+    if (!effectivePhone) return;
 
     try {
       const postRef = doc(db, 'community_posts', postId);
@@ -104,22 +132,22 @@ export default function Community({ contributorPhone, contributorName, contribut
       let likes = data.likes || [];
       let loves = data.loves || [];
 
-      const hasLiked = likes.includes(contributorPhone);
-      const hasLoved = loves.includes(contributorPhone);
+      const hasLiked = likes.includes(effectivePhone);
+      const hasLoved = loves.includes(effectivePhone);
 
       if (reactionType === 'like') {
         if (hasLiked) {
-          likes = likes.filter((p: string) => p !== contributorPhone);
+          likes = likes.filter((p: string) => p !== effectivePhone);
         } else {
-          likes.push(contributorPhone);
-          loves = loves.filter((p: string) => p !== contributorPhone);
+          likes.push(effectivePhone);
+          loves = loves.filter((p: string) => p !== effectivePhone);
         }
       } else if (reactionType === 'love') {
         if (hasLoved) {
-          loves = loves.filter((p: string) => p !== contributorPhone);
+          loves = loves.filter((p: string) => p !== effectivePhone);
         } else {
-          loves.push(contributorPhone);
-          likes = likes.filter((p: string) => p !== contributorPhone);
+          loves.push(effectivePhone);
+          likes = likes.filter((p: string) => p !== effectivePhone);
         }
       }
 
@@ -130,7 +158,7 @@ export default function Community({ contributorPhone, contributorName, contribut
   };
 
   const handleCommentReaction = async (postId: string, commentId: string, reactionType: 'like' | 'love') => {
-    if (!contributorPhone) return;
+    if (!effectivePhone) return;
 
     try {
       const postRef = doc(db, 'community_posts', postId);
@@ -147,22 +175,22 @@ export default function Community({ contributorPhone, contributorName, contribut
       let likes = comment.likes || [];
       let loves = comment.loves || [];
 
-      const hasLiked = likes.includes(contributorPhone);
-      const hasLoved = loves.includes(contributorPhone);
+      const hasLiked = likes.includes(effectivePhone);
+      const hasLoved = loves.includes(effectivePhone);
 
       if (reactionType === 'like') {
         if (hasLiked) {
-          likes = likes.filter((p: string) => p !== contributorPhone);
+          likes = likes.filter((p: string) => p !== effectivePhone);
         } else {
-          likes.push(contributorPhone);
-          loves = loves.filter((p: string) => p !== contributorPhone);
+          likes.push(effectivePhone);
+          loves = loves.filter((p: string) => p !== effectivePhone);
         }
       } else if (reactionType === 'love') {
         if (hasLoved) {
-          loves = loves.filter((p: string) => p !== contributorPhone);
+          loves = loves.filter((p: string) => p !== effectivePhone);
         } else {
-          loves.push(contributorPhone);
-          likes = likes.filter((p: string) => p !== contributorPhone);
+          loves.push(effectivePhone);
+          likes = likes.filter((p: string) => p !== effectivePhone);
         }
       }
 
@@ -174,7 +202,7 @@ export default function Community({ contributorPhone, contributorName, contribut
     }
   };
 
-  if (!contributorPhone) {
+  if (!effectivePhone) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 text-center mt-4">
         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-emerald-600">
@@ -212,8 +240,8 @@ export default function Community({ contributorPhone, contributorName, contribut
         </div>
         <div className="p-4">
           <form onSubmit={handlePostSubmit} className="flex gap-3 items-start">
-            {contributorAvatar ? (
-              <img src={contributorAvatar} alt={contributorName} className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
+            {effectiveAvatar ? (
+              <img src={effectiveAvatar} alt={effectiveName} className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
             ) : (
               <UserCircle className="w-10 h-10 text-gray-400 shrink-0" />
             )}
@@ -247,9 +275,13 @@ export default function Community({ contributorPhone, contributorName, contribut
           </div>
         ) : (
           posts.map(post => (
-            <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div key={post.id} className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
               <div className="flex items-center gap-3 mb-3">
-                {post.authorAvatar ? (
+                {post.authorPhone === 'admin' ? (
+                  <div className="w-10 h-10 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
+                    <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
+                  </div>
+                ) : post.authorAvatar ? (
                   <img src={post.authorAvatar} alt={post.authorName} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
@@ -259,11 +291,20 @@ export default function Community({ contributorPhone, contributorName, contribut
                 <div>
                   <h3 className="font-semibold text-gray-900 leading-tight flex items-center">
                     {post.authorName}
-                    {isVerifiedContributor(post.authorPhone, post.authorName) && <VerifiedBadge />}
+                    {post.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(post.authorPhone, post.authorName) && <VerifiedBadge />)}
                   </h3>
                   <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('bn-BD')}</p>
                 </div>
               </div>
+              {isAdmin && (
+                <button 
+                  onClick={() => handleDeletePost(post.id)} 
+                  className="absolute top-4 right-4 text-red-500 hover:bg-red-50 p-1.5 rounded"
+                  title="Delete Post"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               
               <p className="text-gray-800 whitespace-pre-wrap mb-4 text-sm md:text-base leading-relaxed">
                 {post.text}
@@ -273,23 +314,23 @@ export default function Community({ contributorPhone, contributorName, contribut
                 <button
                   onClick={() => handleReaction(post.id, 'like')}
                   className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
-                    post.likes?.includes(contributorPhone) 
+                    post.likes?.includes(effectivePhone) 
                       ? 'text-blue-600' 
                       : 'text-gray-500 hover:text-blue-600'
                   }`}
                 >
-                  <ThumbsUp className={`w-5 h-5 ${post.likes?.includes(contributorPhone) ? 'fill-blue-600' : ''}`} />
+                  <ThumbsUp className={`w-5 h-5 ${post.likes?.includes(effectivePhone) ? 'fill-blue-600' : ''}`} />
                   <span>{post.likes?.length || 0}</span>
                 </button>
                 <button
                   onClick={() => handleReaction(post.id, 'love')}
                   className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
-                    post.loves?.includes(contributorPhone) 
+                    post.loves?.includes(effectivePhone) 
                       ? 'text-red-500' 
                       : 'text-gray-500 hover:text-red-500'
                   }`}
                 >
-                  <Heart className={`w-5 h-5 ${post.loves?.includes(contributorPhone) ? 'fill-red-500 text-red-500' : ''}`} />
+                  <Heart className={`w-5 h-5 ${post.loves?.includes(effectivePhone) ? 'fill-red-500 text-red-500' : ''}`} />
                   <span>{post.loves?.length || 0}</span>
                 </button>
               </div>
@@ -307,7 +348,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-semibold text-gray-900 flex items-center">
                             {comment.authorName}
-                            {isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />}
+                            {comment.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />)}
                           </span>
                           <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
                         </div>
@@ -315,16 +356,16 @@ export default function Community({ contributorPhone, contributorName, contribut
                         <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500">
                           <button
                             onClick={() => handleCommentReaction(post.id, comment.id, 'like')}
-                            className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${comment.likes?.includes(contributorPhone) ? 'text-blue-600' : ''}`}
+                            className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${comment.likes?.includes(effectivePhone) ? 'text-blue-600' : ''}`}
                           >
-                            <ThumbsUp className={`w-3.5 h-3.5 ${comment.likes?.includes(contributorPhone) ? 'fill-blue-600' : ''}`} />
+                            <ThumbsUp className={`w-3.5 h-3.5 ${comment.likes?.includes(effectivePhone) ? 'fill-blue-600' : ''}`} />
                             <span>{comment.likes?.length > 0 ? comment.likes.length : 'লাইক'}</span>
                           </button>
                           <button
                             onClick={() => handleCommentReaction(post.id, comment.id, 'love')}
-                            className={`flex items-center gap-1 hover:text-red-500 transition-colors ${comment.loves?.includes(contributorPhone) ? 'text-red-500' : ''}`}
+                            className={`flex items-center gap-1 hover:text-red-500 transition-colors ${comment.loves?.includes(effectivePhone) ? 'text-red-500' : ''}`}
                           >
-                            <Heart className={`w-3.5 h-3.5 ${comment.loves?.includes(contributorPhone) ? 'fill-red-500 text-red-500' : ''}`} />
+                            <Heart className={`w-3.5 h-3.5 ${comment.loves?.includes(effectivePhone) ? 'fill-red-500 text-red-500' : ''}`} />
                             <span>{comment.loves?.length > 0 ? comment.loves.length : 'লাভ'}</span>
                           </button>
                         </div>

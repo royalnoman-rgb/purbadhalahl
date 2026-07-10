@@ -19,7 +19,7 @@ const VerifiedBadge = () => (
 
 export default function Admin() {
   const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('adminAuth') === 'true');
   
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
   const [pendingCategories, setPendingCategories] = useState<any[]>([]);
@@ -33,6 +33,7 @@ export default function Admin() {
   const [adminHistory, setAdminHistory] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [contributors, setContributors] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history'>('requests');
 
   const isVerifiedContributor = (name: string, phone?: string) => {
     return contributors.slice(0, 5).some(c => (phone && c.phone === phone) || (!phone && c.name === name));
@@ -116,6 +117,7 @@ export default function Admin() {
     e.preventDefault();
     if (password === 'admin123') { // Simple secret for now
       setIsAuthenticated(true);
+      localStorage.setItem('adminAuth', 'true');
     } else {
       alert('ভুল পাসওয়ার্ড');
     }
@@ -152,32 +154,26 @@ export default function Admin() {
   };
 
   const handleDeleteContact = async (id: string) => {
-    if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      const contactRef = doc(db, 'contacts', id);
-      const contactSnap = await getDoc(contactRef);
-      if (contactSnap.exists()) {
-        const data = contactSnap.data();
-        await deleteDoc(contactRef);
-        await logAdminAction(`Contact deleted: ${data.name || 'Unknown'}`);
-      }
-      fetchData();
+    const contactRef = doc(db, 'contacts', id);
+    const contactSnap = await getDoc(contactRef);
+    if (contactSnap.exists()) {
+      const data = contactSnap.data();
+      await deleteDoc(contactRef);
+      await logAdminAction(`Contact deleted: ${data.name || 'Unknown'}`);
     }
+    fetchData();
   };
 
   const handleDeletePublicReview = async (id: string) => {
-    if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      await deleteDoc(doc(db, 'public_reviews', id));
-      await logAdminAction(`Public review deleted (ID: ${id})`);
-      fetchData();
-    }
+    await deleteDoc(doc(db, 'public_reviews', id));
+    await logAdminAction(`Public review deleted (ID: ${id})`);
+    fetchData();
   };
 
   const handleDeleteContributor = async (id: string) => {
-    if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      await deleteDoc(doc(db, 'contributors', id));
-      await logAdminAction(`Contributor deleted (ID: ${id})`);
-      fetchData();
-    }
+    await deleteDoc(doc(db, 'contributors', id));
+    await logAdminAction(`Contributor deleted (ID: ${id})`);
+    fetchData();
   };
 
   const handleApproveCategory = async (id: string) => {
@@ -189,23 +185,19 @@ export default function Admin() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      const catRef = doc(db, 'categories', id);
-      const catSnap = await getDoc(catRef);
-      await deleteDoc(catRef);
-      if(catSnap.exists()) await logAdminAction(`Category deleted: ${catSnap.data().title || 'Unknown'}`);
-      fetchData();
-    }
+    const catRef = doc(db, 'categories', id);
+    const catSnap = await getDoc(catRef);
+    await deleteDoc(catRef);
+    if(catSnap.exists()) await logAdminAction(`Category deleted: ${catSnap.data().title || 'Unknown'}`);
+    fetchData();
   };
 
   const handleDeleteFeedback = async (id: string) => {
-    if(window.confirm('সত্যিই ডিলিট করতে চান?')) {
-      const fbRef = doc(db, 'feedback', id);
-      const fbSnap = await getDoc(fbRef);
-      await deleteDoc(fbRef);
-      if(fbSnap.exists()) await logAdminAction(`Feedback deleted from: ${fbSnap.data().name || 'Unknown'}`);
-      fetchData();
-    }
+    const fbRef = doc(db, 'feedback', id);
+    const fbSnap = await getDoc(fbRef);
+    await deleteDoc(fbRef);
+    if(fbSnap.exists()) await logAdminAction(`Feedback deleted from: ${fbSnap.data().name || 'Unknown'}`);
+    fetchData();
   };
 
   const handleRateFeedback = async (id: string, stars: number, contributorPhone?: string, contributorName?: string) => {
@@ -431,16 +423,37 @@ export default function Admin() {
           </Link>
           <h1 className="text-xl font-bold">অ্যাডমিন ড্যাশবোর্ড</h1>
         </div>
-        <button onClick={() => setIsAuthenticated(false)} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
+        <button onClick={() => { setIsAuthenticated(false); localStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 space-y-8 mt-6">
+      <main className="max-w-4xl mx-auto p-4 mt-6">
+        {/* Tabs */}
+        <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide border-b">
+          <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'requests' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            অপেক্ষমান রিকোয়েস্ট ({pendingContacts.length + pendingCategories.length})
+          </button>
+          <button onClick={() => setActiveTab('feedbacks')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            মতামত ({feedbacks.length})
+          </button>
+          <button onClick={() => setActiveTab('reviews')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'reviews' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            রিভিউ ({publicReviews.length})
+          </button>
+          <button onClick={() => setActiveTab('contributors')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'contributors' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            অবদানকারী
+          </button>
+          <button onClick={() => setActiveTab('history')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'history' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            অ্যাডমিন হিস্ট্রি
+          </button>
+        </div>
+
+        <div className="space-y-8">
         
         {/* Pending Categories */}
-        <section>
+        {activeTab === 'requests' && (
+          <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">অপেক্ষমান ক্যাটাগরি (মেনু) - {pendingCategories.length}</h2>
           {pendingCategories.length === 0 ? <p className="text-gray-500">কোনো অপেক্ষমান ক্যাটাগরি নেই।</p> : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
               {pendingCategories.map(cat => (
                 <div key={cat.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
                   <div>
@@ -460,12 +473,14 @@ export default function Admin() {
             </div>
           )}
         </section>
+        )}
 
         {/* Pending Contacts */}
-        <section>
+        {activeTab === 'requests' && (
+          <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">অপেক্ষমান নাম্বার - {pendingContacts.length}</h2>
           {pendingContacts.length === 0 ? <p className="text-gray-500">কোনো অপেক্ষমান নাম্বার নেই।</p> : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
               {pendingContacts.map(contact => (
                 <div key={contact.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
                   <div>
@@ -501,12 +516,14 @@ export default function Admin() {
             </div>
           )}
         </section>
+        )}
 
         {/* Feedbacks */}
-        <section>
+        {activeTab === 'feedbacks' && (
+          <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">মতামত ও আইডিয়া - {feedbacks.length}</h2>
           {feedbacks.length === 0 ? <p className="text-gray-500">কোনো মতামত নেই।</p> : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
               {feedbacks.map(feedback => (
                 <div key={feedback.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-4">
@@ -662,9 +679,11 @@ export default function Admin() {
             </div>
           )}
         </section>
+        )}
 
         {/* Admin History */}
-        <section>
+        {activeTab === 'history' && (
+          <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">অ্যাডমিন হিস্ট্রি (গত ৩০ দিন)</h2>
           {adminHistory.length === 0 ? <p className="text-gray-500">কোনো হিস্ট্রি নেই।</p> : (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -679,12 +698,12 @@ export default function Admin() {
             </div>
           )}
         </section>
-
-        {/* Public Reviews */}
-        <section>
+        )}{/* Public Reviews */}
+        {activeTab === 'reviews' && (
+          <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">পাবলিক রিভিও সমূহ - {publicReviews.length}</h2>
           {publicReviews.length === 0 ? <p className="text-gray-500">কোনো রিভিও নেই।</p> : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
               {publicReviews.map(review => (
                 <div key={review.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-4">
@@ -706,12 +725,14 @@ export default function Admin() {
             </div>
           )}
         </section>
+        )}
 
         {/* Contributors */}
-        <section>
+        {activeTab === 'contributors' && (
+          <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">অবদানকারীগণ (Contributors) - {contributors.length}</h2>
           {contributors.length === 0 ? <p className="text-gray-500">কোনো অবদানকারী নেই।</p> : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
               {contributors.map(cont => (
                 <div key={cont.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -817,7 +838,7 @@ export default function Admin() {
             </div>
           )}
         </section>
-
+        )}        </div>
       </main>
     </div>
   );

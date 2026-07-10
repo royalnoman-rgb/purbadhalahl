@@ -7,11 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
-import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 import MapTracker from './MapTracker';
@@ -36,6 +36,7 @@ const VerifiedBadge = () => (
 );
 
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState(localStorage.getItem('adminAuth') === 'true');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
@@ -110,6 +111,7 @@ export default function App() {
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editReplyText, setEditReplyText] = useState('');
   const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
+  const [activeUserTab, setActiveUserTab] = useState<'stats' | 'contacts' | 'feedbacks' | 'messages'>('stats');
 
   useEffect(() => {
     const savedName = localStorage.getItem('contributorName');
@@ -246,17 +248,29 @@ export default function App() {
         details: newDetails,
         subDetails: newSubDetails,
         categoryId: newCategory,
-        status: 'pending',
+        status: isAdmin ? 'approved' : 'pending',
         contributorName: contributorName || null,
         contributorPhone: contributorPhone || null,
         contributorFacebook: contributorFacebook || null,
       };
       
       if (editingContactId) {
-        payload.replacesId = editingContactId;
+        if (isAdmin) {
+          // If admin, direct update
+          await updateDoc(doc(db, 'contacts', editingContactId), {
+            name: newName,
+            phone: newPhone,
+            details: newDetails,
+            subDetails: newSubDetails,
+            categoryId: newCategory,
+          });
+        } else {
+          payload.replacesId = editingContactId;
+          await addDoc(collection(db, 'contacts'), payload);
+        }
+      } else {
+        await addDoc(collection(db, 'contacts'), payload);
       }
-      
-      await addDoc(collection(db, 'contacts'), payload);
       
       setRequestStatus('success');
       setTimeout(() => {
@@ -286,7 +300,7 @@ export default function App() {
         englishTitle: newCatEnglish,
         iconName: newCatIcon,
         color: newCatColor,
-        status: 'pending'
+        status: isAdmin ? 'approved' : 'pending'
       });
       
       setRequestStatus('success');
@@ -429,6 +443,51 @@ export default function App() {
     } catch (err) {
       console.error(err);
       alert('ম্যাসেজ পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    }
+  };
+
+
+  const handleDeleteCategoryApp = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await deleteDoc(doc(db, 'categories', id));
+      alert('ক্যাটাগরি মুছে ফেলা হয়েছে');
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে');
+    }
+  };
+
+
+  const handleUpdatePointsApp = async (id: string, currentPoints: number) => {
+    const newPoints = prompt('নতুন পয়েন্ট দিন:', currentPoints.toString());
+    if (newPoints !== null && !isNaN(Number(newPoints))) {
+      try {
+        await updateDoc(doc(db, 'contributors', id), { points: Number(newPoints) });
+        alert('পয়েন্ট আপডেট হয়েছে');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleBanContributorApp = async (id: string, isCurrentlyBanned: boolean) => {
+    try {
+      await updateDoc(doc(db, 'contributors', id), { isBanned: !isCurrentlyBanned });
+      alert(isCurrentlyBanned ? 'ব্যান তুলে নেওয়া হয়েছে' : 'ইউজার ব্যান করা হয়েছে');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteContactApp = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await deleteDoc(doc(db, 'contacts', id));
+      alert('নাম্বার মুছে ফেলা হয়েছে');
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে');
     }
   };
 
@@ -626,7 +685,9 @@ export default function App() {
         setGeneratedOtp(otp);
         setIsForgotPassword(false);
         setIsOtpMode(true);
-        alert(`আপনার নাম্বারে একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।\n\n(ডেমো কোড: ${otp})`);
+        alert(`আপনার নাম্বারে একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।
+
+(ডেমো কোড: ${otp})`);
       } else {
         alert('এই নাম্বারে কোনো একাউন্ট পাওয়া যায়নি।');
       }
@@ -838,6 +899,11 @@ export default function App() {
           <h1 className="text-xl font-semibold tracking-tight truncate flex-1">
             {showCommunity ? 'কমিউনিটি' : showMap ? 'গাড়ির লাইভ অবস্থান' : selectedCategory ? selectedCategory.title : 'পূর্বধলা হেল্পলাইন'}
           </h1>
+          {isAdmin && (
+            <a href="/admin" className="ml-2 text-[10px] bg-red-500 text-white px-2 py-1 rounded shadow-sm hover:bg-red-600 transition-colors font-medium">
+              অ্যাডমিন প্যানেল
+            </a>
+          )}
           <button 
             onClick={() => setIsLeaderboardOpen(true)}
             className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
@@ -948,14 +1014,24 @@ export default function App() {
             {allCategories.map((category) => {
               const IconComponent = iconMap[category.iconName] || Building2;
               return (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`${category.color} rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50`}
-                >
-                  <IconComponent className="w-10 h-10 mb-1" strokeWidth={1.5} />
-                  <span className="text-sm sm:text-base font-medium text-center">{category.title}</span>
-                </button>
+                <div key={category.id} className="relative group">
+                  <button
+                    onClick={() => setSelectedCategory(category)}
+                    className={`${category.color} w-full h-full rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50`}
+                  >
+                    <IconComponent className="w-10 h-10 mb-1" strokeWidth={1.5} />
+                    <span className="text-sm sm:text-base font-medium text-center">{category.title}</span>
+                  </button>
+                  {isAdmin && !['fire', 'police', 'ambulance', 'hospital', 'blood', 'palli_bidyut', 'desco', 'wasa', 'journalist'].includes(category.id) && (
+                    <button 
+                      onClick={(e) => handleDeleteCategoryApp(category.id, e)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete Category"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -1007,6 +1083,15 @@ export default function App() {
                     >
                       <Edit3 className="w-5 h-5" />
                     </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => handleDeleteContactApp(contact.id, e)}
+                        className="flex-shrink-0 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-500 hover:text-red-600 p-3 rounded-full transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                        title="Delete Contact"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -1415,6 +1500,24 @@ export default function App() {
                       <p className="mt-1 text-xs opacity-90">আপনার একাউন্টটি সুরক্ষিত রাখতে এখনই প্রোফাইল আপডেট করে একটি পাসওয়ার্ড সেট করে নিন।</p>
                     </div>
                   )}
+                  
+                  {/* User Dashboard Tabs */}
+                  <div className="flex overflow-x-auto gap-2 mb-4 pb-1 scrollbar-hide border-b">
+                    <button onClick={() => setActiveUserTab('stats')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'stats' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                      ড্যাশবোর্ড
+                    </button>
+                    <button onClick={() => setActiveUserTab('contacts')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'contacts' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                      নাম্বার ({contributorContacts.length})
+                    </button>
+                    <button onClick={() => setActiveUserTab('feedbacks')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                      মতামত ({contributorFeedbacks.length})
+                    </button>
+                    <button onClick={() => setActiveUserTab('messages')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'messages' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                      ইনবক্স {hasUnreadMessages || hasUnreadReply ? <span className="inline-block w-2 h-2 bg-red-500 rounded-full ml-1"></span> : ''}
+                    </button>
+                  </div>
+
+                  {activeUserTab === 'stats' && (
                   <div className="bg-emerald-50 rounded-xl p-4 mb-4 border border-emerald-100">
                     <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
                     <div className="grid grid-cols-2 gap-4">
@@ -1428,7 +1531,9 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                  )}
 
+                  {activeUserTab === 'feedbacks' && (
                   <div className="mb-4">
                     <h3 className="font-semibold text-gray-900 mb-3">আমার মতামত ও আইডিয়া</h3>
                     {contributorFeedbacks.length === 0 ? (
@@ -1486,7 +1591,7 @@ export default function App() {
                                       return (
                                       <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'user' ? 'bg-emerald-50 ml-4' : 'bg-gray-50 mr-4'}`}>
                                         <div className="flex justify-between items-center mb-1">
-                                          <span className="font-semibold text-[11px] text-gray-700">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'}</span>
+                                          <span className="font-semibold text-[11px] text-gray-700 flex items-center">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'} {reply.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] text-[#0866FF] shrink-0 inline-block align-middle ml-1" title="Admin"><circle cx="12" cy="12" r="12" fill="currentColor" /><path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" /></svg>}</span>
                                           <div className="flex items-center gap-2">
                                             {reply.edited && <span className="text-[9px] text-gray-400 italic">edited</span>}
                                             <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
@@ -1572,7 +1677,9 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="mb-4">
+                  )} 
+ {activeUserTab === 'messages' && ( 
+ <div className="mb-4">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="font-semibold text-gray-900">অ্যাডমিন থেকে ম্যাসেজ</h3>
                       {hasUnreadMessages && (
@@ -1588,7 +1695,7 @@ export default function App() {
                         {contributorMessages.map(msg => (
                           <div key={msg.id} className="bg-white p-3 rounded shadow-sm">
                             <div className="flex justify-between items-center mb-1 border-b border-gray-50 pb-1">
-                              <span className="font-semibold text-[11px] text-emerald-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'}</span>
+                              <span className="font-semibold text-[11px] text-emerald-700 flex items-center">{msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'} {msg.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] text-[#0866FF] shrink-0 inline-block align-middle ml-1" title="Admin"><circle cx="12" cy="12" r="12" fill="currentColor" /><path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" /></svg>}</span>
                               <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                             </div>
                             <p className="text-gray-800 text-xs whitespace-pre-wrap">{msg.message}</p>
@@ -1617,7 +1724,9 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="mb-4">
+                  )} 
+ {activeUserTab === 'contacts' && ( 
+ <div className="mb-4">
                     <h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
                     {contributorContacts.length === 0 ? (
                       <p className="text-sm text-gray-500">আপনি এখনও কোনো নাম্বার যোগ করেননি।</p>
@@ -1642,7 +1751,8 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                  )} 
+ <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
                     <button type="button" onClick={() => setIsEditProfileMode(true)} className="text-sm text-emerald-600 hover:underline font-medium">
                       প্রোফাইল আপডেট করুন
                     </button>
