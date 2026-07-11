@@ -1,22 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key } from 'lucide-react';
+import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from './components/ConfirmDialog';
 
-const VerifiedBadge = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
-    title="Verified Contributor"
-  >
-    <circle cx="12" cy="12" r="12" fill="currentColor" />
-    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
-  </svg>
-);
+const VerifiedBadge = () => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTooltip]);
+
+  return (
+    <div className="relative inline-block align-middle ml-1 -mt-0.5" ref={badgeRef}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-[16px] h-[16px] shrink-0 cursor-pointer"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTooltip(!showTooltip); }}
+      >
+        <path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/>
+        <path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/>
+      </svg>
+      {showTooltip && (
+        <div 
+          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-gray-800 bg-white border border-gray-100 rounded-lg shadow-xl left-1/2 top-full"
+          onClick={(e) => e.stopPropagation()}
+          style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+        >
+          This verified badge indicates that the user's identity has been verified and they are a trusted contributor to our platform.
+          <div className="absolute w-3 h-3 bg-white border-t border-l border-gray-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Admin() {
   const [password, setPassword] = useState('');
@@ -36,11 +67,54 @@ export default function Admin() {
   const [contributors, setContributors] = useState<any[]>([]);
   const [deletedPosts, setDeletedPosts] = useState<any[]>([]);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
+  const [adminMessageText, setAdminMessageText] = useState('');
 
   const confirmAction = (message: string, action: () => void) => {
     setConfirmConfig({ isOpen: true, message, action });
   };
-  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle' | 'inbox'>('requests');
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+  const [editRequestData, setEditRequestData] = useState<any>({});
+  
+  const [replyingToRequest, setReplyingToRequest] = useState<string | null>(null);
+  const [requestReplyText, setRequestReplyText] = useState('');
+  
+  const handleEditRequestSave = async (id: string, type: 'contact' | 'category') => {
+    try {
+      const collectionName = type === 'contact' ? 'contacts' : 'categories';
+      await updateDoc(doc(db, collectionName, id), editRequestData);
+      setEditingRequestId(null);
+      fetchData();
+    } catch (e) { console.error(e); }
+  };
+  
+  const handleReplyToRequest = async (contributorPhone: string, requestId: string) => {
+    if (!requestReplyText.trim()) return;
+    try {
+      const contributorRef = doc(db, 'contributors', contributorPhone);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const contributorData = contributorDoc.data();
+        const newMessages = [...(contributorData.messages || []), {
+          id: Date.now().toString(),
+          sender: 'admin',
+          message: requestReplyText.trim(),
+          createdAt: new Date().toISOString()
+        }];
+        await updateDoc(contributorRef, {
+          messages: newMessages,
+          hasUnreadMessage: true,
+          hasUnreadAdminMessage: false
+        });
+        setReplyingToRequest(null);
+        setRequestReplyText('');
+        alert('ম্যাসেজ সফলভাবে পাঠানো হয়েছে!');
+      } else {
+        alert('কন্ট্রিবিউটর পাওয়া যায়নি!');
+      }
+    } catch (e) { console.error(e); }
+  };
+
 
   const isVerifiedContributor = (name: string, phone?: string) => {
     return contributors.slice(0, 5).some(c => (phone && c.phone === phone) || (!phone && c.name === name));
@@ -127,7 +201,22 @@ export default function Admin() {
   };
 
   useEffect(() => {
+    const updatePresence = async () => {
+      try {
+        await setDoc(doc(db, 'contributors', 'admin'), {
+          lastActive: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    };
+    
     if (isAuthenticated) {
+      updatePresence();
+      const presenceInterval = setInterval(updatePresence, 3 * 60 * 1000);
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') updatePresence();
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
       fetchData();
       
       const q = query(collection(db, 'contributors'));
@@ -136,7 +225,11 @@ export default function Admin() {
         contList.sort((a, b) => (b.points || 0) - (a.points || 0));
         setContributors(contList);
       });
-      return () => unsub();
+      return () => {
+        unsub();
+        clearInterval(presenceInterval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [isAuthenticated]);
 
@@ -301,6 +394,19 @@ export default function Admin() {
           hasUnreadAdminReply: false,
           hasUnreadUserReply: true
         });
+
+        // Notify user
+        if (feedback.contributorPhone) {
+          await addDoc(collection(db, 'notifications'), {
+            receiverPhone: feedback.contributorPhone,
+            type: 'admin_reply',
+            title: 'অ্যাডমিন আপনার মতামতে রিপ্লাই করেছেন',
+            body: replyText[feedbackId].trim(),
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: 'feedbacks'
+          });
+        }
         await logAdminAction(`Replied to feedback from: ${feedback.name || 'Unknown'}`);
         setReplyText(prev => ({ ...prev, [feedbackId]: '' }));
         fetchData();
@@ -339,12 +445,68 @@ export default function Admin() {
     }
   };
 
+  const handleSendAdminMessage = async (contributorId: string) => {
+    if (!adminMessageText.trim()) return;
+
+    try {
+      const contributorRef = doc(db, 'contributors', contributorId);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const data = contributorDoc.data();
+        const newMessage = {
+          id: Date.now().toString(),
+          message: adminMessageText.trim(),
+          sender: 'admin',
+          createdAt: new Date().toISOString(),
+          read: false
+        };
+        const updatedMessages = [...(data.messages || []), newMessage];
+        await updateDoc(contributorRef, {
+          messages: updatedMessages,
+          hasUnreadMessage: true
+        });
+
+        // Notify user
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: contributorId,
+          type: 'admin_message',
+          title: 'অ্যাডমিনের থেকে ম্যাসেজ',
+          body: adminMessageText.trim(),
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'messages'
+        });
+        setAdminMessageText('');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('ম্যাসেজ পাঠাতে সমস্যা হয়েছে।');
+    }
+  };
+
   const handleMarkContributorMessageAsRead = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'contributors', id), {
-        hasUnreadAdminMessage: false
-      });
-      setContributors(prev => prev.map(cont => cont.id === id ? { ...cont, hasUnreadAdminMessage: false } : cont));
+      const contributorRef = doc(db, 'contributors', id);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const data = contributorDoc.data();
+        const messages = data.messages || [];
+        let updated = false;
+        const updatedMessages = messages.map((msg: any) => {
+          if (msg.sender === 'user' && !msg.read) {
+            updated = true;
+            return { ...msg, read: true };
+          }
+          return msg;
+        });
+        if (updated) {
+          await updateDoc(contributorRef, { messages: updatedMessages, hasUnreadAdminMessage: false });
+          fetchData();
+        } else {
+          await updateDoc(contributorRef, { hasUnreadAdminMessage: false });
+          setContributors(prev => prev.map(cont => cont.id === id ? { ...cont, hasUnreadAdminMessage: false } : cont));
+        }
+      }
     } catch (err) {
       console.error(err);
     }
@@ -484,6 +646,12 @@ export default function Admin() {
       <main className="max-w-4xl mx-auto p-4 mt-6">
         {/* Tabs */}
         <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide border-b">
+          <button onClick={() => setActiveTab('inbox')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors relative ${activeTab === 'inbox' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+  ইনবক্স
+  {contributors.some(c => c.hasUnreadAdminMessage) && (
+    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+  )}
+</button>
           <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'requests' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             অপেক্ষমান রিকোয়েস্ট ({pendingContacts.length + pendingCategories.length})
           </button>
@@ -514,6 +682,96 @@ export default function Admin() {
         <div className="space-y-8">
         
         {/* Pending Categories */}
+        {activeTab === 'inbox' && (
+          <section>
+            <h2 className="text-lg font-semibold mb-4 border-b pb-2">অ্যাডমিন ইনবক্স</h2>
+            <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
+              {contributors.filter(c => c.messages && c.messages.length > 0).sort((a,b) => {
+                const aLast = a.messages[a.messages.length-1].createdAt;
+                const bLast = b.messages[b.messages.length-1].createdAt;
+                return new Date(bLast).getTime() - new Date(aLast).getTime();
+              }).map(cont => (
+                <div key={cont.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                        {cont.avatar ? (
+                          <img src={cont.avatar} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-emerald-200" />
+                        ) : (
+                          <UserCircle className="w-6 h-6 text-emerald-600" />
+                        )}
+                        <span className="flex items-center">
+                          {cont.name}
+                          {isVerifiedContributor(cont.name, cont.phone) && <VerifiedBadge />}
+                        </span>
+                      </h3>
+                      <p className="text-sm text-gray-600">{cont.phone}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          setExpandedContributorId(expandedContributorId === cont.id ? null : cont.id);
+                          if (cont.hasUnreadAdminMessage) {
+                            handleMarkContributorMessageAsRead(cont.id);
+                          }
+                        }} 
+                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 relative"
+                        title="Messages"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        {cont.hasUnreadAdminMessage && (
+                          <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  {expandedContributorId === cont.id && (
+                    <div className="mt-4 border-t pt-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="space-y-3 max-h-60 overflow-y-auto mb-4 pr-2">
+                          {cont.messages?.map((msg: any) => (
+                            <div key={msg.id} className={`p-3 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-blue-100 ml-8' : 'bg-white border border-gray-200 mr-8'}`}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-semibold text-[11px] text-gray-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : cont.name}</span>
+                                <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
+                              </div>
+                              <p className="text-gray-800 whitespace-pre-wrap">{msg.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={adminMessageText}
+                            onChange={(e) => setAdminMessageText(e.target.value)}
+                            placeholder="Type a message..."
+                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') handleSendAdminMessage(cont.id);
+                            }}
+                          />
+                          <button
+                            onClick={() => handleSendAdminMessage(cont.id)}
+                            disabled={!adminMessageText.trim()}
+                            className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {contributors.filter(c => c.messages && c.messages.length > 0).length === 0 && (
+                <p className="text-gray-500 bg-white p-4 rounded-lg shadow-sm">ইনবক্সে কোনো ম্যাসেজ নেই।</p>
+              )}
+            </div>
+          </section>
+        )}
         {activeTab === 'requests' && (
           <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">অপেক্ষমান ক্যাটাগরি (মেনু) - {pendingCategories.length}</h2>
@@ -522,16 +780,35 @@ export default function Admin() {
               {pendingCategories.map(cat => (
                 <div key={cat.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-gray-900">{cat.title} ({cat.englishTitle})</h3>
-                    <p className="text-sm text-gray-600">Icon: {cat.iconName} | Color: {cat.color}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApproveCategory(cat.id)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="Approve">
-                      <CheckCircle className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => handleDeleteCategory(cat.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    {editingRequestId === cat.id ? (
+                      <div className="space-y-2 w-full">
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.title || ''} onChange={e => setEditRequestData({...editRequestData, title: e.target.value})} placeholder="Title (বাংলা)" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.englishTitle || ''} onChange={e => setEditRequestData({...editRequestData, englishTitle: e.target.value})} placeholder="Title (English)" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.iconName || ''} onChange={e => setEditRequestData({...editRequestData, iconName: e.target.value})} placeholder="Icon" />
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditRequestSave(cat.id, 'category')} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
+                          <button onClick={() => setEditingRequestId(null)} className="text-xs bg-gray-300 px-2 py-1 rounded">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between w-full">
+                        <div>
+                          <h3 className="font-bold text-gray-900">{cat.title} ({cat.englishTitle})</h3>
+                          <p className="text-sm text-gray-600">Icon: {cat.iconName} | Color: {cat.color}</p>
+                        </div>
+                        <div className="flex gap-1 h-fit">
+                          <button onClick={() => { setEditingRequestId(cat.id); setEditRequestData(cat); }} className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Edit">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleApproveCategory(cat.id)} className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="Approve">
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -549,32 +826,63 @@ export default function Admin() {
               {pendingContacts.map(contact => (
                 <div key={contact.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-gray-900">{contact.name}</h3>
-                      {contact.replacesId && (
-                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">সংশোধন রিকোয়েস্ট</span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-gray-700">{contact.phone}</p>
-                    <p className="text-sm text-gray-500">{contact.details} - {contact.subDetails}</p>
-                    <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
-                    {contact.contributorName && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs">
-                        <p className="text-gray-500 font-medium mb-1">প্রেরক:</p>
-                        <p className="text-gray-800">{contact.contributorName} ({contact.contributorPhone})</p>
-                        {contact.contributorFacebook && (
-                          <a href={contact.contributorFacebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Facebook</a>
-                        )}
+                    {editingRequestId === contact.id ? (
+                      <div className="space-y-2 w-full">
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.name || ''} onChange={e => setEditRequestData({...editRequestData, name: e.target.value})} placeholder="Name" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.phone || ''} onChange={e => setEditRequestData({...editRequestData, phone: e.target.value})} placeholder="Phone" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.details || ''} onChange={e => setEditRequestData({...editRequestData, details: e.target.value})} placeholder="Details" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.subDetails || ''} onChange={e => setEditRequestData({...editRequestData, subDetails: e.target.value})} placeholder="Sub Details" />
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditRequestSave(contact.id, 'contact')} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
+                          <button onClick={() => setEditingRequestId(null)} className="text-xs bg-gray-300 px-2 py-1 rounded">Cancel</button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-col gap-1 w-full">
+                          <div className="flex justify-between w-full">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-gray-900">{contact.name}</h3>
+                                {contact.replacesId && (
+                                  <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">সংশোধন রিকোয়েস্ট</span>
+                                )}
+                              </div>
+                              <p className="text-sm font-medium text-gray-700">{contact.phone}</p>
+                              <p className="text-sm text-gray-500">{contact.details} - {contact.subDetails}</p>
+                              <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
+                            </div>
+                            <div className="flex gap-1 h-fit">
+                              <button onClick={() => { setEditingRequestId(contact.id); setEditRequestData(contact); }} className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Edit">
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleApproveContact(contact.id)} className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="Approve">
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteContact(contact.id)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          {contact.contributorName && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs w-full">
+                              <div className="flex justify-between items-center mb-1">
+                                <p className="text-gray-500 font-medium">প্রেরক: <span className="text-gray-800">{contact.contributorName} ({contact.contributorPhone})</span></p>
+                                <button onClick={() => setReplyingToRequest(replyingToRequest === contact.id ? null : contact.id)} className="text-emerald-600 hover:underline">
+                                  রিপ্লাই দিন
+                                </button>
+                              </div>
+                              {replyingToRequest === contact.id && (
+                                <div className="mt-2 flex gap-2">
+                                  <input type="text" value={requestReplyText} onChange={e => setRequestReplyText(e.target.value)} placeholder="রিপ্লাই লিখুন..." className="flex-1 px-2 py-1 border rounded" />
+                                  <button onClick={() => handleReplyToRequest(contact.contributorPhone, contact.id)} className="bg-emerald-600 text-white px-3 py-1 rounded">Send</button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApproveContact(contact.id)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="Approve">
-                      <CheckCircle className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => handleDeleteContact(contact.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
                   </div>
                 </div>
               ))}
@@ -895,13 +1203,28 @@ export default function Admin() {
                     <div className="mt-2 pt-3 border-t border-gray-100">
                       {cont.messages && cont.messages.length > 0 ? (
                         <div className="space-y-2 mb-3 max-h-40 overflow-y-auto pr-2">
-                          {cont.messages.map((msg: any) => (
+                          {cont.messages.filter((msg:any) => !msg.deletedForEveryone && !msg.deletedFor?.includes('admin')).map((msg: any) => (
                             <div key={msg.id} className={`p-2 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-emerald-50 ml-6' : 'bg-gray-50 mr-6'}`}>
                               <div className="flex justify-between items-center mb-1">
                                 <span className="font-semibold text-[11px] text-gray-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : cont.name}</span>
                                 <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                               </div>
                               <p className="text-gray-800 text-xs">{msg.message}</p>
+                              <div className="flex justify-end items-center mt-1 gap-2">
+                                {msg.sender === 'admin' && (
+                                  <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-gray-400'}`}>
+                                    {msg.read ? 'Seen' : 'Delivered'}
+                                  </span>
+                                )}
+                                <button onClick={() => handleDeleteContributorMessageAdmin(cont.id, msg.id, false)} className="text-[10px] text-red-500 hover:text-red-600" title="Delete for me">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                                {msg.sender === 'admin' && (
+                                  <button onClick={() => handleDeleteContributorMessageAdmin(cont.id, msg.id, true)} className="text-[10px] text-red-600 hover:text-red-700 bg-red-50 px-1 rounded" title="Delete for everyone">
+                                    সবার জন্য মুছুন
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>

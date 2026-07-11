@@ -1,32 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Users, Lock, Send, UserCircle, MessageCircle, ArrowLeft, ThumbsUp, Heart, Trash2, Edit2, CheckCircle2, XCircle } from 'lucide-react';
 
-const VerifiedBadge = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
-    title="Verified Contributor"
-  >
-    <circle cx="12" cy="12" r="12" fill="currentColor" />
-    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
-  </svg>
-);
+const VerifiedBadge = () => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTooltip]);
+
+  return (
+    <div className="relative inline-block align-middle ml-1 -mt-0.5" ref={badgeRef}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-[16px] h-[16px] shrink-0 cursor-pointer"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTooltip(!showTooltip); }}
+      >
+        <path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/>
+        <path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/>
+      </svg>
+      {showTooltip && (
+        <div 
+          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-gray-800 bg-white border border-gray-100 rounded-lg shadow-xl left-1/2 top-full"
+          onClick={(e) => e.stopPropagation()}
+          style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+        >
+          This verified badge indicates that the user's identity has been verified and they are a trusted contributor to our platform.
+          <div className="absolute w-3 h-3 bg-white border-t border-l border-gray-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AdminBadge = () => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
+    className="w-[16px] h-[16px] shrink-0 inline-block align-middle ml-1 -mt-0.5"
     title="Admin"
   >
-    <circle cx="12" cy="12" r="12" fill="currentColor" />
-    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
+    <path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/>
+    <path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/>
   </svg>
 );
 
@@ -38,9 +69,10 @@ interface CommunityProps {
   onLoginClick: () => void;
   onBack: () => void;
   onUserClick: (phone: string) => void;
+  onlineUsers: string[];
 }
 
-export default function Community({ contributorPhone, contributorName, contributorAvatar, topContributors, onLoginClick, onBack, onUserClick }: CommunityProps) {
+export default function Community({ contributorPhone, contributorName, contributorAvatar, topContributors, onLoginClick, onBack, onUserClick, onlineUsers }: CommunityProps) {
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostText, setNewPostText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -310,17 +342,20 @@ export default function Community({ contributorPhone, contributorName, contribut
                 className={`flex items-center gap-3 mb-3 ${post.authorPhone !== 'admin' ? 'cursor-pointer hover:bg-gray-50 p-1 -m-1 rounded-lg transition-colors' : ''}`}
                 onClick={() => post.authorPhone !== 'admin' && onUserClick(post.authorPhone)}
               >
-                {post.authorPhone === 'admin' ? (
-                  <div className="w-10 h-10 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
-                    <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
-                  </div>
-                ) : post.authorAvatar ? (
-                  <img src={post.authorAvatar} alt={post.authorName} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
-                    <UserCircle className="w-6 h-6" />
-                  </div>
-                )}
+                <div className="relative shrink-0">
+                  {post.authorPhone === 'admin' ? (
+                    <div className="w-10 h-10 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
+                      <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
+                    </div>
+                  ) : post.authorAvatar ? (
+                    <img src={post.authorAvatar} alt={post.authorName} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+                      <UserCircle className="w-6 h-6" />
+                    </div>
+                  )}
+                  {onlineUsers.includes(post.authorPhone) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
+                </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 leading-tight flex items-center">
                     {post.authorName}
@@ -420,17 +455,20 @@ export default function Community({ contributorPhone, contributorName, contribut
                             className={`flex items-start gap-2 ${comment.authorPhone !== 'admin' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                             onClick={() => comment.authorPhone !== 'admin' && onUserClick(comment.authorPhone)}
                           >
-                            {comment.authorPhone === 'admin' ? (
-                              <div className="w-6 h-6 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white shrink-0">
-                                <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
-                              </div>
-                            ) : comment.authorAvatar ? (
-                              <img src={comment.authorAvatar} alt={comment.authorName} className="w-6 h-6 rounded-full object-cover border border-gray-200 shrink-0" />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                                <UserCircle className="w-4 h-4" />
-                              </div>
-                            )}
+                            <div className="relative shrink-0">
+                              {comment.authorPhone === 'admin' ? (
+                                <div className="w-6 h-6 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
+                                  <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
+                                </div>
+                              ) : comment.authorAvatar ? (
+                                <img src={comment.authorAvatar} alt={comment.authorName} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+                                  <UserCircle className="w-4 h-4" />
+                                </div>
+                              )}
+                              {onlineUsers.includes(comment.authorPhone) && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>}
+                            </div>
                             <span className="font-semibold text-gray-900 flex items-center mt-0.5">
                               {comment.authorName}
                               {comment.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />)}

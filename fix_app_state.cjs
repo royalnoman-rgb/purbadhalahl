@@ -1,21 +1,14 @@
 const fs = require('fs');
-
 let code = fs.readFileSync('src/App.tsx', 'utf8');
 
-if (!code.includes("const [confirmConfig")) {
-  const targetState = `  const [publicReviews, setPublicReviews] = useState<any[]>([]);`;
-  const replaceState = `  const [publicReviews, setPublicReviews] = useState<any[]>([]);
-  const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
+const stateTarget = `const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);`;
+const stateReplacement = `const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const prevNotifCount = useRef(0);
+  const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);`;
 
-  const confirmAction = (message: string, action: () => void) => {
-    setConfirmConfig({ isOpen: true, message, action });
-  };`;
-  code = code.replace(targetState, replaceState);
-}
+code = code.replace(stateTarget, stateReplacement);
 
-// Add import if missing
-if (!code.includes("import { ConfirmDialog }")) {
-  code = code.replace("import Admin from './Admin';", "import Admin from './Admin';\nimport { ConfirmDialog } from './components/ConfirmDialog';");
-}
+const unreadNotifCount = `notifications.filter(n => !n.read).length`;
 
 fs.writeFileSync('src/App.tsx', code);

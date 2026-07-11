@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
@@ -24,18 +24,49 @@ const iconMap: Record<string, React.ElementType> = {
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper,
 };
 
-const VerifiedBadge = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-[16px] h-[16px] text-[#0866FF] shrink-0 inline-block align-middle ml-1 -mt-0.5"
-    title="Verified Contributor"
-  >
-    <circle cx="12" cy="12" r="12" fill="currentColor" />
-    <path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" />
-  </svg>
-);
+const VerifiedBadge = () => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTooltip]);
+
+  return (
+    <div className="relative inline-block align-middle ml-1 -mt-0.5" ref={badgeRef}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-[16px] h-[16px] shrink-0 cursor-pointer"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTooltip(!showTooltip); }}
+      >
+        <path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/>
+        <path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/>
+      </svg>
+      {showTooltip && (
+        <div 
+          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-gray-800 bg-white border border-gray-100 rounded-lg shadow-xl left-1/2 top-full"
+          onClick={(e) => e.stopPropagation()}
+          style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+        >
+          This verified badge indicates that the user's identity has been verified and they are a trusted contributor to our platform.
+          <div className="absolute w-3 h-3 bg-white border-t border-l border-gray-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(localStorage.getItem('adminAuth') === 'true');
@@ -43,6 +74,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [selectedUserProfile, setSelectedUserProfile] = useState<string | null>(null);
   
   // Modals
@@ -54,6 +86,9 @@ export default function App() {
   const [requestStatus, setRequestStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   // Dynamic Data
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const prevNotifCount = useRef(0);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
@@ -74,6 +109,7 @@ export default function App() {
   // Form states - Category
   const [newCatTitle, setNewCatTitle] = useState('');
   const [newCatEnglish, setNewCatEnglish] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [newCatIcon, setNewCatIcon] = useState('Building2');
   const [newCatColor, setNewCatColor] = useState('bg-emerald-600 text-emerald-50');
 
@@ -122,6 +158,64 @@ export default function App() {
   const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
   const [activeUserTab, setActiveUserTab] = useState<'stats' | 'contacts' | 'feedbacks' | 'messages'>('stats');
 
+    useEffect(() => {
+    if (activeUserTab === 'messages' && contributorPhone) {
+      const markAsRead = async () => {
+        const unreadMsgs = userMessages.filter(msg => msg.receiverPhone === contributorPhone && !msg.read);
+        for (const msg of unreadMsgs) {
+          try {
+            await updateDoc(doc(db, 'user_messages', msg.id), { read: true });
+          } catch(e) {}
+        }
+      };
+      markAsRead();
+    }
+  }, [activeUserTab, userMessages, contributorPhone]);
+
+  // Presence setup
+  useEffect(() => {
+    const updatePresence = async () => {
+      try {
+        if (isAdmin) {
+          await setDoc(doc(db, 'contributors', 'admin'), {
+            lastActive: Date.now()
+          }, { merge: true });
+        }
+        if (contributorPhone) {
+          await updateDoc(doc(db, 'contributors', contributorPhone), {
+            lastActive: Date.now()
+          });
+        }
+      } catch (e) {}
+    };
+    if (contributorPhone || isAdmin) {
+      updatePresence();
+      const interval = setInterval(updatePresence, 3 * 60 * 1000);
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') updatePresence();
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [contributorPhone, isAdmin]);
+
+  useEffect(() => {
+    const fetchOnlineUsers = async () => {
+      try {
+        const threshold = Date.now() - 5 * 60 * 1000;
+        const q = query(collection(db, 'contributors'), where('lastActive', '>', threshold));
+        const snapshot = await getDocs(q);
+        setOnlineUsers(snapshot.docs.map(d => d.id));
+      } catch(e) {}
+    };
+    fetchOnlineUsers();
+    const interval = setInterval(fetchOnlineUsers, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const savedName = localStorage.getItem('contributorName');
     const savedPhone = localStorage.getItem('contributorPhone');
@@ -132,6 +226,49 @@ export default function App() {
     if (savedFb) setContributorFacebook(savedFb);
     if (savedAvatar) setContributorAvatar(savedAvatar);
   }, []);
+
+  useEffect(() => {
+    // Request notification permission on load
+    if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const playNotificationSound = () => {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.play().catch(e => console.log('Audio play failed', e));
+  };
+
+  const showBrowserNotification = (title, body) => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      new Notification(title, { body, icon: '/logo.png' });
+    }
+  };
+
+  useEffect(() => {
+    if (!contributorPhone && !isAdmin) return;
+    const receiverId = isAdmin ? 'admin' : contributorPhone;
+    const qNotif = query(collection(db, 'notifications'), where('receiverPhone', '==', receiverId));
+    
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setNotifications(notifs);
+      
+      const unreadCount = notifs.filter(n => !n.read).length;
+      if (unreadCount > prevNotifCount.current) {
+        // new notification arrived
+        playNotificationSound();
+        const newest = notifs.find(n => !n.read);
+        if (newest) {
+          showBrowserNotification(newest.title, newest.body);
+        }
+      }
+      prevNotifCount.current = unreadCount;
+    });
+    return () => unsubNotif();
+  }, [contributorPhone, isAdmin]);
 
   useEffect(() => {
     // Fetch approved categories
@@ -299,18 +436,37 @@ export default function App() {
     }
   };
 
+  const openEditCategoryModal = (e: React.MouseEvent, category: Category) => {
+    e.stopPropagation();
+    setNewCatTitle(category.title);
+    setNewCatEnglish(category.englishTitle || '');
+    setNewCatIcon(category.iconName || 'Building2');
+    setNewCatColor(category.color || 'bg-emerald-600 text-emerald-50');
+    setEditingCategoryId(category.id);
+    setIsCategoryModalOpen(true);
+  };
+
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRequestStatus('submitting');
     
     try {
-      await addDoc(collection(db, 'categories'), {
-        title: newCatTitle,
-        englishTitle: newCatEnglish,
-        iconName: newCatIcon,
-        color: newCatColor,
-        status: isAdmin ? 'approved' : 'pending'
-      });
+      if (editingCategoryId) {
+        await updateDoc(doc(db, 'categories', editingCategoryId), {
+          title: newCatTitle,
+          englishTitle: newCatEnglish,
+          iconName: newCatIcon,
+          color: newCatColor,
+        });
+      } else {
+        await addDoc(collection(db, 'categories'), {
+          title: newCatTitle,
+          englishTitle: newCatEnglish,
+          iconName: newCatIcon,
+          color: newCatColor,
+          status: isAdmin ? 'approved' : 'pending'
+        });
+      }
       
       setRequestStatus('success');
       setTimeout(() => {
@@ -319,6 +475,7 @@ export default function App() {
         setNewCatTitle('');
         setNewCatEnglish('');
         setNewCatIcon('Building2');
+        setEditingCategoryId(null);
       }, 2000);
     } catch (err) {
       console.error(err);
@@ -425,6 +582,32 @@ export default function App() {
       setHasUnreadMessages(false);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteContributorMessage = async (msgId: string, deleteForEveryone: boolean) => {
+    try {
+      const contributorRef = doc(db, 'contributors', contributorPhone);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const data = contributorDoc.data();
+        const messages = data.messages || [];
+        const updatedMessages = messages.map((msg: any) => {
+          if (msg.id === msgId) {
+            if (deleteForEveryone) {
+              return { ...msg, deletedForEveryone: true };
+            } else {
+              return { ...msg, deletedFor: [...(msg.deletedFor || []), 'user'] };
+            }
+          }
+          return msg;
+        });
+        await updateDoc(contributorRef, { messages: updatedMessages });
+        setContributorMessages(updatedMessages);
+      }
+    } catch(e) {
+      console.error(e);
+      alert('ম্যাসেজ ডিলেট করতে সমস্যা হয়েছে।');
     }
   };
 
@@ -677,19 +860,59 @@ export default function App() {
         }
       });
 
-      const userMessagesQuery = query(collection(db, 'user_messages'), where('receiverPhone', '==', contributorPhone));
-      unsubUserMessages = onSnapshot(userMessagesQuery, (snapshot) => {
-        const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-        // Sort in memory instead of requiring composite index
-        msgs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setUserMessages(msgs);
+      const receivedMessagesQuery = query(collection(db, 'user_messages'), where('receiverPhone', '==', contributorPhone));
+      const sentMessagesQuery = query(collection(db, 'user_messages'), where('senderPhone', '==', contributorPhone));
+      
+      let receivedMsgs: any[] = [];
+      let sentMsgs: any[] = [];
+
+      const updateUnifiedMessages = () => {
+         const all = [...receivedMsgs, ...sentMsgs].filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+         const filtered = all.filter(msg => {
+            if (msg.deletedForEveryone) return false;
+            if (msg.deletedFor?.includes(contributorPhone)) return false;
+            return true;
+         });
+         filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+         setUserMessages(filtered);
+      };
+
+      unsubUserMessages = onSnapshot(receivedMessagesQuery, (snapshot) => {
+        receivedMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        updateUnifiedMessages();
       });
+      const unsubSent = onSnapshot(sentMessagesQuery, (snapshot) => {
+        sentMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        updateUnifiedMessages();
+      });
+      
+      // Store unsubSent to use in cleanup
+      (window as any)._unsubSent = unsubSent;
     }
     return () => {
       if (unsubContributor) unsubContributor();
       if (unsubUserMessages) unsubUserMessages();
+      if ((window as any)._unsubSent) (window as any)._unsubSent();
     };
   }, [isContributorProfileOpen, contributorPhone]);
+
+  const handleDeleteUserMessage = async (msgId: string, deleteForEveryone: boolean) => {
+    try {
+      const msgRef = doc(db, 'user_messages', msgId);
+      if (deleteForEveryone) {
+        await updateDoc(msgRef, { deletedForEveryone: true });
+      } else {
+        const msgDoc = await getDoc(msgRef);
+        if (msgDoc.exists()) {
+          const data = msgDoc.data();
+          await updateDoc(msgRef, { deletedFor: [...(data.deletedFor || []), contributorPhone] });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      alert('ম্যাসেজ ডিলেট করতে সমস্যা হয়েছে।');
+    }
+  };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -985,6 +1208,78 @@ export default function App() {
           >
             <Trophy className="w-6 h-6" />
           </button>
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                if (!showNotifications) {
+                  // mark all as read
+                  const unreadNotifs = notifications.filter(n => !n.read);
+                  unreadNotifs.forEach(n => {
+                    updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
+                  });
+                  prevNotifCount.current = 0;
+                }
+              }}
+              className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white relative"
+              title="নোটিফিকেশন"
+            >
+              <Bell className="w-6 h-6" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-emerald-600"></span>
+              )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                  <h3 className="font-semibold text-gray-900">নোটিফিকেশন</h3>
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={() => {
+                        notifications.forEach(n => {
+                          deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
+                        });
+                        setNotifications([]);
+                      }}
+                      className="text-[10px] text-red-500 hover:text-red-600 font-medium"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-500">কোনো নোটিফিকেশন নেই।</div>
+                  ) : (
+                    notifications.map(notif => (
+                      <div key={notif.id} className={`p-3 border-b border-gray-50 text-sm hover:bg-gray-50 cursor-pointer transition-colors ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          if (notif.link === 'community') {
+                            setShowCommunity(true);
+                            setShowMap(false);
+                            setSelectedCategory(null);
+                          } else if (notif.link === 'messages') {
+                            if (isAdmin) {
+                                // admin inbox handled differently, but we can't easily redirect to admin dashboard from app unless window.location
+                                window.location.href = '/admin';
+                            } else {
+                                setIsContributorProfileOpen(true);
+                                // could set tab, but it defaults to stats, would be nice to open inbox. Just open profile for now
+                            }
+                          }
+                        }}
+                      >
+                        <h4 className="font-semibold text-gray-900 text-xs mb-1">{notif.title}</h4>
+                        <p className="text-gray-600 text-[11px] line-clamp-2">{notif.body}</p>
+                        <span className="text-[9px] text-gray-400 mt-1 block">{new Date(notif.createdAt).toLocaleString('bn-BD')}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <button 
             onClick={() => setIsContributorProfileOpen(true)}
             className="ml-1 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white relative"
@@ -1066,6 +1361,7 @@ export default function App() {
             onLoginClick={() => setIsContributorProfileOpen(true)}
             onBack={() => setShowCommunity(false)}
             onUserClick={setSelectedUserProfile}
+            onlineUsers={onlineUsers}
           />
         )}
 
@@ -1097,14 +1393,27 @@ export default function App() {
                     <IconComponent className="w-10 h-10 mb-1" strokeWidth={1.5} />
                     <span className="text-sm sm:text-base font-medium text-center">{category.title}</span>
                   </button>
-                  {isAdmin && !['fire', 'police', 'ambulance', 'hospital', 'blood', 'palli_bidyut', 'desco', 'wasa', 'journalist'].includes(category.id) && (
-                    <button 
-                      onClick={(e) => handleDeleteCategoryApp(category.id, e)}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete Category"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!['fire', 'police', 'ambulance', 'hospital', 'blood', 'palli_bidyut', 'desco', 'wasa', 'journalist'].includes(category.id) && (
+                        <button 
+                          onClick={(e) => openEditCategoryModal(e, category)}
+                          className="bg-blue-500 text-white p-1.5 rounded-full"
+                          title="Edit Category"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {!['fire', 'police', 'ambulance', 'hospital', 'blood', 'palli_bidyut', 'desco', 'wasa', 'journalist'].includes(category.id) && (
+                        <button 
+                          onClick={(e) => handleDeleteCategoryApp(category.id, e)}
+                          className="bg-red-500 text-white p-1.5 rounded-full"
+                          title="Delete Category"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
   );
@@ -1236,8 +1545,8 @@ export default function App() {
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">রিকোয়েস্ট সফল হয়েছে!</h3>
-                  <p className="text-gray-500">আপনার দেওয়া তথ্যটি যাচাই করে শীঘ্রই ডিরেক্টরিতে যুক্ত করা হবে।</p>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
+                  <p className="text-gray-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'আপনার দেওয়া তথ্যটি যাচাই করে শীঘ্রই ডিরেক্টরিতে যুক্ত করা হবে।'}</p>
                 </div>
               ) : (
                 <form onSubmit={handleRequestSubmit} className="space-y-4">
@@ -1292,7 +1601,7 @@ export default function App() {
                       requestStatus === 'submitting' ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
                     }`}
                   >
-                    {requestStatus === 'submitting' ? 'জমা দেওয়া হচ্ছে...' : 'রিকোয়েস্ট পাঠান'}
+                    {requestStatus === 'submitting' ? 'জমা দেওয়া হচ্ছে...' : isAdmin ? (editingContactId ? 'আপডেট করুন' : 'যুক্ত করুন') : 'রিকোয়েস্ট পাঠান'}
                   </button>
                 </form>
               )}
@@ -1306,9 +1615,9 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">নতুন ক্যাটাগরি (মেনু) যুক্ত করুন</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{editingCategoryId ? "ক্যাটাগরি আপডেট করুন" : "নতুন ক্যাটাগরি (মেনু) যুক্ত করুন"}</h2>
               <button
-                onClick={() => setIsCategoryModalOpen(false)}
+                onClick={() => { setIsCategoryModalOpen(false); setEditingCategoryId(null); }}
                 className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -1319,8 +1628,8 @@ export default function App() {
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-indigo-500 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">রিকোয়েস্ট সফল হয়েছে!</h3>
-                  <p className="text-gray-500">অ্যাডমিন চেক করে ক্যাটাগরিটি যুক্ত করবেন।</p>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
+                  <p className="text-gray-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'অ্যাডমিন চেক করে ক্যাটাগরিটি যুক্ত করবেন।'}</p>
                 </div>
               ) : (
                 <form onSubmit={handleCategorySubmit} className="space-y-4">
@@ -1360,7 +1669,7 @@ export default function App() {
                       requestStatus === 'submitting' ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
                     }`}
                   >
-                    {requestStatus === 'submitting' ? 'জমা দেওয়া হচ্ছে...' : 'রিকোয়েস্ট পাঠান'}
+                    {requestStatus === 'submitting' ? 'জমা দেওয়া হচ্ছে...' : isAdmin ? (editingCategoryId ? 'আপডেট করুন' : 'যুক্ত করুন') : 'রিকোয়েস্ট পাঠান'}
                   </button>
                 </form>
               )}
@@ -1428,7 +1737,7 @@ export default function App() {
       )}
 
       {/* Contributor Profile Modal */}
-      <UserProfileModal isOpen={!!selectedUserProfile} onClose={() => setSelectedUserProfile(null)} userPhone={selectedUserProfile || ""} currentUserId={contributorPhone} currentUserName={contributorName} currentUserAvatar={contributorAvatar} />
+      <UserProfileModal isOpen={!!selectedUserProfile} onClose={() => setSelectedUserProfile(null)} userPhone={selectedUserProfile || ""} currentUserId={contributorPhone} currentUserName={contributorName} currentUserAvatar={contributorAvatar} onlineUsers={onlineUsers} />
       {isContributorProfileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
@@ -1667,7 +1976,7 @@ export default function App() {
                                       return (
                                       <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'user' ? 'bg-emerald-50 ml-4' : 'bg-gray-50 mr-4'}`}>
                                         <div className="flex justify-between items-center mb-1">
-                                          <span className="font-semibold text-[11px] text-gray-700 flex items-center">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'} {reply.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] text-[#0866FF] shrink-0 inline-block align-middle ml-1" title="Admin"><circle cx="12" cy="12" r="12" fill="currentColor" /><path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" /></svg>}</span>
+                                          <span className="font-semibold text-[11px] text-gray-700 flex items-center">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'} {reply.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] shrink-0 inline-block align-middle ml-1" title="Admin"><path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/><path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/></svg>}</span>
                                           <div className="flex items-center gap-2">
                                             {reply.edited && <span className="text-[9px] text-gray-400 italic">edited</span>}
                                             <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
@@ -1757,7 +2066,7 @@ export default function App() {
  {activeUserTab === 'messages' && ( 
  <div className="mb-4">
                     <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold text-gray-900">অ্যাডমিন থেকে ম্যাসেজ</h3>
+                      <h3 className="font-semibold text-gray-900">অ্যাডমিনের সাথে ম্যাসেজ</h3>
                       {hasUnreadMessages && (
                         <button onClick={handleMarkMessagesAsRead} className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium hover:bg-red-200">
                           মার্ক এজ রিড
@@ -1768,13 +2077,35 @@ export default function App() {
                       <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
                     ) : (
                       <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        {contributorMessages.map(msg => (
+                        {contributorMessages.filter(msg => !msg.deletedForEveryone && !msg.deletedFor?.includes('user')).map(msg => (
                           <div key={msg.id} className="bg-white p-3 rounded shadow-sm">
                             <div className="flex justify-between items-center mb-1 border-b border-gray-50 pb-1">
-                              <span className="font-semibold text-[11px] text-emerald-700 flex items-center">{msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'} {msg.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] text-[#0866FF] shrink-0 inline-block align-middle ml-1" title="Admin"><circle cx="12" cy="12" r="12" fill="currentColor" /><path d="M10 15.586l-3.293-3.293 1.414-1.414L10 12.758l5.879-5.879 1.414 1.414L10 15.586z" fill="white" /></svg>}</span>
+                              <span className="font-semibold text-[11px] text-emerald-700 flex items-center">
+                                <span className="relative">
+                                  {msg.sender === 'admin' ? 'অ্যাডমিন' : 'আপনি'}
+                                  {msg.sender === 'admin' && onlineUsers.includes('admin') && <span className="absolute -top-1 -right-2 w-2 h-2 bg-green-500 rounded-full"></span>}
+                                  {msg.sender !== 'admin' && onlineUsers.includes(contributorPhone) && <span className="absolute -top-1 -right-2 w-2 h-2 bg-green-500 rounded-full"></span>}
+                                </span>
+                                {msg.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] shrink-0 inline-block align-middle ml-3" title="Admin"><path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/><path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/></svg>}
+                              </span>
                               <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                             </div>
                             <p className="text-gray-800 text-xs whitespace-pre-wrap">{msg.message}</p>
+                            <div className="flex justify-end items-center mt-2 gap-2">
+                              {msg.sender === 'user' && (
+                                <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-gray-400'}`}>
+                                  {msg.read ? 'Seen' : 'Delivered'}
+                                </span>
+                              )}
+                              <button onClick={() => handleDeleteContributorMessage(msg.id, false)} className="text-[10px] text-red-500 hover:text-red-600" title="Delete for me">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                              {msg.sender === 'user' && (
+                                <button onClick={() => handleDeleteContributorMessage(msg.id, true)} className="text-[10px] text-red-600 hover:text-red-700 bg-red-50 px-1 rounded" title="Delete for everyone">
+                                  সবার জন্য মুছুন
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1797,6 +2128,71 @@ export default function App() {
                       >
                         <Send className="w-4 h-4" />
                       </button>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <h3 className="font-semibold text-gray-900 mb-3">ইউজারদের সাথে কথোপকথন</h3>
+                      {userMessages.length === 0 ? (
+                        <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
+                      ) : (
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                          {userMessages.map(msg => {
+                            const isSentByMe = msg.senderPhone === contributorPhone;
+                            return (
+                            <div key={msg.id} className="bg-white p-3 rounded shadow-sm border border-gray-100">
+                              <div className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-1 rounded" onClick={() => setSelectedUserProfile(isSentByMe ? msg.receiverPhone : msg.senderPhone)}>
+                                <div className="relative shrink-0">
+                                  {isSentByMe ? (
+                                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                      <Send className="w-3 h-3" />
+                                    </div>
+                                  ) : msg.senderAvatar ? (
+                                    <img src={msg.senderAvatar} alt={msg.senderName} className="w-6 h-6 rounded-full object-cover" />
+                                  ) : (
+                                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                      <UserCircle className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  {!isSentByMe && onlineUsers.includes(msg.senderPhone) && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>}
+                                </div>
+                                <div className="flex-1 flex justify-between items-center">
+                                  <span className="font-semibold text-[11px] text-gray-900">{isSentByMe ? `To: ${msg.receiverName}` : msg.senderName}</span>
+                                  <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
+                                </div>
+                              </div>
+                              <p className="text-gray-800 text-xs whitespace-pre-wrap pl-8">{msg.message}</p>
+                              <div className="flex justify-between items-center mt-2 pl-8">
+                                <div className="flex gap-2">
+                                  {isSentByMe ? (
+                                    <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-gray-400'}`}>
+                                      {msg.read ? 'Seen' : 'Delivered'}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleDeleteUserMessage(msg.id, false)} className="text-[10px] text-red-500 hover:text-red-600" title="Delete for me">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                  {isSentByMe && (
+                                    <button onClick={() => handleDeleteUserMessage(msg.id, true)} className="text-[10px] text-red-600 hover:text-red-700 bg-red-50 px-1 rounded" title="Delete for everyone">
+                                      সবার জন্য মুছুন
+                                    </button>
+                                  )}
+                                  {!isSentByMe && (
+                                    <button
+                                      onClick={() => setSelectedUserProfile(msg.senderPhone)}
+                                      className="text-[10px] text-emerald-600 font-medium hover:text-emerald-700"
+                                    >
+                                      রিপ্লাই দিন
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -2038,13 +2434,16 @@ export default function App() {
                               className={`flex items-start gap-3 ${review.authorPhone ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                               onClick={() => review.authorPhone && setSelectedUserProfile(review.authorPhone)}
                             >
-                              {review.authorAvatar ? (
-                                <img src={review.authorAvatar} alt={review.name} className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
-                                  <UserCircle className="w-6 h-6" />
-                                </div>
-                              )}
+                              <div className="relative shrink-0">
+                                {review.authorAvatar ? (
+                                  <img src={review.authorAvatar} alt={review.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                                    <UserCircle className="w-6 h-6" />
+                                  </div>
+                                )}
+                                {review.authorPhone && onlineUsers.includes(review.authorPhone) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
+                              </div>
                               <h3 className="font-semibold text-gray-900 flex items-center mt-2">
                                 {review.name}
                                 {isVerifiedContributor(review.name) && <VerifiedBadge />}
@@ -2117,13 +2516,16 @@ export default function App() {
                         <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
                           {idx + 1}
                         </div>
-                        {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
-                            <UserCircle className="w-6 h-6" />
-                          </div>
-                        )}
+                        <div className="relative shrink-0">
+                          {user.avatar ? (
+                            <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                              <UserCircle className="w-6 h-6" />
+                            </div>
+                          )}
+                          {onlineUsers.includes(user.phone) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
+                        </div>
                         <div>
                           <h3 className="font-semibold text-gray-900 leading-tight flex items-center gap-1">
                             {user.facebookUrl ? (

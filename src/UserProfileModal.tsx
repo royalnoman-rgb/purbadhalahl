@@ -10,9 +10,10 @@ interface UserProfileModalProps {
   currentUserId: string;
   currentUserName: string;
   currentUserAvatar: string;
+  onlineUsers: string[];
 }
 
-export default function UserProfileModal({ isOpen, onClose, userPhone, currentUserId, currentUserName, currentUserAvatar }: UserProfileModalProps) {
+export default function UserProfileModal({ isOpen, onClose, userPhone, currentUserId, currentUserName, currentUserAvatar, onlineUsers }: UserProfileModalProps) {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -82,13 +83,16 @@ export default function UserProfileModal({ isOpen, onClose, userPhone, currentUs
             </div>
           ) : userData ? (
             <div className="flex flex-col items-center">
-              {userData.avatar ? (
-                <img src={userData.avatar} alt={userData.name} className="w-24 h-24 rounded-full object-cover border-4 border-emerald-50 shadow-sm mb-4" />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 border-4 border-white shadow-sm">
-                  <UserCircle className="w-12 h-12" />
-                </div>
-              )}
+              <div className="relative mb-4">
+                {userData.avatar ? (
+                  <img src={userData.avatar} alt={userData.name} className="w-24 h-24 rounded-full object-cover border-4 border-emerald-50 shadow-sm" />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border-4 border-white shadow-sm">
+                    <UserCircle className="w-12 h-12" />
+                  </div>
+                )}
+                {onlineUsers.includes(userPhone) && <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-white rounded-full"></div>}
+              </div>
               
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-1">
                 {userData.name}
