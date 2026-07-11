@@ -466,6 +466,18 @@ export default function App() {
           color: newCatColor,
           status: isAdmin ? 'approved' : 'pending'
         });
+
+        if (!isAdmin) {
+          await addDoc(collection(db, 'notifications'), {
+            receiverPhone: 'admin',
+            type: 'category_request',
+            title: 'নতুন ক্যাটাগরি রিকোয়েস্ট',
+            body: `${newCatTitle} - ${newCatEnglish}`,
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: 'requests'
+          });
+        }
       }
       
       setRequestStatus('success');
@@ -629,6 +641,17 @@ export default function App() {
           messages: newMessages,
           hasUnreadAdminMessage: true
         });
+
+        // Notify admin
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: 'admin',
+          type: 'user_message',
+          title: `${contributorName} থেকে ম্যাসেজ`,
+          body: userMessageText.trim(),
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'messages'
+        });
         setContributorMessages(newMessages);
         setUserMessageText('');
       }
@@ -695,6 +718,17 @@ export default function App() {
         contributorPhone: contributorPhone || null,
         status: 'pending'
       });
+
+      // Notify admin
+      await addDoc(collection(db, 'notifications'), {
+        receiverPhone: 'admin',
+        type: 'feedback',
+        title: 'নতুন মতামত/আইডিয়া',
+        body: `${contributorName || newFeedbackName}: ${newFeedbackMessage}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: 'feedbacks'
+      });
       
       setRequestStatus('success');
       setTimeout(() => {
@@ -723,6 +757,17 @@ export default function App() {
         likes: 0,
         authorPhone: contributorPhone || '',
         authorAvatar: contributorAvatar || ''
+      });
+
+      // Notify admin
+      await addDoc(collection(db, 'notifications'), {
+        receiverPhone: 'admin',
+        type: 'review',
+        title: 'নতুন পাবলিক রিভিউ',
+        body: `${contributorName || newReviewName} ${newReviewRating} রেটিং দিয়েছেন`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: 'reviews'
       });
       
       setReviewSubmitStatus('success');

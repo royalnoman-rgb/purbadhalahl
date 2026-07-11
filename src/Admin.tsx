@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key } from 'lucide-react';
+import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from './components/ConfirmDialog';
 
@@ -52,6 +52,9 @@ const VerifiedBadge = () => {
 export default function Admin() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('adminAuth') === 'true');
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const prevNotifCount = useRef(0);
   
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
   const [pendingCategories, setPendingCategories] = useState<any[]>([]);
@@ -105,6 +108,17 @@ export default function Admin() {
           messages: newMessages,
           hasUnreadMessage: true,
           hasUnreadAdminMessage: false
+        });
+
+        // Notify user
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: contributorPhone,
+          type: 'admin_message',
+          title: 'অ্যাডমিনের থেকে ম্যাসেজ',
+          body: requestReplyText.trim(),
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'messages'
         });
         setReplyingToRequest(null);
         setRequestReplyText('');
@@ -201,6 +215,38 @@ export default function Admin() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    // Request notification permission on load
+    if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    const qNotif = query(collection(db, 'notifications'), where('receiverPhone', '==', 'admin'));
+    
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setNotifications(notifs);
+      
+      const unreadCount = notifs.filter(n => !n.read).length;
+      if (unreadCount > prevNotifCount.current) {
+        // new notification arrived
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play().catch(e => console.log('Audio play failed', e));
+        
+        const newest = notifs.find(n => !n.read);
+        if (newest && "Notification" in window && Notification.permission === "granted") {
+          new Notification(newest.title, { body: newest.body, icon: '/logo.png' });
+        }
+      }
+      prevNotifCount.current = unreadCount;
+    });
+    
+    return () => unsubNotif();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     const updatePresence = async () => {
       try {
         await setDoc(doc(db, 'contributors', 'admin'), {
@@ -268,6 +314,17 @@ export default function Admin() {
             points: 10
           });
         }
+
+        // Notify user
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: contactData.contributorPhone,
+          type: 'contact_approved',
+          title: 'আপনার নাম্বার এপ্রুভ হয়েছে!',
+          body: `${contactData.name} নাম্বারটি এপ্রুভ করা হয়েছে এবং আপনি 10 পয়েন্ট পেয়েছেন।`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'stats'
+        });
       }
     }
     fetchData();
@@ -640,7 +697,71 @@ export default function Admin() {
           </Link>
           <h1 className="text-xl font-bold">অ্যাডমিন ড্যাশবোর্ড</h1>
         </div>
-        <button onClick={() => { setIsAuthenticated(false); localStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                if (!showNotifications) {
+                  // mark all as read
+                  const unreadNotifs = notifications.filter(n => !n.read);
+                  unreadNotifs.forEach(n => {
+                    updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
+                  });
+                  prevNotifCount.current = 0;
+                }
+              }}
+              className="p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white relative"
+              title="নোটিফিকেশন"
+            >
+              <Bell className="w-5 h-5" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-emerald-800"></span>
+              )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 text-gray-800">
+                <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                  <h3 className="font-semibold text-gray-900">নোটিফিকেশন</h3>
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={() => {
+                        notifications.forEach(n => {
+                          deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
+                        });
+                        setNotifications([]);
+                      }}
+                      className="text-[10px] text-red-500 hover:text-red-600 font-medium"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-500">কোনো নোটিফিকেশন নেই।</div>
+                  ) : (
+                    notifications.map(notif => (
+                      <div key={notif.id} className={`p-3 border-b border-gray-50 text-sm hover:bg-gray-50 cursor-pointer transition-colors ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          if (notif.link) {
+                            setActiveTab(notif.link as any);
+                          }
+                        }}
+                      >
+                        <h4 className="font-semibold text-gray-900 text-xs mb-1">{notif.title}</h4>
+                        <p className="text-gray-600 text-[11px] line-clamp-2">{notif.body}</p>
+                        <span className="text-[9px] text-gray-400 mt-1 block">{new Date(notif.createdAt).toLocaleString('bn-BD')}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <button onClick={() => { setIsAuthenticated(false); localStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
+        </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-4 mt-6">
