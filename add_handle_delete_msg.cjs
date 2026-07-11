@@ -1,26 +1,39 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/App.tsx', 'utf8');
+let code = fs.readFileSync('src/Admin.tsx', 'utf8');
 
-const target = `  const handleForgotPassword = async (e: React.FormEvent) => {`;
-const replace = `  const handleDeleteUserMessage = async (msgId: string, deleteForEveryone: boolean) => {
+const insertCode = `
+  const handleDeleteContributorMessageAdmin = async (contributorId: string, msgId: string, deleteForEveryone: boolean) => {
     try {
-      const msgRef = doc(db, 'user_messages', msgId);
-      if (deleteForEveryone) {
-        await updateDoc(msgRef, { deletedForEveryone: true });
-      } else {
-        const msgDoc = await getDoc(msgRef);
-        if (msgDoc.exists()) {
-          const data = msgDoc.data();
-          await updateDoc(msgRef, { deletedFor: [...(data.deletedFor || []), contributorPhone] });
+      const contributorRef = doc(db, 'contributors', contributorId);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const data = contributorDoc.data();
+        let updatedMessages = data.messages || [];
+        if (deleteForEveryone) {
+          updatedMessages = updatedMessages.map((msg: any) => {
+            if (msg.id === msgId) {
+              return { ...msg, deletedForEveryone: true };
+            }
+            return msg;
+          });
+        } else {
+          updatedMessages = updatedMessages.map((msg: any) => {
+            if (msg.id === msgId) {
+              return { ...msg, deletedFor: [...(msg.deletedFor || []), 'admin'] };
+            }
+            return msg;
+          });
         }
+        await updateDoc(contributorRef, { messages: updatedMessages });
+        setContributors(prev => prev.map(c => c.id === contributorId ? { ...c, messages: updatedMessages } : c));
       }
-    } catch (error) {
-      console.error(error);
-      alert('ম্যাসেজ ডিলেট করতে সমস্যা হয়েছে।');
+    } catch (e) {
+      console.error(e);
     }
   };
+`;
 
-  const handleForgotPassword = async (e: React.FormEvent) => {`;
-
-code = code.replace(target, replace);
-fs.writeFileSync('src/App.tsx', code);
+if (!code.includes("handleDeleteContributorMessageAdmin = async")) {
+  code = code.replace("const handleSendMessageToContributor = async", insertCode + "\n  const handleSendMessageToContributor = async");
+  fs.writeFileSync('src/Admin.tsx', code);
+}

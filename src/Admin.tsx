@@ -210,7 +210,9 @@ export default function Admin() {
 
       const contributorsQuery = collection(db, 'contributors');
       const contributorsSnapshot = await getDocs(contributorsQuery);
-      const contList = contributorsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      const contList = contributorsSnapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as any))
+        .filter(c => c.id !== 'admin');
       contList.sort((a, b) => (b.points || 0) - (a.points || 0));
       setContributors(contList);
     } catch (err) {
@@ -229,7 +231,7 @@ export default function Admin() {
     const qNotif = query(collection(db, 'notifications'), where('receiverPhone', '==', 'admin'));
     
     const unsubNotif = onSnapshot(qNotif, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(notifs);
       
@@ -272,7 +274,9 @@ export default function Admin() {
       
       const q = query(collection(db, 'contributors'));
       const unsub = onSnapshot(q, (snapshot) => {
-        const contList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        const contList = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          .filter(c => c.id !== 'admin');
         contList.sort((a, b) => (b.points || 0) - (a.points || 0));
         setContributors(contList);
       });
@@ -492,6 +496,37 @@ export default function Admin() {
     } catch (err) {
       console.error(err);
       alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+    }
+  };
+
+  
+  const handleDeleteContributorMessageAdmin = async (contributorId: string, msgId: string, deleteForEveryone: boolean) => {
+    try {
+      const contributorRef = doc(db, 'contributors', contributorId);
+      const contributorDoc = await getDoc(contributorRef);
+      if (contributorDoc.exists()) {
+        const data = contributorDoc.data();
+        let updatedMessages = data.messages || [];
+        if (deleteForEveryone) {
+          updatedMessages = updatedMessages.map((msg: any) => {
+            if (msg.id === msgId) {
+              return { ...msg, deletedForEveryone: true };
+            }
+            return msg;
+          });
+        } else {
+          updatedMessages = updatedMessages.map((msg: any) => {
+            if (msg.id === msgId) {
+              return { ...msg, deletedFor: [...(msg.deletedFor || []), 'admin'] };
+            }
+            return msg;
+          });
+        }
+        await updateDoc(contributorRef, { messages: updatedMessages });
+        setContributors(prev => prev.map(c => c.id === contributorId ? { ...c, messages: updatedMessages } : c));
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -844,6 +879,8 @@ export default function Admin() {
           <button onClick={() => setActiveTab('recycle')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'recycle' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             রিসাইকেল বিন ({deletedPosts.length})
           </button>
+          
+
         </div>
 
         
@@ -1481,6 +1518,8 @@ export default function Admin() {
                           type="text"
                           value={contributorMessageText[cont.id] || ''}
                           onChange={(e) => setContributorMessageText({ ...contributorMessageText, [cont.id]: e.target.value })}
+
+
                           placeholder="ম্যাসেজ লিখুন..."
                           className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           onKeyPress={(e) => {

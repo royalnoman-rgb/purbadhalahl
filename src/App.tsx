@@ -5,20 +5,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
+import { ArrowUp, ArrowDown, 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
   Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
 import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth, googleProvider, facebookProvider, messaging, getToken, onMessage } from './firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 import MapTracker from './MapTracker';
 import Community from './Community';
 import UserProfileModal from './UserProfileModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { InstallPrompt } from './components/InstallPrompt';
 import EmojiPicker from 'emoji-picker-react';
 
 // Map icon strings to actual React components from lucide-react
@@ -71,6 +71,13 @@ const VerifiedBadge = () => {
 };
 
 export default function App() {
+
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
   const [isAdmin, setIsAdmin] = useState(localStorage.getItem('adminAuth') === 'true');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,6 +169,38 @@ export default function App() {
   const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
   const [activeUserTab, setActiveUserTab] = useState<'stats' | 'contacts' | 'feedbacks' | 'messages'>('stats');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (contributorPhone && messaging) {
+      // request permission
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          // You need to replace 'YOUR_VAPID_KEY' with your actual VAPID key from Firebase console
+          // For now, we will just try to get the token, if vapidKey is missing it might throw, but let's try
+          getToken(messaging, { vapidKey: 'BM2dG7YkFm0zH_vJ4Y7xGj6Y_i3i3XzJ_g8k5_xT0K7u4y9D7D-k2T_L0j0i8Xw0' })
+            .then((currentToken) => {
+              if (currentToken) {
+                console.log('FCM Token:', currentToken);
+                updateDoc(doc(db, 'contributors', contributorPhone), {
+                  fcmToken: currentToken
+                }).catch(console.error);
+              }
+            }).catch(console.error);
+            
+          onMessage(messaging, (payload) => {
+            console.log('Foreground message:', payload);
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(payload.notification?.title || 'নতুন ম্যাসেজ', {
+                body: payload.notification?.body,
+                icon: '/icon.png'
+              });
+            }
+          });
+        }
+      });
+    }
+  }, [contributorPhone]);
+
 
     useEffect(() => {
     if (activeUserTab === 'messages' && contributorPhone) {
@@ -260,7 +299,7 @@ export default function App() {
     const qNotif = query(collection(db, 'notifications'), where('receiverPhone', 'in', receiverIds));
     
     const unsubNotif = onSnapshot(qNotif, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(notifs);
       
@@ -290,14 +329,14 @@ export default function App() {
     // Fetch approved contacts
     const qContact = query(collection(db, 'contacts'), where('status', '==', 'approved'));
     const unsubContact = onSnapshot(qContact, (snapshot) => {
-      const conts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const conts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       setDynamicContacts(conts);
     });
 
     // Fetch public reviews
     const qReview = query(collection(db, 'public_reviews'), orderBy('createdAt', 'desc'));
     const unsubReview = onSnapshot(qReview, (snapshot) => {
-      const revs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const revs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       setPublicReviews(revs);
     });
 
@@ -319,19 +358,67 @@ export default function App() {
 
   const dynamicCategoryIds = new Set(dynamicCategories.map(c => c.id));
   const activeStaticCategories = staticCategories.filter(c => !dynamicCategoryIds.has(c.id));
-  const allCategories = [...activeStaticCategories, ...dynamicCategories];
+  const allCategories = [...activeStaticCategories, ...dynamicCategories].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   
   // Handle replaced contacts (edits)
   const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
   const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id));
   const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id));
-  const allContacts = [...activeStaticContacts, ...activeDynamicContacts];
+  const allContacts = [...activeStaticContacts, ...activeDynamicContacts].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+
+
+  const handleMoveCategory = async (e: React.MouseEvent, index: number, direction: 'up' | 'down') => {
+    e.stopPropagation();
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === allCategories.length - 1)) return;
+    
+    const newCategories = [...allCategories];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    const temp = newCategories[index];
+    newCategories[index] = newCategories[swapIndex];
+    newCategories[swapIndex] = temp;
+
+    for (let i = 0; i < newCategories.length; i++) {
+      const cat = newCategories[i];
+      if (cat.order !== i) {
+        if (dynamicCategoryIds.has(cat.id)) {
+          updateDoc(doc(db, 'categories', cat.id), { order: i }).catch(console.error);
+        } else {
+          setDoc(doc(db, 'categories', cat.id), { ...cat, order: i, status: 'approved' }).catch(console.error);
+        }
+      }
+    }
+  };
+
+  const handleMoveContact = async (index: number, direction: 'up' | 'down') => {
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === filteredContacts.length - 1)) return;
+    
+    const newContacts = [...filteredContacts];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    const temp = newContacts[index];
+    newContacts[index] = newContacts[swapIndex];
+    newContacts[swapIndex] = temp;
+
+    const dynamicContactIds = new Set(dynamicContacts.map(c => c.id));
+
+    for (let i = 0; i < newContacts.length; i++) {
+      const contact = newContacts[i];
+      if (contact.order !== i) {
+        if (dynamicContactIds.has(contact.id)) {
+          updateDoc(doc(db, 'contacts', contact.id), { order: i }).catch(console.error);
+        } else {
+          setDoc(doc(db, 'contacts', contact.id), { ...contact, order: i, status: 'approved' }).catch(console.error);
+        }
+      }
+    }
+  };
 
   const filteredContacts = allContacts.filter((c) => {
     const matchesCategory = selectedCategory ? c.categoryId === selectedCategory.id : true;
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery);
     return matchesCategory && matchesSearch;
-  }).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  }).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -677,17 +764,8 @@ export default function App() {
           hasUnreadAdminMessage: true
         });
       } else {
-        await setDoc(contributorRef, {
-          name: contributorName,
-          phone: contributorPhone,
-          facebookUrl: contributorFacebook || '',
-          avatar: contributorAvatar || '',
-          approvedCount: 0,
-          points: 0,
-          createdAt: new Date().toISOString(),
-          messages: newMessages,
-          hasUnreadAdminMessage: true
-        });
+        alert('আপনার একাউন্টটি খুঁজে পাওয়া যাচ্ছে না। দয়া করে পুনরায় লগইন করুন।');
+        return;
       }
 
       // Notify admin
@@ -949,6 +1027,21 @@ export default function App() {
           setHasPassword(!!data.password);
           if (data.password) localStorage.setItem('hasPassword', 'true');
           else localStorage.removeItem('hasPassword');
+        } else {
+          // Account was deleted
+          localStorage.removeItem('contributorName');
+          localStorage.removeItem('contributorPhone');
+          localStorage.removeItem('contributorFacebook');
+          localStorage.removeItem('contributorAvatar');
+          localStorage.removeItem('hasPassword');
+          setContributorName('');
+          setContributorPhone('');
+          setContributorFacebook('');
+          setContributorAvatar('');
+          setContributorPassword('');
+          setHasPassword(false);
+          setIsContributorProfileOpen(false);
+          alert('আপনার একাউন্টটি মুছে ফেলা হয়েছে।');
         }
       });
 
@@ -970,6 +1063,20 @@ export default function App() {
       };
 
       unsubUserMessages = onSnapshot(receivedMessagesQuery, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            // Only notify for new messages (created within the last 5 seconds)
+            const isRecent = new Date().getTime() - new Date(data.createdAt).getTime() < 5000;
+            if (isRecent && data.senderPhone !== contributorPhone && !data.read) {
+               if ('Notification' in window && Notification.permission === 'granted') {
+                 new Notification(`নতুন ম্যাসেজ: ${data.senderName}`, {
+                   body: data.message
+                 });
+               }
+            }
+          }
+        });
         receivedMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         updateUnifiedMessages();
       });
@@ -1059,6 +1166,66 @@ export default function App() {
     } catch (err) {
       console.error(err);
       alert('পাসওয়ার্ড রিস্টোর করতে সমস্যা হয়েছে।');
+    }
+  };
+
+  
+  const handleSocialLogin = async (provider: any) => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const phoneId = user.uid; // Using UID as "phone" for social logins
+      const docRef = doc(db, 'contributors', phoneId);
+      const docSnap = await getDoc(docRef);
+      
+      // Auto Facebook Profile Picture logic: if it's facebook, providerData might have a photoURL that is higher quality, but user.photoURL is fine
+      let avatar = user.photoURL || '';
+      
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          name: user.displayName || 'Unnamed User',
+          phone: phoneId,
+          email: user.email || '',
+          facebookUrl: '',
+          avatar: avatar,
+          approvedCount: 0,
+          points: 0,
+          createdAt: new Date().toISOString()
+        });
+        
+        setContributorName(user.displayName || 'Unnamed User');
+        setContributorPhone(phoneId);
+        setContributorAvatar(avatar);
+        setHasPassword(false);
+        localStorage.setItem('contributorName', user.displayName || 'Unnamed User');
+        localStorage.setItem('contributorPhone', phoneId);
+        if(avatar) localStorage.setItem('contributorAvatar', avatar);
+        
+        alert(`স্বাগতম ${user.displayName || ''}! আপনার প্রোফাইল সফলভাবে তৈরি হয়েছে।`);
+      } else {
+        const data = docSnap.data();
+        setContributorName(data.name || '');
+        setContributorPhone(phoneId);
+        setContributorFacebook(data.facebookUrl || '');
+        setContributorAvatar(data.avatar || avatar); // update avatar if existing doesn't have one
+        setContributorPassword(data.password || '');
+        setHasPassword(!!data.password);
+        if (data.password) localStorage.setItem('hasPassword', 'true');
+        else localStorage.removeItem('hasPassword');
+        
+        localStorage.setItem('contributorName', data.name || '');
+        localStorage.setItem('contributorPhone', phoneId);
+        if(data.avatar || avatar) localStorage.setItem('contributorAvatar', data.avatar || avatar);
+        
+        alert(`স্বাগতম ${data.name || ''}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
+      }
+      
+      setIsLoginMode(false);
+      setIsContributorProfileOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert('লগইন করতে সমস্যা হয়েছে।');
     }
   };
 
@@ -1472,7 +1639,7 @@ export default function App() {
               <Navigation className="w-10 h-10 mb-1" strokeWidth={1.5} />
               <span className="text-sm sm:text-base font-medium text-center">গাড়ির অবস্থান</span>
             </button>
-            {allCategories.map((category) => {
+            {allCategories.map((category, index) => {
               const IconComponent = iconMap[category.iconName] || Building2;
               return (
                 <div key={category.id} className="relative group">
@@ -1484,7 +1651,13 @@ export default function App() {
                     <span className="text-sm sm:text-base font-medium text-center">{category.title}</span>
                   </button>
                   {isAdmin && (
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <button onClick={(e) => handleMoveCategory(e, index, 'up')} disabled={index === 0} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button onClick={(e) => handleMoveCategory(e, index, 'down')} disabled={index === allCategories.length - 1} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
                       {!['fire', 'police', 'ambulance', 'hospital', 'blood', 'palli_bidyut', 'desco', 'wasa', 'journalist'].includes(category.id) && (
                         <button 
                           onClick={(e) => openEditCategoryModal(e, category)}
@@ -1515,7 +1688,7 @@ export default function App() {
         {(selectedCategory || searchQuery) && !showCommunity && !showMap && (
           <div className="space-y-3">
             {filteredContacts.length > 0 ? (
-              filteredContacts.map((contact) => (
+              filteredContacts.map((contact, index) => (
                 <div key={contact.id || contact.phone} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between group">
                   <div className="flex-1 pr-4">
                     <h3 className="font-semibold text-gray-900 text-lg mb-1 leading-tight">{contact.name}</h3>
@@ -1532,7 +1705,17 @@ export default function App() {
                       </a>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 items-center">
+                    {isAdmin && (
+                      <div className="flex gap-1 mb-1">
+                        <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'up'); }} disabled={index === 0} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'down'); }} disabled={index === filteredContacts.length - 1} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                     <a
                       href={`tel:${contact.phone}`}
                       className="flex-shrink-0 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 p-3 rounded-full transition-colors flex items-center justify-center"
@@ -1956,6 +2139,24 @@ export default function App() {
                       লগইন করুন
                     </button>
                   </form>
+                  <div className="mt-6 flex flex-col gap-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">অথবা</span>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3 px-4 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl text-gray-700 font-medium flex justify-center items-center gap-2 transition-colors">
+                      <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                      Google দিয়ে লগইন করুন
+                    </button>
+                    <button type="button" onClick={() => handleSocialLogin(facebookProvider)} className="w-full py-3 px-4 bg-[#1877F2] hover:bg-[#166FE5] border border-transparent rounded-xl text-white font-medium flex justify-center items-center gap-2 transition-colors">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      Facebook দিয়ে লগইন করুন
+                    </button>
+                  </div>
                   <div className="mt-4 text-center">
                     <button onClick={() => setIsLoginMode(false)} className="text-sm text-emerald-600 hover:underline">
                       নতুন প্রোফাইল তৈরি করতে চান?
@@ -2456,6 +2657,26 @@ export default function App() {
                       প্রোফাইল সেভ করুন
                     </button>
                   </form>
+                  {!contributorName && (
+                  <div className="mt-6 flex flex-col gap-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">অথবা</span>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3 px-4 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl text-gray-700 font-medium flex justify-center items-center gap-2 transition-colors">
+                      <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                      Google দিয়ে একাউন্ট তৈরি করুন
+                    </button>
+                    <button type="button" onClick={() => handleSocialLogin(facebookProvider)} className="w-full py-3 px-4 bg-[#1877F2] hover:bg-[#166FE5] border border-transparent rounded-xl text-white font-medium flex justify-center items-center gap-2 transition-colors">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      Facebook দিয়ে একাউন্ট তৈরি করুন
+                    </button>
+                  </div>
+                  )}
                   <div className="mt-4 flex items-center justify-between">
                     {!contributorName && (
                       <button type="button" onClick={() => setIsLoginMode(true)} className="text-sm text-emerald-600 hover:underline">

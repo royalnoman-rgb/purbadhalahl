@@ -6,6 +6,7 @@ if (effectMatch) {
   const effectCode = effectMatch[0];
   code = code.replace(effectCode, '');
   
+  // Find a good place to insert it, e.g. after `const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);`
   const insertTarget = "const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);";
   code = code.replace(insertTarget, insertTarget + "\n\n" + effectCode);
   fs.writeFileSync('src/App.tsx', code);

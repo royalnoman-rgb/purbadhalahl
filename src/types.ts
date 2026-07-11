@@ -15,11 +15,12 @@ export type CategoryId =
   | 'journalists';
 
 export interface Category {
-  id: CategoryId;
+  id: string; // Changed from CategoryId to string so dynamic IDs work
   title: string;
   englishTitle: string;
   iconName: string;
   color: string;
+  order?: number;
 }
 
 export interface Contact {
@@ -28,5 +29,6 @@ export interface Contact {
   phone: string;
   details?: string;
   subDetails?: string;
-  categoryId: CategoryId;
+  categoryId: string; // Changed to string
+  order?: number;
 }
