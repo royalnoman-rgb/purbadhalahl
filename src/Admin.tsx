@@ -73,6 +73,7 @@ export default function Admin() {
   const [deletedPosts, setDeletedPosts] = useState<any[]>([]);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
   const [adminMessageText, setAdminMessageText] = useState('');
+  const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const [activeEmojiId, setActiveEmojiId] = useState<string | null>(null);
 
   const confirmAction = (message: string, action: () => void) => {
@@ -534,6 +535,26 @@ export default function Admin() {
     }
   };
 
+  
+  const handleReactToMessageAdmin = async (contributorId: string, msgId: string, emoji: string) => {
+    try {
+      const contributorRef = doc(db, 'contributors', contributorId);
+      const cont = contributors.find(c => c.id === contributorId);
+      if (!cont) return;
+      const updatedMessages = cont.messages.map((msg: any) => {
+        if (msg.id === msgId) {
+          return { ...msg, reaction: emoji };
+        }
+        return msg;
+      });
+      await updateDoc(contributorRef, { messages: updatedMessages });
+      setContributors(prev => prev.map(c => c.id === contributorId ? { ...c, messages: updatedMessages } : c));
+      setActiveReactionMsgId(null);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
   const handleSendAdminMessage = async (contributorId: string) => {
     if (!adminMessageText.trim()) return;
 
@@ -886,12 +907,29 @@ export default function Admin() {
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="space-y-3 max-h-60 overflow-y-auto mb-4 pr-2">
                           {cont.messages?.map((msg: any) => (
-                            <div key={msg.id} className={`p-3 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-blue-100 ml-8' : 'bg-white border border-gray-200 mr-8'}`}>
+                            <div key={msg.id} className={`relative p-3 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-blue-100 ml-8' : 'bg-white border border-gray-200 mr-8'}`}>
                               <div className="flex justify-between items-center mb-1">
                                 <span className="font-semibold text-[11px] text-gray-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : cont.name}</span>
                                 <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                               </div>
                               <p className="text-gray-800 whitespace-pre-wrap">{msg.message}</p>
+                              {msg.reaction && (
+                                <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-[10px] z-10">{msg.reaction}</div>
+                              )}
+                              <div className="flex justify-end mt-1 relative">
+                                <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
+                                  <Smile className="w-3 h-3" />
+                                </button>
+                                {activeReactionMsgId === msg.id && (
+                                  <div className="absolute z-20 bottom-full right-0 mb-1 bg-white shadow-lg border border-gray-200 rounded-full flex gap-1 p-1">
+                                    {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
+                                      <button key={e} onClick={() => handleReactToMessageAdmin(cont.id, msg.id, e)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
+                                        {e}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1376,13 +1414,28 @@ export default function Admin() {
                       {cont.messages && cont.messages.length > 0 ? (
                         <div className="space-y-2 mb-3 max-h-40 overflow-y-auto pr-2">
                           {cont.messages.filter((msg:any) => !msg.deletedForEveryone && !msg.deletedFor?.includes('admin')).map((msg: any) => (
-                            <div key={msg.id} className={`p-2 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-emerald-50 ml-6' : 'bg-gray-50 mr-6'}`}>
+                            <div key={msg.id} className={`relative p-2 rounded-lg text-sm ${msg.sender === 'admin' ? 'bg-emerald-50 ml-6' : 'bg-gray-50 mr-6'}`}>
                               <div className="flex justify-between items-center mb-1">
                                 <span className="font-semibold text-[11px] text-gray-700">{msg.sender === 'admin' ? 'অ্যাডমিন' : cont.name}</span>
                                 <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                               </div>
                               <p className="text-gray-800 text-xs">{msg.message}</p>
-                              <div className="flex justify-end items-center mt-1 gap-2">
+                              {msg.reaction && (
+                                <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-[10px] z-10">{msg.reaction}</div>
+                              )}
+                              <div className="flex justify-end items-center mt-1 gap-2 relative">
+                                <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
+                                  <Smile className="w-3 h-3" />
+                                </button>
+                                {activeReactionMsgId === msg.id && (
+                                  <div className="absolute z-20 bottom-full right-0 mb-1 bg-white shadow-lg border border-gray-200 rounded-full flex gap-1 p-1">
+                                    {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
+                                      <button key={e} onClick={() => handleReactToMessageAdmin(cont.id, msg.id, e)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
+                                        {e}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                                 {msg.sender === 'admin' && (
                                   <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-gray-400'}`}>
                                     {msg.read ? 'Seen' : 'Delivered'}
