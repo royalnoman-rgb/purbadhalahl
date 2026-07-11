@@ -1223,9 +1223,21 @@ export default function App() {
       
       setIsLoginMode(false);
       setIsContributorProfileOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('লগইন করতে সমস্যা হয়েছে।');
+      if (err.code === 'auth/unauthorized-domain') {
+        alert(`লগইন করতে সমস্যা হয়েছে: বর্তমান ডোমেইনটি (${window.location.hostname}) Firebase-এ অনুমোদিত নয়। Firebase Console > Authentication > Settings > Authorized domains-এ এটি যুক্ত করুন।`);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        alert('Google বা Facebook লগইন Firebase-এ চালু নেই। ದয়া করে Firebase Console > Authentication > Sign-in method-এ গিয়ে এটি চালু করুন।');
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        // Ignore cancelled popup request
+      } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/popup-blocked') {
+        alert('পপআপ ব্লক করা আছে অথবা আপনি লগইন পপআপটি বন্ধ করে দিয়েছেন। দয়া করে ব্রাউজারের পপআপ আনব্লক করুন অথবা নতুন ট্যাবে ওপেন করে চেষ্টা করুন।');
+      } else if (false) {
+        alert('আপনি লগইন পপআপটি বন্ধ করে দিয়েছেন। দয়া করে আবার চেষ্টা করুন।');
+      } else {
+        alert(`লগইন করতে সমস্যা হয়েছে: ${err.message || 'Unknown error'}`);
+      }
     }
   };
 
