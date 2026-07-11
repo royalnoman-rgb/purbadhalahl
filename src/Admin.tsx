@@ -916,12 +916,12 @@ export default function Admin() {
                               {msg.reaction && (
                                 <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-[10px] z-10">{msg.reaction}</div>
                               )}
-                              <div className="flex justify-end mt-1 relative">
+                              <div className="flex flex-col items-end mt-1 gap-1">
                                 <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
                                   <Smile className="w-3 h-3" />
                                 </button>
                                 {activeReactionMsgId === msg.id && (
-                                  <div className="absolute z-20 bottom-full right-0 mb-1 bg-white shadow-lg border border-gray-200 rounded-full flex gap-1 p-1">
+                                  <div className="mt-2 bg-gray-50 border border-gray-200 rounded-full flex gap-1 p-1">
                                     {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
                                       <button key={e} onClick={() => handleReactToMessageAdmin(cont.id, msg.id, e)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
                                         {e}
@@ -933,7 +933,7 @@ export default function Admin() {
                             </div>
                           ))}
                         </div>
-                        <div className="flex gap-2 relative">
+                        <div className="flex flex-col items-start gap-1">
                           <button
                             type="button"
                             onClick={() => setActiveEmojiId(activeEmojiId === `inbox_${cont.id}` ? null : `inbox_${cont.id}`)}
@@ -1223,7 +1223,7 @@ export default function Admin() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 relative">
+                    <div className="flex flex-col items-start gap-1">
                       <input
                         type="text"
                         value={replyText[feedback.id] || ''}
@@ -1423,12 +1423,12 @@ export default function Admin() {
                               {msg.reaction && (
                                 <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-[10px] z-10">{msg.reaction}</div>
                               )}
-                              <div className="flex justify-end items-center mt-1 gap-2 relative">
+                              <div className="flex flex-col items-end mt-1 gap-1">
                                 <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
                                   <Smile className="w-3 h-3" />
                                 </button>
                                 {activeReactionMsgId === msg.id && (
-                                  <div className="absolute z-20 bottom-full right-0 mb-1 bg-white shadow-lg border border-gray-200 rounded-full flex gap-1 p-1">
+                                  <div className="mt-2 bg-gray-50 border border-gray-200 rounded-full flex gap-1 p-1">
                                     {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
                                       <button key={e} onClick={() => handleReactToMessageAdmin(cont.id, msg.id, e)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
                                         {e}
@@ -1457,7 +1457,7 @@ export default function Admin() {
                         <p className="text-xs text-gray-500 mb-2">কোনো ম্যাসেজ নেই।</p>
                       )}
                       
-                      <div className="flex gap-2 relative">
+                      <div className="flex flex-col items-start gap-1">
                         <button
                           type="button"
                           onClick={() => setActiveEmojiId(activeEmojiId === `cont_${cont.id}` ? null : `cont_${cont.id}`)}

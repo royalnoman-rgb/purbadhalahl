@@ -2181,12 +2181,12 @@ export default function App() {
                             {msg.reaction && (
                               <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-xs z-10">{msg.reaction}</div>
                             )}
-                            <div className="flex justify-end items-center mt-2 gap-2 relative">
+                            <div className="flex flex-col items-end mt-2 gap-1">
                               <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
                                 <Smile className="w-3 h-3" />
                               </button>
                               {activeReactionMsgId === msg.id && (
-                                <div className="absolute z-20 bottom-full right-0 mb-1 bg-white shadow-lg border border-gray-200 rounded-full flex gap-1 p-1">
+                                <div className="mt-2 bg-gray-50 border border-gray-200 rounded-full flex gap-1 p-1">
                                   {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
                                     <button key={e} onClick={() => handleReactToMessage(msg.id, e, false)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
                                       {e}
@@ -2286,12 +2286,12 @@ export default function App() {
                                 <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-xs z-10">{msg.reaction}</div>
                               )}
                               <div className="flex justify-between items-center mt-2 pl-8 relative">
-                                <div className="flex gap-2 relative">
+                                <div className="flex flex-col items-start gap-1">
                                   <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
                                     <Smile className="w-3 h-3" />
                                   </button>
                                   {activeReactionMsgId === msg.id && (
-                                    <div className="absolute z-20 bottom-full left-0 mb-1 bg-white shadow-lg border border-gray-200 rounded-full flex gap-1 p-1">
+                                    <div className="mt-2 bg-gray-50 border border-gray-200 rounded-full flex gap-1 p-1">
                                       {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
                                         <button key={e} onClick={() => handleReactToMessage(msg.id, e, true)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
                                           {e}
