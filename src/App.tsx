@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { VisitorStats } from './components/VisitorStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUp, ArrowDown, 
@@ -1775,6 +1776,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-gray-400 text-sm">
+        <VisitorStats />
         <p>
           &copy; {new Date().getFullYear()} পূর্বধলা হেল্পলাইন
           <br />
