@@ -317,7 +317,9 @@ export default function App() {
     }
   }, []);
 
-  const allCategories = [...staticCategories, ...dynamicCategories];
+  const dynamicCategoryIds = new Set(dynamicCategories.map(c => c.id));
+  const activeStaticCategories = staticCategories.filter(c => !dynamicCategoryIds.has(c.id));
+  const allCategories = [...activeStaticCategories, ...dynamicCategories];
   
   // Handle replaced contacts (edits)
   const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
@@ -461,12 +463,13 @@ export default function App() {
     
     try {
       if (editingCategoryId) {
-        await updateDoc(doc(db, 'categories', editingCategoryId), {
-          title: newCatTitle,
-          englishTitle: newCatEnglish,
-          iconName: newCatIcon,
-          color: newCatColor,
-        });
+        await setDoc(doc(db, 'categories', editingCategoryId), {
+          title: newCatTitle || '',
+          englishTitle: newCatEnglish || '',
+          iconName: newCatIcon || 'Building2',
+          color: newCatColor || 'bg-emerald-600 text-emerald-50',
+          status: 'approved'
+        }, { merge: true });
       } else {
         await addDoc(collection(db, 'categories'), {
           title: newCatTitle,
