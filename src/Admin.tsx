@@ -746,7 +746,7 @@ export default function Admin() {
                         onClick={() => {
                           setShowNotifications(false);
                           if (notif.link) {
-                            setActiveTab(notif.link as any);
+                            setActiveTab(notif.link === 'messages' ? 'inbox' : notif.link as any);
                           }
                         }}
                       >

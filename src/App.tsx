@@ -628,33 +628,46 @@ export default function App() {
     try {
       const contributorRef = doc(db, 'contributors', contributorPhone);
       const contributorDoc = await getDoc(contributorRef);
+      const contributorData = contributorDoc.exists() ? contributorDoc.data() : { messages: [] };
+      const newMessage = {
+        id: Date.now().toString(),
+        sender: 'user',
+        message: userMessageText.trim(),
+        createdAt: new Date().toISOString()
+      };
+      const newMessages = [...(contributorData.messages || []), newMessage];
+      
       if (contributorDoc.exists()) {
-        const contributorData = contributorDoc.data();
-        const newMessage = {
-          id: Date.now().toString(),
-          sender: 'user',
-          message: userMessageText.trim(),
-          createdAt: new Date().toISOString()
-        };
-        const newMessages = [...(contributorData.messages || []), newMessage];
         await updateDoc(contributorRef, {
           messages: newMessages,
           hasUnreadAdminMessage: true
         });
-
-        // Notify admin
-        await addDoc(collection(db, 'notifications'), {
-          receiverPhone: 'admin',
-          type: 'user_message',
-          title: `${contributorName} থেকে ম্যাসেজ`,
-          body: userMessageText.trim(),
-          read: false,
+      } else {
+        await setDoc(contributorRef, {
+          name: contributorName,
+          phone: contributorPhone,
+          facebookUrl: contributorFacebook || '',
+          avatar: contributorAvatar || '',
+          approvedCount: 0,
+          points: 0,
           createdAt: new Date().toISOString(),
-          link: 'messages'
+          messages: newMessages,
+          hasUnreadAdminMessage: true
         });
-        setContributorMessages(newMessages);
-        setUserMessageText('');
       }
+
+      // Notify admin
+      await addDoc(collection(db, 'notifications'), {
+        receiverPhone: 'admin',
+        type: 'user_message',
+        title: `${contributorName} থেকে ম্যাসেজ`,
+        body: userMessageText.trim(),
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: 'inbox'
+      });
+      setContributorMessages(newMessages);
+      setUserMessageText('');
     } catch (err) {
       console.error(err);
       alert('ম্যাসেজ পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
