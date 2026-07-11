@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2
+  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile
 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts } from './data';
 import { Category } from './types';
@@ -18,6 +18,7 @@ import MapTracker from './MapTracker';
 import Community from './Community';
 import UserProfileModal from './UserProfileModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import EmojiPicker from 'emoji-picker-react';
 
 // Map icon strings to actual React components from lucide-react
 const iconMap: Record<string, React.ElementType> = {
@@ -89,6 +90,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const prevNotifCount = useRef(0);
+  const isInitialLoad = useRef(true);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
@@ -151,6 +153,7 @@ export default function App() {
   const [userMessages, setUserMessages] = useState<any[]>([]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [userMessageText, setUserMessageText] = useState('');
+  const [showUserMessageEmoji, setShowUserMessageEmoji] = useState(false);
   const [feedbackReplyText, setFeedbackReplyText] = useState<{[key: string]: string}>({});
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
@@ -260,7 +263,7 @@ export default function App() {
       setNotifications(notifs);
       
       const unreadCount = notifs.filter(n => !n.read).length;
-      if (unreadCount > prevNotifCount.current) {
+      if (unreadCount > prevNotifCount.current && !isInitialLoad.current) {
         // new notification arrived
         playNotificationSound();
         const newest = notifs.find(n => !n.read);
@@ -269,6 +272,7 @@ export default function App() {
         }
       }
       prevNotifCount.current = unreadCount;
+      isInitialLoad.current = false;
     });
     return () => unsubNotif();
   }, [contributorPhone, isAdmin]);
@@ -643,7 +647,7 @@ export default function App() {
       if (contributorDoc.exists()) {
         await updateDoc(contributorRef, {
           messages: newMessages,
-          hasUnreadMessage: true
+          hasUnreadAdminMessage: true
         });
       } else {
         await setDoc(contributorRef, {
@@ -655,7 +659,7 @@ export default function App() {
           points: 0,
           createdAt: new Date().toISOString(),
           messages: newMessages,
-          hasUnreadMessage: true
+          hasUnreadAdminMessage: true
         });
       }
 
@@ -2169,7 +2173,26 @@ export default function App() {
                         ))}
                       </div>
                     )}
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex gap-2 relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowUserMessageEmoji(!showUserMessageEmoji)}
+                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </button>
+                      {showUserMessageEmoji && (
+                        <div className="absolute bottom-full left-0 mb-2 z-50">
+                          <EmojiPicker 
+                            onEmojiClick={(emojiObject) => {
+                              setUserMessageText(prev => prev + emojiObject.emoji);
+                              setShowUserMessageEmoji(false);
+                            }}
+                            width={280}
+                            height={350}
+                          />
+                        </div>
+                      )}
                       <input
                         type="text"
                         value={userMessageText}

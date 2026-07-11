@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell } from 'lucide-react';
+import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell, Smile } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import EmojiPicker from 'emoji-picker-react';
 
 const VerifiedBadge = () => {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -55,6 +56,7 @@ export default function Admin() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const prevNotifCount = useRef(0);
+  const isInitialLoad = useRef(true);
   
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
   const [pendingCategories, setPendingCategories] = useState<any[]>([]);
@@ -71,6 +73,7 @@ export default function Admin() {
   const [deletedPosts, setDeletedPosts] = useState<any[]>([]);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
   const [adminMessageText, setAdminMessageText] = useState('');
+  const [activeEmojiId, setActiveEmojiId] = useState<string | null>(null);
 
   const confirmAction = (message: string, action: () => void) => {
     setConfirmConfig({ isOpen: true, message, action });
@@ -230,7 +233,7 @@ export default function Admin() {
       setNotifications(notifs);
       
       const unreadCount = notifs.filter(n => !n.read).length;
-      if (unreadCount > prevNotifCount.current) {
+      if (unreadCount > prevNotifCount.current && !isInitialLoad.current) {
         // new notification arrived
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.play().catch(e => console.log('Audio play failed', e));
@@ -241,6 +244,7 @@ export default function Admin() {
         }
       }
       prevNotifCount.current = unreadCount;
+      isInitialLoad.current = false;
     });
     
     return () => unsubNotif();
@@ -891,7 +895,26 @@ export default function Admin() {
                             </div>
                           ))}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 relative">
+                          <button
+                            type="button"
+                            onClick={() => setActiveEmojiId(activeEmojiId === `inbox_${cont.id}` ? null : `inbox_${cont.id}`)}
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <Smile className="w-5 h-5" />
+                          </button>
+                          {activeEmojiId === `inbox_${cont.id}` && (
+                            <div className="absolute bottom-full left-0 mb-2 z-50">
+                              <EmojiPicker 
+                                onEmojiClick={(emojiObject) => {
+                                  setAdminMessageText(prev => prev + emojiObject.emoji);
+                                  setActiveEmojiId(null);
+                                }}
+                                width={280}
+                                height={350}
+                              />
+                            </div>
+                          )}
                           <input
                             type="text"
                             value={adminMessageText}
@@ -1381,7 +1404,26 @@ export default function Admin() {
                         <p className="text-xs text-gray-500 mb-2">কোনো ম্যাসেজ নেই।</p>
                       )}
                       
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 relative">
+                        <button
+                          type="button"
+                          onClick={() => setActiveEmojiId(activeEmojiId === `cont_${cont.id}` ? null : `cont_${cont.id}`)}
+                          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <Smile className="w-4 h-4" />
+                        </button>
+                        {activeEmojiId === `cont_${cont.id}` && (
+                          <div className="absolute bottom-full left-0 mb-2 z-50">
+                            <EmojiPicker 
+                              onEmojiClick={(emojiObject) => {
+                                setContributorMessageText(prev => ({ ...prev, [cont.id]: (prev[cont.id] || '') + emojiObject.emoji }));
+                                setActiveEmojiId(null);
+                              }}
+                              width={280}
+                              height={350}
+                            />
+                          </div>
+                        )}
                         <input
                           type="text"
                           value={contributorMessageText[cont.id] || ''}
