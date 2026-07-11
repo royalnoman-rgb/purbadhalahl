@@ -381,7 +381,23 @@ export default function Admin() {
     const catRef = doc(db, 'categories', id);
     const catSnap = await getDoc(catRef);
     await updateDoc(catRef, { status: 'approved' });
-    if(catSnap.exists()) await logAdminAction(`Category approved: ${catSnap.data().title || 'Unknown'}`);
+    
+    if(catSnap.exists()) {
+      const data = catSnap.data();
+      await logAdminAction(`Category approved: ${data.title || 'Unknown'}`);
+      
+      if (data.contributorPhone) {
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: data.contributorPhone,
+          type: 'approval',
+          title: 'রিকোয়েস্ট এপ্রুভ হয়েছে!',
+          body: `আপনার দেওয়া "${data.title}" ক্যাটাগরিটি এপ্রুভ করা হয়েছে।`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'community'
+        });
+      }
+    }
     fetchData();
   };
 
@@ -492,6 +508,18 @@ export default function Admin() {
           hasUnreadMessage: true,
           hasUnreadAdminMessage: false
         });
+
+        // Notify user
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: id,
+          type: 'admin_message',
+          title: 'অ্যাডমিন থেকে নতুন ম্যাসেজ',
+          body: contributorMessageText[id].trim(),
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'messages'
+        });
+
         await logAdminAction(`Message sent to contributor: ${contributorData.name || 'Unknown'}`);
         setContributorMessageText(prev => ({ ...prev, [id]: '' }));
         fetchData();

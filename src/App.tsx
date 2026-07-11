@@ -248,8 +248,11 @@ export default function App() {
 
   useEffect(() => {
     if (!contributorPhone && !isAdmin) return;
-    const receiverId = isAdmin ? 'admin' : contributorPhone;
-    const qNotif = query(collection(db, 'notifications'), where('receiverPhone', '==', receiverId));
+    const receiverIds = [];
+    if (contributorPhone) receiverIds.push(contributorPhone);
+    if (isAdmin) receiverIds.push('admin');
+    
+    const qNotif = query(collection(db, 'notifications'), where('receiverPhone', 'in', receiverIds));
     
     const unsubNotif = onSnapshot(qNotif, (snapshot) => {
       const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -640,7 +643,7 @@ export default function App() {
       if (contributorDoc.exists()) {
         await updateDoc(contributorRef, {
           messages: newMessages,
-          hasUnreadAdminMessage: true
+          hasUnreadMessage: true
         });
       } else {
         await setDoc(contributorRef, {
@@ -652,7 +655,7 @@ export default function App() {
           points: 0,
           createdAt: new Date().toISOString(),
           messages: newMessages,
-          hasUnreadAdminMessage: true
+          hasUnreadMessage: true
         });
       }
 
@@ -1317,13 +1320,11 @@ export default function App() {
                             setShowCommunity(true);
                             setShowMap(false);
                             setSelectedCategory(null);
-                          } else if (notif.link === 'messages') {
-                            if (isAdmin) {
-                                // admin inbox handled differently, but we can't easily redirect to admin dashboard from app unless window.location
+                          } else if (notif.link === 'messages' || notif.link === 'inbox' || notif.link === 'feedbacks' || notif.link === 'requests' || notif.link === 'reviews') {
+                            if (isAdmin && notif.receiverPhone === 'admin') {
                                 window.location.href = '/admin';
                             } else {
                                 setIsContributorProfileOpen(true);
-                                // could set tab, but it defaults to stats, would be nice to open inbox. Just open profile for now
                             }
                           }
                         }}
