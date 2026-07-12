@@ -21,6 +21,8 @@ export interface Category {
   iconName: string;
   color: string;
   order?: number;
+  subCategoriesOrder?: string[];
+  deletedSubCategories?: string[];
 }
 
 export interface Contact {
@@ -30,5 +32,6 @@ export interface Contact {
   details?: string;
   subDetails?: string;
   categoryId: string; // Changed to string
+  subCategory?: string;
   order?: number;
 }

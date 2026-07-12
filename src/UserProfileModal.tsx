@@ -1,3 +1,4 @@
+import { toBengaliDigits } from './utils';
 import React, { useState, useEffect } from 'react';
 import { UserCircle, Send, X, Shield, Star, Trophy, MessageCircle } from 'lucide-react';
 import { db } from './firebase';

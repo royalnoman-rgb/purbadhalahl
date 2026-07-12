@@ -1,3 +1,4 @@
+import { safeStorage, safeSession } from "./utils/storage";
 import React, { useState, useEffect, useRef } from 'react';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
@@ -85,7 +86,7 @@ export default function Community({ contributorPhone, contributorName, contribut
     setConfirmConfig({ isOpen: true, message, action });
   };
 
-  const isAdmin = localStorage.getItem('adminAuth') === 'true';
+  const isAdmin = safeStorage.getItem('adminAuth') === 'true';
   const effectivePhone = isAdmin ? 'admin' : contributorPhone;
   const effectiveName = isAdmin ? 'অ্যাডমিন' : contributorName;
   const effectiveAvatar = isAdmin ? '/logo.png' : contributorAvatar;
@@ -118,7 +119,7 @@ export default function Community({ contributorPhone, contributorName, contribut
     
     const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
-      setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((p: any) => !p.isDeleted));
+      setPosts(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })).filter((p: any) => !p.isDeleted));
     });
     return () => unsub();
   }, [effectivePhone]);

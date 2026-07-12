@@ -1,3 +1,4 @@
+import { safeStorage, safeSession } from "./utils/storage";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -6,13 +7,11 @@
 import { VisitorStats } from './components/VisitorStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowDown, 
-  Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2,
-  Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile
-} from 'lucide-react';
-import { categories as staticCategories, contacts as staticContacts } from './data';
+import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor } from 'lucide-react';
+import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
+import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
-import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, googleProvider, facebookProvider, messaging, getToken, onMessage } from './firebase';
 import { signInWithPopup } from 'firebase/auth';
 
@@ -79,8 +78,9 @@ export default function App() {
       Notification.requestPermission();
     }
   }, []);
-  const [isAdmin, setIsAdmin] = useState(localStorage.getItem('adminAuth') === 'true');
+  const [isAdmin, setIsAdmin] = useState(safeStorage.getItem('adminAuth') === 'true');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
@@ -90,6 +90,7 @@ export default function App() {
   // Modals
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isSubCategoryModalOpen, setIsSubCategoryModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   
@@ -114,10 +115,15 @@ export default function App() {
   const [newPhone, setNewPhone] = useState('+88');
   const [newDetails, setNewDetails] = useState('');
   const [newSubDetails, setNewSubDetails] = useState('');
+  const [newSubCategory, setNewSubCategory] = useState("");
   const [newCategory, setNewCategory] = useState('');
+  const [newBloodGroup, setNewBloodGroup] = useState('');
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
 
   // Form states - Category
+  const [newSubCatTitle, setNewSubCatTitle] = useState('');
+  const [newSubCatParentId, setNewSubCatParentId] = useState('');
+  const [dynamicSubCategories, setDynamicSubCategories] = useState<any[]>([]);
   const [newCatTitle, setNewCatTitle] = useState('');
   const [newCatEnglish, setNewCatEnglish] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -153,7 +159,7 @@ export default function App() {
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [contributorPassword, setContributorPassword] = useState('');
-  const [hasPassword, setHasPassword] = useState(localStorage.getItem('hasPassword') === 'true');
+  const [hasPassword, setHasPassword] = useState(safeStorage.getItem('hasPassword') === 'true');
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
@@ -167,7 +173,7 @@ export default function App() {
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editReplyText, setEditReplyText] = useState('');
-  const [isEditProfileMode, setIsEditProfileMode] = useState(!localStorage.getItem('contributorName'));
+  const [isEditProfileMode, setIsEditProfileMode] = useState(!safeStorage.getItem('contributorName'));
   const [activeUserTab, setActiveUserTab] = useState<'stats' | 'contacts' | 'feedbacks' | 'messages'>('stats');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
 
@@ -262,10 +268,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const savedName = localStorage.getItem('contributorName');
-    const savedPhone = localStorage.getItem('contributorPhone');
-    const savedFb = localStorage.getItem('contributorFacebook');
-    const savedAvatar = localStorage.getItem('contributorAvatar');
+    const savedName = safeStorage.getItem('contributorName');
+    const savedPhone = safeStorage.getItem('contributorPhone');
+    const savedFb = safeStorage.getItem('contributorFacebook');
+    const savedAvatar = safeStorage.getItem('contributorAvatar');
     if (savedName) setContributorName(savedName);
     if (savedPhone) setContributorPhone(savedPhone);
     if (savedFb) setContributorFacebook(savedFb);
@@ -300,7 +306,7 @@ export default function App() {
     const qNotif = query(collection(db, 'notifications'), where('receiverPhone', 'in', receiverIds));
     
     const unsubNotif = onSnapshot(qNotif, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const notifs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
       notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(notifs);
       
@@ -320,31 +326,38 @@ export default function App() {
   }, [contributorPhone, isAdmin]);
 
   useEffect(() => {
+    // Fetch subcategories
+    const qSubCat = query(collection(db, 'subcategories'));
+    const unsubSubCat = onSnapshot(qSubCat, (snapshot) => {
+      const subCats = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setDynamicSubCategories(subCats);
+    });
+
     // Fetch approved categories
     const qCat = query(collection(db, 'categories'), where('status', '==', 'approved'));
     const unsubCat = onSnapshot(qCat, (snapshot) => {
-      const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+      const cats = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Category));
       setDynamicCategories(cats);
     });
 
     // Fetch approved contacts
     const qContact = query(collection(db, 'contacts'), where('status', '==', 'approved'));
     const unsubContact = onSnapshot(qContact, (snapshot) => {
-      const conts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const conts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
       setDynamicContacts(conts);
     });
 
     // Fetch public reviews
     const qReview = query(collection(db, 'public_reviews'), orderBy('createdAt', 'desc'));
     const unsubReview = onSnapshot(qReview, (snapshot) => {
-      const revs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const revs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
       setPublicReviews(revs);
     });
 
     // Fetch top 10 contributors for verified badges and leaderboard globally
     const qTopContributors = query(collection(db, 'contributors'), orderBy('points', 'desc'), limit(20));
     const unsubTopContributors = onSnapshot(qTopContributors, (snapshot) => {
-      const contributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      const contributors = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
       const activeContributors = contributors.filter(c => c.points > 0 || c.approvedCount > 0);
       setTopContributors(activeContributors.slice(0, 10));
     });
@@ -363,7 +376,8 @@ export default function App() {
   
   // Handle replaced contacts (edits)
   const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
-  const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id));
+  const dynamicContactIds = new Set(dynamicContacts.map(c => c.id));
+  const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id) && !dynamicContactIds.has(c.id));
   const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id));
   const allContacts = [...activeStaticContacts, ...activeDynamicContacts].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
 
@@ -422,10 +436,7 @@ export default function App() {
   }).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value;
-    const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-    val = val.replace(/[০-৯]/g, (w) => bengaliDigits.indexOf(w).toString());
-    setNewPhone(val);
+    setNewPhone(toEnglishDigits(e.target.value));
   };
 
   const handleSuggestEdit = (contact: any) => {
@@ -434,6 +445,8 @@ export default function App() {
     setNewDetails(contact.details || '');
     setNewSubDetails(contact.subDetails || '');
     setNewCategory(contact.categoryId);
+    setNewSubCategory(contact.subCategory || '');
+    setNewBloodGroup(contact.categoryId === 'blood_donors' ? (contact.subCategory || '') : '');
     setEditingContactId(contact.id);
     setIsRequestModalOpen(true);
   };
@@ -444,6 +457,8 @@ export default function App() {
     setNewDetails('');
     setNewSubDetails('');
     setNewCategory('');
+    setNewSubCategory('');
+    setNewBloodGroup('');
     setEditingContactId(null);
     setIsRequestModalOpen(true);
   };
@@ -492,6 +507,7 @@ export default function App() {
         phone: newPhone,
         details: newDetails,
         subDetails: newSubDetails,
+        subCategory: newCategory === 'blood_donors' ? newBloodGroup : newSubCategory,
         categoryId: newCategory,
         status: isAdmin ? 'approved' : 'pending',
         contributorName: contributorName || null,
@@ -502,13 +518,14 @@ export default function App() {
       if (editingContactId) {
         if (isAdmin) {
           // If admin, direct update
-          await updateDoc(doc(db, 'contacts', editingContactId), {
+          await setDoc(doc(db, 'contacts', editingContactId), {
             name: newName,
             phone: newPhone,
             details: newDetails,
             subDetails: newSubDetails,
             categoryId: newCategory,
-          });
+            subCategory: newCategory === 'blood_donors' ? newBloodGroup : newSubCategory,
+          }, { merge: true });
         } else {
           payload.replacesId = editingContactId;
           await addDoc(collection(db, 'contacts'), payload);
@@ -526,6 +543,8 @@ export default function App() {
         setNewDetails('');
         setNewSubDetails('');
         setNewCategory('');
+        setNewSubCategory('');
+    setNewBloodGroup('');
         setEditingContactId(null);
       }, 2000);
     } catch (err) {
@@ -543,6 +562,51 @@ export default function App() {
     setNewCatColor(category.color || 'bg-emerald-600 text-emerald-50');
     setEditingCategoryId(category.id);
     setIsCategoryModalOpen(true);
+  };
+
+  const handleSubCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRequestStatus('submitting');
+    
+    try {
+      if (isAdmin) {
+        await addDoc(collection(db, 'subcategories'), {
+          title: newSubCatTitle,
+          categoryId: newSubCatParentId,
+          status: 'approved',
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        await addDoc(collection(db, 'subcategories'), {
+          title: newSubCatTitle,
+          categoryId: newSubCatParentId,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: 'admin',
+          type: 'subcategory_request',
+          title: 'নতুন সাব-ক্যাটাগরি রিকোয়েস্ট',
+          body: newSubCatTitle,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'requests'
+        });
+      }
+      
+      setRequestStatus('success');
+      setTimeout(() => {
+        setIsSubCategoryModalOpen(false);
+        setRequestStatus('idle');
+        setNewSubCatTitle('');
+        setNewSubCatParentId('');
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert('ত্রুটি হয়েছে! আবার চেষ্টা করুন।');
+      setRequestStatus('idle');
+    }
   };
 
   const handleCategorySubmit = async (e: React.FormEvent) => {
@@ -799,6 +863,96 @@ export default function App() {
     });
   };
 
+  const [editingSubCatIdFront, setEditingSubCatIdFront] = useState<string | null>(null);
+  const [editSubCatTitleFront, setEditSubCatTitleFront] = useState('');
+
+  const handleRenameSubCategoryFront = async (oldTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!editSubCatTitleFront.trim() || editSubCatTitleFront === oldTitle || !selectedCategory) {
+      setEditingSubCatIdFront(null);
+      return;
+    }
+    
+    try {
+      const batch = writeBatch(db);
+      
+      const dynSubCat = dynamicSubCategories.find(sc => sc.categoryId === selectedCategory.id && sc.title === oldTitle);
+      if (dynSubCat && !dynSubCat.id.startsWith('virtual_')) {
+        batch.update(doc(db, 'subcategories', dynSubCat.id), { title: editSubCatTitleFront.trim() });
+      }
+      
+      const matchingContacts = dynamicContacts.filter(c => c.categoryId === selectedCategory.id && c.subCategory === oldTitle);
+      matchingContacts.forEach(contact => {
+        batch.set(doc(db, 'contacts', contact.id), { ...contact, subCategory: editSubCatTitleFront.trim(), status: 'approved' }, { merge: true });
+      });
+
+      const isPredefined = predefinedSubCategories.find(pc => pc.categoryId === selectedCategory.id)?.subCategories.includes(oldTitle);
+      if (isPredefined) {
+         const newDeleted = [...(selectedCategory.deletedSubCategories || []), oldTitle];
+         batch.set(doc(db, 'categories', selectedCategory.id), { deletedSubCategories: newDeleted }, { merge: true });
+      }
+
+      const currentOrder = selectedCategory.subCategoriesOrder || [];
+      const newOrder = currentOrder.map(sub => sub === oldTitle ? editSubCatTitleFront.trim() : sub);
+      if (currentOrder.includes(oldTitle)) {
+        batch.set(doc(db, 'categories', selectedCategory.id), { subCategoriesOrder: newOrder }, { merge: true });
+      }
+      
+      await batch.commit();
+      setEditingSubCatIdFront(null);
+    } catch (error) {
+      console.error(error);
+      alert('Error renaming subcategory');
+    }
+  };
+
+  const handleDeleteSubCategoryFront = async (subCat: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedCategory) return;
+    
+    confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান? এই সাব-ক্যাটাগরির সকল কন্টাক্ট "অন্যান্য" তে চলে যাবে।', async () => {
+      try {
+        const batch = writeBatch(db);
+        
+        const newDeleted = [...(selectedCategory.deletedSubCategories || []), subCat];
+        batch.set(doc(db, 'categories', selectedCategory.id), { deletedSubCategories: newDeleted }, { merge: true });
+
+        const matchingContacts = dynamicContacts.filter(c => c.categoryId === selectedCategory.id && c.subCategory === subCat);
+        matchingContacts.forEach(contact => {
+          batch.set(doc(db, 'contacts', contact.id), { ...contact, subCategory: 'অন্যান্য', status: 'approved' }, { merge: true });
+        });
+
+        const dynSubCat = dynamicSubCategories.find(sc => sc.categoryId === selectedCategory.id && sc.title === subCat);
+        if (dynSubCat && !dynSubCat.id.startsWith('virtual_')) {
+          batch.delete(doc(db, 'subcategories', dynSubCat.id));
+        }
+
+        await batch.commit();
+      } catch (error) {
+        console.error('Error deleting subcategory:', error);
+      }
+    });
+  };
+
+  const handleMoveSubCategoryFront = async (subCat: string, direction: 'up' | 'down', sortedSubCats: string[], e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedCategory) return;
+    
+    const currentIndex = sortedSubCats.indexOf(subCat);
+    if ((direction === 'up' && currentIndex === 0) || (direction === 'down' && currentIndex === sortedSubCats.length - 1)) return;
+    
+    const newOrder = [...sortedSubCats];
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    [newOrder[currentIndex], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[currentIndex]];
+    
+    try {
+      await setDoc(doc(db, 'categories', selectedCategory.id), { subCategoriesOrder: newOrder }, { merge: true });
+      setSelectedCategory({ ...selectedCategory, subCategoriesOrder: newOrder });
+    } catch (error) {
+      console.error('Error repositioning subcategory:', error);
+    }
+  };
+
 
   const handleUpdatePointsApp = async (id: string, currentPoints: number) => {
     const newPoints = prompt('নতুন পয়েন্ট দিন:', currentPoints.toString());
@@ -913,10 +1067,10 @@ export default function App() {
 
   const getUserId = () => {
     if (contributorPhone) return contributorPhone;
-    let did = localStorage.getItem('deviceId');
+    let did = safeStorage.getItem('deviceId');
     if (!did) {
       did = 'anon_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('deviceId', did);
+      safeStorage.setItem('deviceId', did);
     }
     return did;
   };
@@ -963,7 +1117,7 @@ export default function App() {
     try {
       const q = query(collection(db, 'contributors'), orderBy('points', 'desc'), limit(20));
       const snapshot = await getDocs(q);
-      const contributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      const contributors = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
       // Filter out those with 0 points and 0 approved count
       const activeContributors = contributors.filter(c => c.points > 0 || c.approvedCount > 0);
       setTopContributors(activeContributors.slice(0, 10));
@@ -994,17 +1148,17 @@ export default function App() {
           setContributorMessages(data.messages || []);
           setHasUnreadMessages(data.hasUnreadMessage || false);
           setHasPassword(!!data.password);
-          if (data.password) localStorage.setItem('hasPassword', 'true');
-          else localStorage.removeItem('hasPassword');
+          if (data.password) safeStorage.setItem('hasPassword', 'true');
+          else safeStorage.removeItem('hasPassword');
         }
 
         const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
         const feedbackSnap = await getDocs(feedbackQuery);
-        setContributorFeedbacks(feedbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setContributorFeedbacks(feedbackSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
 
         const contactsQuery = query(collection(db, 'contacts'), where('contributorPhone', '==', contributorPhone));
         const contactsSnap = await getDocs(contactsQuery);
-        setContributorContacts(contactsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setContributorContacts(contactsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
       } catch (err) {
         console.error("Error fetching stats", err);
       }
@@ -1026,15 +1180,15 @@ export default function App() {
           setContributorMessages(data.messages || []);
           setHasUnreadMessages(data.hasUnreadMessage || false);
           setHasPassword(!!data.password);
-          if (data.password) localStorage.setItem('hasPassword', 'true');
-          else localStorage.removeItem('hasPassword');
+          if (data.password) safeStorage.setItem('hasPassword', 'true');
+          else safeStorage.removeItem('hasPassword');
         } else {
           // Account was deleted
-          localStorage.removeItem('contributorName');
-          localStorage.removeItem('contributorPhone');
-          localStorage.removeItem('contributorFacebook');
-          localStorage.removeItem('contributorAvatar');
-          localStorage.removeItem('hasPassword');
+          safeStorage.removeItem('contributorName');
+          safeStorage.removeItem('contributorPhone');
+          safeStorage.removeItem('contributorFacebook');
+          safeStorage.removeItem('contributorAvatar');
+          safeStorage.removeItem('hasPassword');
           setContributorName('');
           setContributorPhone('');
           setContributorFacebook('');
@@ -1078,11 +1232,11 @@ export default function App() {
             }
           }
         });
-        receivedMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        receivedMsgs = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
         updateUnifiedMessages();
       });
       const unsubSent = onSnapshot(sentMessagesQuery, (snapshot) => {
-        sentMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        sentMsgs = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
         updateUnifiedMessages();
       });
       
@@ -1199,9 +1353,9 @@ export default function App() {
         setContributorPhone(phoneId);
         setContributorAvatar(avatar);
         setHasPassword(false);
-        localStorage.setItem('contributorName', user.displayName || 'Unnamed User');
-        localStorage.setItem('contributorPhone', phoneId);
-        if(avatar) localStorage.setItem('contributorAvatar', avatar);
+        safeStorage.setItem('contributorName', user.displayName || 'Unnamed User');
+        safeStorage.setItem('contributorPhone', phoneId);
+        if(avatar) safeStorage.setItem('contributorAvatar', avatar);
         
         alert(`স্বাগতম ${user.displayName || ''}! আপনার প্রোফাইল সফলভাবে তৈরি হয়েছে।`);
       } else {
@@ -1212,12 +1366,12 @@ export default function App() {
         setContributorAvatar(data.avatar || avatar); // update avatar if existing doesn't have one
         setContributorPassword(data.password || '');
         setHasPassword(!!data.password);
-        if (data.password) localStorage.setItem('hasPassword', 'true');
-        else localStorage.removeItem('hasPassword');
+        if (data.password) safeStorage.setItem('hasPassword', 'true');
+        else safeStorage.removeItem('hasPassword');
         
-        localStorage.setItem('contributorName', data.name || '');
-        localStorage.setItem('contributorPhone', phoneId);
-        if(data.avatar || avatar) localStorage.setItem('contributorAvatar', data.avatar || avatar);
+        safeStorage.setItem('contributorName', data.name || '');
+        safeStorage.setItem('contributorPhone', phoneId);
+        if(data.avatar || avatar) safeStorage.setItem('contributorAvatar', data.avatar || avatar);
         
         alert(`স্বাগতম ${data.name || ''}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
       }
@@ -1261,16 +1415,16 @@ export default function App() {
         setContributorAvatar(data.avatar || '');
         setContributorPassword(data.password || '');
         setHasPassword(!!data.password);
-          if (data.password) localStorage.setItem('hasPassword', 'true');
-          else localStorage.removeItem('hasPassword');
+          if (data.password) safeStorage.setItem('hasPassword', 'true');
+          else safeStorage.removeItem('hasPassword');
         
-        localStorage.setItem('contributorName', data.name || '');
-        localStorage.setItem('contributorPhone', data.phone || loginPhone);
-        localStorage.setItem('contributorFacebook', data.facebookUrl || '');
+        safeStorage.setItem('contributorName', data.name || '');
+        safeStorage.setItem('contributorPhone', data.phone || loginPhone);
+        safeStorage.setItem('contributorFacebook', data.facebookUrl || '');
         if (data.avatar) {
-          localStorage.setItem('contributorAvatar', data.avatar);
+          safeStorage.setItem('contributorAvatar', data.avatar);
         } else {
-          localStorage.removeItem('contributorAvatar');
+          safeStorage.removeItem('contributorAvatar');
         }
         
         setIsEditProfileMode(false);
@@ -1280,16 +1434,16 @@ export default function App() {
         setLoginPassword('');
         
         if (data.password) {
-          localStorage.setItem('hasPassword', 'true');
+          safeStorage.setItem('hasPassword', 'true');
         } else {
-          localStorage.removeItem('hasPassword');
+          safeStorage.removeItem('hasPassword');
         }
         
         if (!data.password) {
           alert(`স্বাগতম ${data.name}! আপনার প্রোফাইলটি সুরক্ষিত রাখতে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করে নিন।`);
         } else {
           setHasPassword(true);
-          localStorage.setItem('hasPassword', 'true');
+          safeStorage.setItem('hasPassword', 'true');
           alert(`স্বাগতম ${data.name}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
         }
       } else {
@@ -1357,7 +1511,7 @@ export default function App() {
       if (contributorPassword) {
         updateData.password = contributorPassword;
         setHasPassword(true);
-        localStorage.setItem('hasPassword', 'true');
+        safeStorage.setItem('hasPassword', 'true');
       }
 
       if (!docSnap.exists()) {
@@ -1375,11 +1529,11 @@ export default function App() {
       } else {
         await updateDoc(docRef, updateData);
       }
-      localStorage.setItem('contributorName', contributorName);
-      localStorage.setItem('contributorPhone', contributorPhone);
-      localStorage.setItem('contributorFacebook', contributorFacebook);
+      safeStorage.setItem('contributorName', contributorName);
+      safeStorage.setItem('contributorPhone', contributorPhone);
+      safeStorage.setItem('contributorFacebook', contributorFacebook);
       if (contributorAvatar) {
-        localStorage.setItem('contributorAvatar', contributorAvatar);
+        safeStorage.setItem('contributorAvatar', contributorAvatar);
       }
 
       // Update authorName and authorAvatar in all community_posts by this user
@@ -1446,7 +1600,15 @@ export default function App() {
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center">
           {selectedCategory || showMap || showCommunity ? (
             <button
-              onClick={() => { setSelectedCategory(null); setShowMap(false); setShowCommunity(false); }}
+              onClick={() => {
+                if (selectedSubCategory) {
+                  setSelectedSubCategory(null);
+                } else {
+                  setSelectedCategory(null);
+                  setShowMap(false);
+                  setShowCommunity(false);
+                }
+              }}
               className="mr-3 p-2 hover:bg-emerald-700 active:bg-emerald-800 rounded-full transition-colors"
               aria-label="Go back"
             >
@@ -1657,7 +1819,7 @@ export default function App() {
               return (
                 <div key={category.id} className="relative group">
                   <button
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => { setSelectedCategory(category); setSelectedSubCategory(null); }}
                     className={`${category.color} w-full h-full rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50`}
                   >
                     <IconComponent className="w-10 h-10 mb-1" strokeWidth={1.5} />
@@ -1697,72 +1859,183 @@ export default function App() {
           </div>
         )}
 
-        {/* Contacts List (Shown when searching or inside a category) */}
-        {(selectedCategory || searchQuery) && !showCommunity && !showMap && (
-          <div className="space-y-3">
-            {filteredContacts.length > 0 ? (
-              filteredContacts.map((contact, index) => (
-                <div key={contact.id || contact.phone} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between group">
-                  <div className="flex-1 pr-4">
-                    <h3 className="font-semibold text-gray-900 text-lg mb-1 leading-tight">{contact.name}</h3>
-                    {contact.details && (
-                      <p className="text-sm text-gray-800 font-medium mt-1 mb-0.5">{contact.details}</p>
-                    )}
-                    {contact.subDetails && (
-                      <p className="text-sm text-gray-500 mb-1">{contact.subDetails}</p>
-                    )}
-                    <div className="mt-3 flex items-center gap-2">
-                      <a href={`tel:${contact.phone}`} className="text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg font-medium inline-flex items-center gap-2 transition-colors hover:bg-emerald-100 active:bg-emerald-200">
-                        <Phone className="w-4 h-4" />
-                        {contact.phone}
-                      </a>
+        {/* Sub Categories Grid */}
+        {selectedCategory && !searchQuery && !showCommunity && !showMap && !selectedSubCategory && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
+            {(() => {
+              const rawSubCats = Array.from(new Set([
+                ...filteredContacts.reduce((acc, contact) => {
+                  const sub = contact.subCategory || 'অন্যান্য';
+                  acc.push(sub);
+                  return acc;
+                }, [] as string[]),
+                ...dynamicSubCategories.filter(sc => sc.categoryId === selectedCategory.id && sc.status === 'approved').map(sc => sc.title),
+                ...(predefinedSubCategories.find(pc => pc.categoryId === selectedCategory.id)?.subCategories || [])
+              ])).filter(subCat => !(selectedCategory.deletedSubCategories || []).includes(subCat));
+          
+              const orderMap = new Map<string, number>((selectedCategory.subCategoriesOrder || []).map((name, i) => [name, i]));
+              const sortedSubCats = rawSubCats.sort((a, b) => {
+                const indexA = orderMap.has(a) ? orderMap.get(a)! : 999;
+                const indexB = orderMap.has(b) ? orderMap.get(b)! : 999;
+                return indexA - indexB;
+              });
+              
+              return sortedSubCats.map((subCat, index) => {
+               // Get icon from category if available, else fallback
+               let IconComponent = selectedCategory?.iconName ? (iconMap[selectedCategory.iconName] || Building2) : Building2;
+               
+               if (subCat === 'হাসপাতাল/ক্লিনিক') IconComponent = Activity;
+               else if (subCat === 'ডাক্তার') IconComponent = Stethoscope;
+               else if (subCat === 'ডায়াগনস্টিক সেন্টার') IconComponent = Microscope;
+               else if (subCat === 'ফার্মেসি') IconComponent = Pill;
+               else if (subCat === 'সংসদ সদস্য (এমপি)') IconComponent = UserCheck;
+               else if (subCat === 'উপজেলা পরিষদ') IconComponent = Landmark;
+               else if (subCat === 'ইউনিয়ন পরিষদ') IconComponent = Home;
+               else if (subCat === 'স্কুল/কলেজ/মাদ্রাসা') IconComponent = School;
+               else if (subCat === 'কিন্ডারগার্টেন') IconComponent = Baby;
+               else if (subCat === 'প্রাইভেট টিউটর') IconComponent = BookOpen;
+               else if (subCat === 'বাস') IconComponent = Bus;
+               else if (subCat === 'ট্রেন') IconComponent = Train;
+               else if (subCat === 'রেন্ট-এ-কার') IconComponent = Car;
+               else if (subCat === 'সিএনজি/অটো স্ট্যান্ড') IconComponent = CarTaxiFront;
+               else if (subCat === 'ট্রাক/পিকআপ') IconComponent = Truck;
+               else if (subCat === 'ইলেকট্রিশিয়ান') IconComponent = Zap;
+               else if (subCat === 'প্লাম্বার') IconComponent = Droplets;
+               else if (subCat === 'টিভি/ফ্রিজ মেকানিক') IconComponent = Tv;
+               else if (subCat === 'রাজমিস্ত্রি/কাঠমিস্ত্রি') IconComponent = Hammer;
+               else if (subCat === 'আইনজীবী') IconComponent = Scale;
+               else if (subCat === 'গ্যাস সিলিন্ডার') IconComponent = Flame;
+               else if (subCat === 'রেস্টুরেন্ট/খাবার দোকান') IconComponent = Utensils;
+               else if (subCat === 'কম্পিউটার/ইন্টারনেট/ওয়াইফাই') IconComponent = Wifi;
+               else if (subCat === 'হার্ডওয়্যার/ডেকোরেটর') IconComponent = Wrench;
+               else if (subCat === 'মুদি দোকান/সুপার শপ') IconComponent = ShoppingCart;
+               else if (subCat === 'ব্যাংক') IconComponent = Landmark;
+               else if (subCat === 'এনজিও') IconComponent = Users;
+               else if (subCat === 'মোবাইল ব্যাংকিং এজেন্ট') IconComponent = Smartphone;
+               else if (subCat === 'কাজী অফিস') IconComponent = HeartHandshake;
+               else if (subCat === 'মসজিদ/মন্দির') IconComponent = MoonStar;
+               else if (subCat === 'স্বেচ্ছাসেবী সংগঠন') IconComponent = Heart;
+               else if (['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'রক্তদাতা', 'ব্লাড ব্যাংক'].includes(subCat)) IconComponent = Droplets;
+
+               return (
+              <div key={subCat} className="relative group">
+              {editingSubCatIdFront === subCat ? (
+                 <div className="bg-white border border-gray-100 w-full rounded-2xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm">
+                   <input type="text" value={editSubCatTitleFront} onChange={e => setEditSubCatTitleFront(e.target.value)} className="w-full text-center text-sm border p-1 rounded" autoFocus />
+                   <div className="flex gap-2 w-full mt-1">
+                     <button onClick={(e) => handleRenameSubCategoryFront(subCat, e)} className="flex-1 bg-emerald-600 text-white text-xs py-1.5 rounded">সেভ</button>
+                     <button onClick={() => setEditingSubCatIdFront(null)} className="flex-1 bg-gray-200 text-gray-700 text-xs py-1.5 rounded">বাতিল</button>
+                   </div>
+                 </div>
+              ) : (
+                <div
+                  onClick={() => setSelectedSubCategory(subCat)}
+                  className="bg-white hover:bg-gray-50 border border-gray-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer"
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedCategory.color.split(' ')[0]} bg-opacity-10`}> 
+                    <IconComponent className={`w-6 h-6 ${selectedCategory.color.split(' ')[1]}`} />
+                  </div>
+                  <span className="text-sm font-medium text-center text-gray-800">{subCat}</span>
+                  
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                       <div className="flex gap-1">
+                         <button onClick={(e) => handleMoveSubCategoryFront(subCat, 'up', sortedSubCats, e)} disabled={index === 0} className="bg-gray-100 p-1 rounded hover:bg-emerald-100 text-gray-500 disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
+                         <button onClick={(e) => handleMoveSubCategoryFront(subCat, 'down', sortedSubCats, e)} disabled={index === sortedSubCats.length - 1} className="bg-gray-100 p-1 rounded hover:bg-emerald-100 text-gray-500 disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
+                       </div>
+                       <div className="flex gap-1 mt-1 justify-end">
+                         <button onClick={(e) => { e.stopPropagation(); setEditingSubCatIdFront(subCat); setEditSubCatTitleFront(subCat); }} className="bg-blue-50 p-1 rounded hover:bg-blue-100 text-blue-600"><Edit3 className="w-3 h-3" /></button>
+                         <button onClick={(e) => handleDeleteSubCategoryFront(subCat, e)} className="bg-red-50 p-1 rounded hover:bg-red-100 text-red-600"><Trash2 className="w-3 h-3" /></button>
+                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col gap-2 items-center">
-                    {isAdmin && (
-                      <div className="flex gap-1 mb-1">
-                        <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'up'); }} disabled={index === 0} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
-                          <ArrowUp className="w-4 h-4" />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'down'); }} disabled={index === filteredContacts.length - 1} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
-                          <ArrowDown className="w-4 h-4" />
-                        </button>
+                  )}
+                </div>
+              )}
+              </div>
+            );
+            })})()}
+          </div>
+        )}
+        {/* Contacts List (Shown when searching or inside a sub-category) */}
+        {((selectedCategory && selectedSubCategory) || searchQuery) && !showCommunity && !showMap && (
+          <div className="space-y-6">
+            {filteredContacts.filter(c => !selectedSubCategory || (c.subCategory || 'অন্যান্য') === selectedSubCategory).length > 0 ? (
+              Object.entries(
+                filteredContacts.filter(c => !selectedSubCategory || (c.subCategory || 'অন্যান্য') === selectedSubCategory).reduce((acc, contact) => {
+                  const sub = contact.subCategory || (selectedCategory ? 'অন্যান্য' : 'ফলাফল');
+                  if (!acc[sub]) acc[sub] = [];
+                  acc[sub].push(contact);
+                  return acc;
+                }, {} as Record<string, any[]>)
+              ).map(([subCat, contacts]: [string, any[]]) => (
+                <div key={subCat} className="space-y-3">
+                  {subCat !== 'ফলাফল' && <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider ml-1">{subCat}</h3>}
+                  {contacts.map((contact, index) => (
+                    <div key={contact.id || contact.phone} className="bg-white rounded-lg p-2.5 sm:p-3 shadow-sm border border-gray-100 flex items-center justify-between gap-3 hover:shadow-md transition-shadow group">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-gray-900 text-[14px] sm:text-[15px] truncate">{contact.name}</h3>
+                          <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 font-medium whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded text-[13px]">
+                            <Phone className="w-3 h-3 text-emerald-600" />
+                            {toBengaliDigits(contact.phone)}
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 mt-0.5">
+                          {contact.details && (
+                            <p className="text-[12px] sm:text-[13px] text-gray-600 truncate">{contact.details}</p>
+                          )}
+                          {contact.details && contact.subDetails && <span className="hidden sm:inline text-gray-300">•</span>}
+                          {contact.subDetails && (
+                            <p className="text-[11px] sm:text-[12px] text-gray-500 truncate">{contact.subDetails}</p>
+                          )}
+                        </div>
+                        
+                        <div className="flex sm:hidden items-center gap-1.5 text-emerald-700 font-medium mt-1 text-[13px]">
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          {toBengaliDigits(contact.phone)}
+                        </div>
                       </div>
-                    )}
-                    <a
-                      href={`tel:${contact.phone}`}
-                      className="flex-shrink-0 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 p-3 rounded-full transition-colors flex items-center justify-center"
-                      aria-label={`Call ${contact.name}`}
-                    >
-                      <Phone className="w-5 h-5" />
-                    </a>
-                    <a
-                      href={`https://wa.me/${contact.phone.replace(/[^0-9+]/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0 bg-green-50 hover:bg-green-100 active:bg-green-200 text-green-600 p-3 rounded-full transition-colors flex items-center justify-center"
-                      aria-label={`WhatsApp ${contact.name}`}
-                      title="হোয়াটসঅ্যাপে মেসেজ দিন"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                    </a>
-                    <button 
-                      onClick={() => handleSuggestEdit(contact)}
-                      className="flex-shrink-0 bg-gray-50 hover:bg-emerald-50 active:bg-emerald-100 text-gray-500 hover:text-emerald-600 p-3 rounded-full transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      title="নাম্বারটি সংশোধন করুন"
-                    >
-                      <Edit3 className="w-5 h-5" />
-                    </button>
-                    {isAdmin && (
-                      <button 
-                        onClick={(e) => handleDeleteContactApp(contact.id, e)}
-                        className="flex-shrink-0 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-500 hover:text-red-600 p-3 rounded-full transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500"
-                        title="Delete Contact"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
+
+                      <div className="flex flex-row items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <a href={`tel:${contact.phone}`} className="p-2 sm:p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors" title="কল করুন">
+                            <Phone className="w-4 h-4" />
+                          </a>
+                          <a href={`https://wa.me/${contact.phone.replace(/[^0-9+]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-2 sm:p-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors" title="হোয়াটসঅ্যাপ">
+                            <MessageCircle className="w-4 h-4" />
+                          </a>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          {!isAdmin && (
+                            <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 rounded-lg transition-colors" title="সংশোধন করুন">
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
+                          
+                          {isAdmin && (
+                            <>
+                              <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-colors" title="সংশোধন করুন">
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button onClick={(e) => handleDeleteContactApp(contact.id, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors" title="ডিলিট করুন">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <div className="flex flex-col ml-1 bg-gray-50 rounded border border-gray-100">
+                                <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'up'); }} disabled={index === 0} className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 p-0.5 hover:bg-gray-200 rounded-t">
+                                  <ArrowUp className="w-3 h-3" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'down'); }} disabled={index === filteredContacts.length - 1} className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 p-0.5 hover:bg-gray-200 rounded-b border-t border-gray-100">
+                                  <ArrowDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                ))}
                 </div>
               ))
             ) : (
@@ -1794,6 +2067,14 @@ export default function App() {
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-20">
+        <button
+          onClick={() => setIsSubCategoryModalOpen(true)}
+          className="bg-orange-500 text-white p-3 rounded-full shadow-lg hover:bg-orange-600 active:bg-orange-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-orange-500 focus:ring-opacity-50 flex items-center justify-center group relative"
+          aria-label="Add new sub-category"
+        >
+          <span className="absolute right-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">নতুন সাব-ক্যাটাগরি যুক্ত করুন</span>
+          <Plus className="w-6 h-6" />
+        </button>
         <button
           onClick={() => setIsCategoryModalOpen(true)}
           className="bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 active:bg-indigo-800 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center group relative"
@@ -1848,7 +2129,7 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
                     <input
-                      type="tel" required value={newPhone} onChange={handlePhoneChange}
+                      type="tel" required value={toBengaliDigits(newPhone)} onChange={handlePhoneChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="+8801XXXXXXXXX"
                     />
@@ -1872,7 +2153,7 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ক্যাটাগরি *</label>
                     <select
-                      required value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
+                      required value={newCategory} onChange={(e) => { setNewCategory(e.target.value); setNewSubCategory(''); setNewBloodGroup(''); }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                     >
                       <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
@@ -1881,6 +2162,43 @@ export default function App() {
                       ))}
                     </select>
                   </div>
+{newCategory === 'blood_donors' ? (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">রক্তের গ্রুপ ও ধরন *</label>
+    <select required value={newBloodGroup} onChange={(e) => setNewBloodGroup(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+      <option value="" disabled>নির্বাচন করুন</option>
+      <option value="A+">A+</option>
+      <option value="A-">A-</option>
+      <option value="B+">B+</option>
+      <option value="B-">B-</option>
+      <option value="O+">O+</option>
+      <option value="O-">O-</option>
+      <option value="AB+">AB+</option>
+      <option value="AB-">AB-</option>
+      <option value="রক্তদাতা">রক্তদাতা (গ্রুপ জানা নেই)</option>
+      <option value="ব্লাড ব্যাংক">ব্লাড ব্যাংক</option>
+    </select>
+  </div>
+) : (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">সাব-ক্যাটাগরি *</label>
+    <select required value={newSubCategory} onChange={(e) => setNewSubCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+      <option value="" disabled>সাব-ক্যাটাগরি নির্বাচন করুন</option>
+      {Array.from(new Set([
+        ...allContacts.filter(c => c.categoryId === newCategory && c.subCategory).map(c => c.subCategory),
+        ...(predefinedSubCategories.find(pc => pc.categoryId === newCategory)?.subCategories || []),
+        ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory).map(sc => sc.title)
+      ])).map(sub => (
+         <option key={sub} value={sub}>{sub}</option>
+      ))}
+      {!Array.from(new Set([
+        ...allContacts.filter(c => c.categoryId === newCategory && c.subCategory).map(c => c.subCategory),
+        ...(predefinedSubCategories.find(pc => pc.categoryId === newCategory)?.subCategories || []),
+        ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory).map(sc => sc.title)
+      ])).includes('অন্যান্য') && <option value="অন্যান্য">অন্যান্য</option>}
+    </select>
+  </div>
+)}
                   
                   <button
                     type="submit" disabled={requestStatus === 'submitting'}
@@ -1889,6 +2207,65 @@ export default function App() {
                     }`}
                   >
                     {requestStatus === 'submitting' ? 'জমা দেওয়া হচ্ছে...' : isAdmin ? (editingContactId ? 'আপডেট করুন' : 'যুক্ত করুন') : 'রিকোয়েস্ট পাঠান'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request Sub Category Modal */}
+      {isSubCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">নতুন সাব-ক্যাটাগরি যুক্ত করুন</h2>
+              <button
+                onClick={() => setIsSubCategoryModalOpen(false)}
+                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-5">
+              {requestStatus === 'success' ? (
+                <div className="py-8 flex flex-col items-center justify-center text-center">
+                  <CheckCircle2 className="w-16 h-16 text-orange-500 mb-4" />
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
+                  <p className="text-gray-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'অ্যাডমিন চেক করে সাব-ক্যাটাগরিটি যুক্ত করবেন।'}</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubCategorySubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">প্যারেন্ট ক্যাটাগরি *</label>
+                    <select
+                      required value={newSubCatParentId} onChange={(e) => setNewSubCatParentId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                    >
+                      <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
+                      {allCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">সাব-ক্যাটাগরির নাম *</label>
+                    <input
+                      type="text" required value={newSubCatTitle} onChange={(e) => setNewSubCatTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      placeholder="যেমন: ফায়ার সার্ভিস"
+                    />
+                  </div>
+                  
+                  <button
+                    type="submit" disabled={requestStatus === 'submitting'}
+                    className={`w-full py-3 px-4 rounded-xl text-white font-medium flex justify-center items-center transition-colors ${
+                      requestStatus === 'submitting' ? 'bg-orange-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'
+                    }`}
+                  >
+                    {requestStatus === 'submitting' ? 'জমা দেওয়া হচ্ছে...' : isAdmin ? 'যুক্ত করুন' : 'রিকোয়েস্ট পাঠান'}
                   </button>
                 </form>
               )}
@@ -2103,7 +2480,7 @@ export default function App() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
                       <input
-                        type="tel" required value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+                        type="tel" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="01XXXXXXXXX"
                       />
@@ -2130,7 +2507,7 @@ export default function App() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
                       <input
-                        type="tel" required value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+                        type="tel" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="01XXXXXXXXX"
                       />
@@ -2562,7 +2939,7 @@ export default function App() {
                           <div key={contact.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100 flex justify-between items-center">
                             <div>
                               <p className="font-medium text-gray-900">{contact.name}</p>
-                              <p className="text-sm text-gray-500">{contact.phone}</p>
+                              <p className="text-sm text-gray-500">{toBengaliDigits(contact.phone)}</p>
                             </div>
                             <div>
                               {contact.status === 'approved' ? (
@@ -2585,9 +2962,9 @@ export default function App() {
                     <button 
                       type="button" 
                       onClick={() => {
-                        localStorage.removeItem('contributorName');
-                        localStorage.removeItem('contributorPhone');
-                        localStorage.removeItem('contributorFacebook');
+                        safeStorage.removeItem('contributorName');
+                        safeStorage.removeItem('contributorPhone');
+                        safeStorage.removeItem('contributorFacebook');
                         setContributorName('');
                         setContributorPhone('');
                         setContributorFacebook('');
@@ -2624,7 +3001,7 @@ export default function App() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">আপনার মোবাইল নাম্বার *</label>
                       <input
-                        type="tel" required value={contributorPhone} onChange={(e) => setContributorPhone(e.target.value)}
+                        type="tel" required value={toBengaliDigits(contributorPhone)} onChange={(e) => setContributorPhone(toEnglishDigits(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="01XXXXXXXXX"
                       />
@@ -2839,9 +3216,9 @@ export default function App() {
                             <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
                               <button
                                 onClick={() => handleReviewReaction(review, 'like')}
-                                className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${review.likesArray?.includes(getUserId()) || JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-blue-600' : ''}`}
+                                className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${review.likesArray?.includes(getUserId()) || JSON.parse(safeStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-blue-600' : ''}`}
                               >
-                                <ThumbsUp className={`w-4 h-4 ${review.likesArray?.includes(getUserId()) || JSON.parse(localStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'fill-blue-600' : ''}`} />
+                                <ThumbsUp className={`w-4 h-4 ${review.likesArray?.includes(getUserId()) || JSON.parse(safeStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'fill-blue-600' : ''}`} />
                                 <span>{review.likesArray?.length > 0 ? review.likesArray.length : (review.likes > 0 ? review.likes : 'লাইক')}</span>
                               </button>
                               <button

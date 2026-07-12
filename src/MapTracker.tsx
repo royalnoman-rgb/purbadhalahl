@@ -17,7 +17,7 @@ export default function MapTracker() {
     const q = query(collection(db, 'locations'));
     const unsub = onSnapshot(q, (snapshot) => {
       // Filter out stale locations (older than 2 hours maybe? For now just show all recent)
-      const locs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const locs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       
       // Basic filtering: Only show locations updated in the last 6 hours
       const now = Date.now();

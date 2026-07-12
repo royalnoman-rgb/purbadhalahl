@@ -1,10 +1,15 @@
+import { safeStorage, safeSession } from "./utils/storage";
+import { toBengaliDigits, toEnglishDigits } from './utils';
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell, Smile } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { categories as staticCategories, predefinedSubCategories } from './data';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import EmojiPicker from 'emoji-picker-react';
+import DataManagementTab from './components/DataManagementTab';
+import DuplicatesTab from './components/DuplicatesTab';
 
 const VerifiedBadge = () => {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -52,7 +57,7 @@ const VerifiedBadge = () => {
 
 export default function Admin() {
   const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('adminAuth') === 'true');
+  const [isAuthenticated, setIsAuthenticated] = useState(safeStorage.getItem('adminAuth') === 'true');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const prevNotifCount = useRef(0);
@@ -60,6 +65,7 @@ export default function Admin() {
   
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
   const [pendingCategories, setPendingCategories] = useState<any[]>([]);
+  const [pendingSubCategories, setPendingSubCategories] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [replyText, setReplyText] = useState<{[key: string]: string}>({});
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
@@ -79,16 +85,18 @@ export default function Admin() {
   const confirmAction = (message: string, action: () => void) => {
     setConfirmConfig({ isOpen: true, message, action });
   };
-  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle' | 'inbox'>('requests');
+  const [allCats, setAllCats] = useState<any[]>([]);
+  const [allSubCats, setAllSubCats] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle' | 'inbox' | 'data' | 'duplicates'>('requests');
   const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
   const [editRequestData, setEditRequestData] = useState<any>({});
   
   const [replyingToRequest, setReplyingToRequest] = useState<string | null>(null);
   const [requestReplyText, setRequestReplyText] = useState('');
   
-  const handleEditRequestSave = async (id: string, type: 'contact' | 'category') => {
+  const handleEditRequestSave = async (id: string, type: 'contact' | 'category' | 'subcategory') => {
     try {
-      const collectionName = type === 'contact' ? 'contacts' : 'categories';
+      const collectionName = type === 'contact' ? 'contacts' : type === 'subcategory' ? 'subcategories' : 'categories';
       await updateDoc(doc(db, collectionName, id), editRequestData);
       setEditingRequestId(null);
       fetchData();
@@ -151,13 +159,32 @@ export default function Admin() {
 
   const fetchData = async () => {
     try {
+      const catSnap = await getDocs(query(collection(db, 'categories'), where('status', '==', 'approved')));
+      const dCats = catSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
+      const dCatIds = new Set(dCats.map(c => c.id));
+      const aCats = [...staticCategories.filter(c => !dCatIds.has(c.id)), ...dCats];
+      setAllCats(aCats);
+
+      const subSnap = await getDocs(query(collection(db, 'subcategories'), where('status', '==', 'approved')));
+      const dSubCats = subSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
+      const combinedSubCats = [...predefinedSubCategories];
+      dSubCats.forEach(ds => {
+        let pc = combinedSubCats.find(c => c.categoryId === ds.categoryId);
+        if (pc) {
+           if (!pc.subCategories.includes(ds.title)) pc.subCategories.push(ds.title);
+        } else {
+           combinedSubCats.push({ categoryId: ds.categoryId, subCategories: [ds.title] });
+        }
+      });
+      setAllSubCats(combinedSubCats);
+
       const contactsQuery = query(collection(db, 'contacts'), where('status', '==', 'pending'));
       const contactsSnapshot = await getDocs(contactsQuery);
-      setPendingContacts(contactsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setPendingContacts(contactsSnapshot.docs.map(d => ({ ...d.data(), id: d.id })));
 
       const categoriesQuery = query(collection(db, 'categories'), where('status', '==', 'pending'));
       const categoriesSnapshot = await getDocs(categoriesQuery);
-      setPendingCategories(categoriesSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setPendingCategories(categoriesSnapshot.docs.map(d => ({ ...d.data(), id: d.id })));
 
       const deletedPostsQuery = query(collection(db, 'community_posts'), where('isDeleted', '==', true));
       const deletedPostsSnapshot = await getDocs(deletedPostsQuery);
@@ -175,20 +202,20 @@ export default function Admin() {
             continue;
           }
         }
-        validDeletedPosts.push({ id: d.id, ...data });
+        validDeletedPosts.push({ ...data, id: d.id });
       }
       setDeletedPosts(validDeletedPosts);
 
       const feedbacksQuery = collection(db, 'feedback');
       const feedbacksSnapshot = await getDocs(feedbacksQuery);
       // Sort in memory or just display
-      const fbList = feedbacksSnapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      const fbList = feedbacksSnapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
       fbList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setFeedbacks(fbList);
 
       const historyQuery = collection(db, 'admin_history');
       const historySnapshot = await getDocs(historyQuery);
-      let historyList = historySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      let historyList = historySnapshot.docs.map(d => ({ ...d.data(), id: d.id } as any));
       
       const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
       historyList = historyList.filter(item => {
@@ -204,14 +231,14 @@ export default function Admin() {
 
       const reviewsQuery = collection(db, 'public_reviews');
       const reviewsSnapshot = await getDocs(reviewsQuery);
-      const revList = reviewsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      const revList = reviewsSnapshot.docs.map(d => ({ ...d.data(), id: d.id } as any));
       revList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPublicReviews(revList);
 
       const contributorsQuery = collection(db, 'contributors');
       const contributorsSnapshot = await getDocs(contributorsQuery);
       const contList = contributorsSnapshot.docs
-        .map(d => ({ id: d.id, ...d.data() } as any))
+        .map(d => ({ ...d.data(), id: d.id } as any))
         .filter(c => c.id !== 'admin');
       contList.sort((a, b) => (b.points || 0) - (a.points || 0));
       setContributors(contList);
@@ -231,7 +258,7 @@ export default function Admin() {
     const qNotif = query(collection(db, 'notifications'), where('receiverPhone', '==', 'admin'));
     
     const unsubNotif = onSnapshot(qNotif, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const notifs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
       notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(notifs);
       
@@ -275,7 +302,7 @@ export default function Admin() {
       const q = query(collection(db, 'contributors'));
       const unsub = onSnapshot(q, (snapshot) => {
         const contList = snapshot.docs
-          .map(d => ({ id: d.id, ...d.data() } as any))
+          .map(d => ({ ...d.data(), id: d.id } as any))
           .filter(c => c.id !== 'admin');
         contList.sort((a, b) => (b.points || 0) - (a.points || 0));
         setContributors(contList);
@@ -292,7 +319,7 @@ export default function Admin() {
     e.preventDefault();
     if (password === 'admin123') { // Simple secret for now
       setIsAuthenticated(true);
-      localStorage.setItem('adminAuth', 'true');
+      safeStorage.setItem('adminAuth', 'true');
     } else {
       alert('ভুল পাসওয়ার্ড');
     }
@@ -386,6 +413,17 @@ export default function Admin() {
     });
   };
 
+  const handleApproveSubCategory = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'subcategories', id), { status: 'approved' });
+      alert('Approved successfully!');
+    } catch(e) { console.error(e); }
+  };
+  const handleDeleteSubCategory = async (id: string) => {
+    if(window.confirm('Delete this subcategory request?')) {
+      await deleteDoc(doc(db, 'subcategories', id));
+    }
+  };
   const handleApproveCategory = async (id: string) => {
     const catRef = doc(db, 'categories', id);
     const catSnap = await getDoc(catRef);
@@ -848,7 +886,7 @@ export default function Admin() {
               </div>
             )}
           </div>
-          <button onClick={() => { setIsAuthenticated(false); localStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
+          <button onClick={() => { setIsAuthenticated(false); safeStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
         </div>
       </header>
 
@@ -862,7 +900,7 @@ export default function Admin() {
   )}
 </button>
           <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'requests' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            অপেক্ষমান রিকোয়েস্ট ({pendingContacts.length + pendingCategories.length})
+            অপেক্ষমান রিকোয়েস্ট ({pendingContacts.length + pendingCategories.length + pendingSubCategories.length})
           </button>
           <button onClick={() => setActiveTab('feedbacks')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             মতামত ({feedbacks.length})
@@ -878,6 +916,15 @@ export default function Admin() {
           </button>
           <button onClick={() => setActiveTab('recycle')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'recycle' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             রিসাইকেল বিন ({deletedPosts.length})
+          </button>
+          <button onClick={() => setActiveTab('data')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'data' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            ডেটা ম্যানেজমেন্ট
+          </button>
+          <button onClick={() => setActiveTab('duplicates')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'duplicates' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            ডুপলিকেট
+          </button>
+          <button onClick={() => setActiveTab('duplicates')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'duplicates' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            ডুপলিকেট
           </button>
           
 
@@ -916,7 +963,7 @@ export default function Admin() {
                           {isVerifiedContributor(cont.name, cont.phone) && <VerifiedBadge />}
                         </span>
                       </h3>
-                      <p className="text-sm text-gray-600">{cont.phone}</p>
+                      <p className="text-sm text-gray-600">{toBengaliDigits(cont.phone)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
@@ -1076,9 +1123,26 @@ export default function Admin() {
                     {editingRequestId === contact.id ? (
                       <div className="space-y-2 w-full">
                         <input className="w-full text-sm p-1 border rounded" value={editRequestData.name || ''} onChange={e => setEditRequestData({...editRequestData, name: e.target.value})} placeholder="Name" />
-                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.phone || ''} onChange={e => setEditRequestData({...editRequestData, phone: e.target.value})} placeholder="Phone" />
+                        <input className="w-full text-sm p-1 border rounded" value={toBengaliDigits(editRequestData.phone) || ''} onChange={e => setEditRequestData({...editRequestData, phone: toEnglishDigits(e.target.value)})} placeholder="Phone" />
                         <input className="w-full text-sm p-1 border rounded" value={editRequestData.details || ''} onChange={e => setEditRequestData({...editRequestData, details: e.target.value})} placeholder="Details" />
                         <input className="w-full text-sm p-1 border rounded" value={editRequestData.subDetails || ''} onChange={e => setEditRequestData({...editRequestData, subDetails: e.target.value})} placeholder="Sub Details" />
+                        <select className="w-full text-sm p-1 border rounded bg-white" value={editRequestData.categoryId || ''} onChange={e => setEditRequestData({...editRequestData, categoryId: e.target.value, subCategory: ''})}>
+                          <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
+                          {allCats.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                        </select>
+                        {editRequestData.categoryId === 'blood_donors' ? (
+                          <select className="w-full text-sm p-1 border rounded bg-white" value={editRequestData.subCategory || ''} onChange={e => setEditRequestData({...editRequestData, subCategory: e.target.value})}>
+                            <option value="" disabled>রক্তের গ্রুপ</option>
+                            {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'রক্তদাতা', 'ব্লাড ব্যাংক'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                          </select>
+                        ) : (
+                          <select className="w-full text-sm p-1 border rounded bg-white" value={editRequestData.subCategory || ''} onChange={e => setEditRequestData({...editRequestData, subCategory: e.target.value})}>
+                            <option value="">সাব-ক্যাটাগরি নির্বাচন করুন (ঐচ্ছিক)</option>
+                            {(allSubCats.find(c => c.categoryId === editRequestData.categoryId)?.subCategories || []).map(sub => (
+                              <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                          </select>
+                        )}
                         <div className="flex gap-2">
                           <button onClick={() => handleEditRequestSave(contact.id, 'contact')} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
                           <button onClick={() => setEditingRequestId(null)} className="text-xs bg-gray-300 px-2 py-1 rounded">Cancel</button>
@@ -1095,7 +1159,7 @@ export default function Admin() {
                                   <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">সংশোধন রিকোয়েস্ট</span>
                                 )}
                               </div>
-                              <p className="text-sm font-medium text-gray-700">{contact.phone}</p>
+                              <p className="text-sm font-medium text-gray-700">{toBengaliDigits(contact.phone)}</p>
                               <p className="text-sm text-gray-500">{contact.details} - {contact.subDetails}</p>
                               <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
                             </div>
@@ -1131,6 +1195,43 @@ export default function Admin() {
                       </>
                     )}
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <h2 className="text-lg font-semibold mt-8 mb-4 border-b pb-2">অপেক্ষমান সাব-ক্যাটাগরি - {pendingSubCategories.length}</h2>
+          {pendingSubCategories.length === 0 ? <p className="text-gray-500">কোনো অপেক্ষমান সাব-ক্যাটাগরি নেই।</p> : (
+            <div className="grid gap-4 max-h-[40vh] overflow-y-auto pr-2 pb-2">
+              {pendingSubCategories.map(cat => (
+                <div key={cat.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
+                  {editingRequestId === cat.id ? (
+                      <div className="space-y-2 w-full">
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.title || ''} onChange={e => setEditRequestData({...editRequestData, title: e.target.value})} placeholder="Title" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.categoryId || ''} onChange={e => setEditRequestData({...editRequestData, categoryId: e.target.value})} placeholder="Parent Category ID" />
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditRequestSave(cat.id, 'subcategory')} className="text-xs bg-emerald-600 text-white px-2 py-1 rounded">Save</button>
+                          <button onClick={() => setEditingRequestId(null)} className="text-xs bg-gray-300 px-2 py-1 rounded">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between w-full">
+                        <div>
+                          <h3 className="font-bold text-gray-900">{cat.title}</h3>
+                          <p className="text-sm text-gray-600">Parent Category: {cat.categoryId}</p>
+                        </div>
+                        <div className="flex gap-1 h-fit">
+                          <button onClick={() => { setEditingRequestId(cat.id); setEditRequestData(cat); }} className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Edit">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleApproveSubCategory(cat.id)} className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="Approve">
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteSubCategory(cat.id)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
@@ -1302,6 +1403,16 @@ export default function Admin() {
         )}
 
         {/* Recycle Bin */}
+        {activeTab === 'data' && (
+          <DataManagementTab />
+        )}
+        {activeTab === 'duplicates' && (
+          <DuplicatesTab />
+        )}
+        {activeTab === 'duplicates' && (
+          <DuplicatesTab />
+        )}
+        
         {activeTab === 'recycle' && (
           <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">রিসাইকেল বিন (মুছে ফেলা পোস্টসমূহ) - {deletedPosts.length}</h2>
@@ -1402,7 +1513,7 @@ export default function Admin() {
                           {isVerifiedContributor(cont.name, cont.phone) && <VerifiedBadge />}
                         </span>
                       </h3>
-                      <p className="text-sm text-gray-600">{cont.phone}</p>
+                      <p className="text-sm text-gray-600">{toBengaliDigits(cont.phone)}</p>
                       <div className="flex gap-4 mt-1 text-sm font-medium text-gray-700">
                         <span>Points: <span className="text-emerald-600">{cont.points || 0}</span></span>
                         <span>Approved: <span className="text-blue-600">{cont.approvedCount || 0}</span></span>

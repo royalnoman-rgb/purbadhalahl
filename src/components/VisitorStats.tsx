@@ -1,3 +1,4 @@
+import { safeStorage, safeSession } from "../utils/storage";
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, increment, collection, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore';
@@ -9,21 +10,21 @@ export function VisitorStats() {
 
   useEffect(() => {
     // Session ID for this tab/device
-    let sessionId = sessionStorage.getItem('visitor_session_id');
+    let sessionId = safeSession.getItem('visitor_session_id');
     if (!sessionId) {
       sessionId = Math.random().toString(36).substring(2, 15);
-      sessionStorage.setItem('visitor_session_id', sessionId);
+      safeSession.setItem('visitor_session_id', sessionId);
     }
 
     // Increment total visitors
-    const hasVisited = localStorage.getItem('has_visited_site');
+    const hasVisited = safeStorage.getItem('has_visited_site');
     const statsRef = doc(db, 'site_stats', 'visitors');
     
     const initializeStats = async () => {
       try {
         if (!hasVisited) {
           await setDoc(statsRef, { totalCount: increment(1) }, { merge: true });
-          localStorage.setItem('has_visited_site', 'true');
+          safeStorage.setItem('has_visited_site', 'true');
         }
         
         // Read total count
