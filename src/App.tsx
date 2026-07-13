@@ -1314,22 +1314,38 @@ export default function App() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginPhone) {
-      alert('দয়া করে আপনার মোবাইল নাম্বার দিন।');
+      alert('দয়া করে আপনার মোবাইল নাম্বার বা ইমেইল দিন।');
       return;
     }
     try {
-      const docRef = doc(db, 'contributors', loginPhone);
-      const docSnap = await getDoc(docRef);
+      let exists = false;
+      let actualPhoneId = loginPhone;
+      let isEmail = loginPhone.includes('@');
+
+      const docSnap = await getDoc(doc(db, 'contributors', loginPhone));
       if (docSnap.exists()) {
+        exists = true;
+      } else if (isEmail) {
+        const q = query(collection(db, 'contributors'), where('email', '==', loginPhone));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          exists = true;
+          actualPhoneId = querySnapshot.docs[0].id;
+        }
+      }
+
+      if (exists) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         setGeneratedOtp(otp);
+        // store the actual id so OTP verification resets the right account
+        setLoginPhone(actualPhoneId);
         setIsForgotPassword(false);
         setIsOtpMode(true);
-        alert(`আপনার নাম্বারে একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।
+        alert(`আপনার ${isEmail ? 'ইমেইলে' : 'নাম্বারে'} একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।
 
 (ডেমো কোড: ${otp})`);
       } else {
-        alert('এই নাম্বারে কোনো একাউন্ট পাওয়া যায়নি।');
+        alert('এই নাম্বার বা ইমেইলে কোনো একাউন্ট পাওয়া যায়নি।');
       }
     } catch (err) {
       console.error(err);
@@ -1442,18 +1458,30 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const docRef = doc(db, 'contributors', loginPhone);
-      const docSnap = await getDoc(docRef);
+      let docSnap: any = await getDoc(doc(db, 'contributors', loginPhone));
+      let data: any = null;
+      let actualPhoneId = loginPhone;
+
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        
+        data = docSnap.data();
+      } else if (loginPhone.includes('@')) {
+        const q = query(collection(db, 'contributors'), where('email', '==', loginPhone));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          docSnap = querySnapshot.docs[0];
+          data = docSnap.data();
+          actualPhoneId = docSnap.id;
+        }
+      }
+
+      if (data) {
         if (data.password && data.password !== loginPassword) {
           alert('পাসওয়ার্ড ভুল হয়েছে!');
           return;
         }
         
         setContributorName(data.name || '');
-        setContributorPhone(data.phone || loginPhone);
+        setContributorPhone(actualPhoneId);
         setContributorFacebook(data.facebookUrl || '');
         setContributorAvatar(data.avatar || '');
         setContributorPassword(data.password || '');
@@ -1462,7 +1490,7 @@ export default function App() {
           else safeStorage.removeItem('hasPassword');
         
         safeStorage.setItem('contributorName', data.name || '');
-        safeStorage.setItem('contributorPhone', data.phone || loginPhone);
+        safeStorage.setItem('contributorPhone', actualPhoneId);
         safeStorage.setItem('contributorFacebook', data.facebookUrl || '');
         if (data.avatar) {
           safeStorage.setItem('contributorAvatar', data.avatar);
@@ -2183,7 +2211,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
                     <input
                       type="tel" required value={toBengaliDigits(newPhone)} onChange={handlePhoneChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
@@ -2530,15 +2558,15 @@ export default function App() {
               ) : isForgotPassword ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    আপনার মোবাইল নাম্বারটি দিন। আমরা আপনার নাম্বারে একটি ভেরিফিকেশন কোড পাঠাবো।
+                    আপনার মোবাইল নাম্বার বা ইমেইল দিন। আমরা সেখানে একটি ভেরিফিকেশন কোড পাঠাবো।
                   </p>
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
                       <input
-                        type="tel" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
+                        type="text" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
-                        placeholder="01XXXXXXXXX"
+                        placeholder="মোবাইল বা ইমেইল"
                       />
                     </div>
                     <button
@@ -2557,15 +2585,15 @@ export default function App() {
               ) : isLoginMode ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    আপনার মোবাইল নাম্বার ও পাসওয়ার্ড দিয়ে লগইন করুন। আপনি যদি আগে থেকে একাউন্ট করে থাকেন কিন্তু পাসওয়ার্ড সেট না করে থাকেন, তবে শুধু নাম্বার দিয়ে লগইন করে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করুন।
+                    আপনার মোবাইল নাম্বার বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন। আপনি যদি আগে থেকে একাউন্ট করে থাকেন কিন্তু পাসওয়ার্ড সেট না করে থাকেন, তবে শুধু নাম্বার দিয়ে লগইন করে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করুন।
                   </p>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
                       <input
-                        type="tel" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
+                        type="text" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
-                        placeholder="01XXXXXXXXX"
+                        placeholder="মোবাইল বা ইমেইল"
                       />
                     </div>
                     <div>
@@ -3046,6 +3074,13 @@ export default function App() {
                     await saveContributorProfile(e);
                     setIsEditProfileMode(false);
                   }} className="space-y-4">
+                    
+                    {(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) && (
+                      <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg text-sm">
+                        <p>আপনি <strong>Google/Facebook</strong> দিয়ে লগইন করেছেন। অন্য ডিভাইসে আপনার আইডি লগইন করার জন্য পুনরায় Google/Facebook বাটনটি ব্যবহার করুন।</p>
+                      </div>
+                    )}
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
                       <input
@@ -3055,10 +3090,17 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার মোবাইল নাম্বার *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? "একাউন্ট আইডি (Social Login)" : "আপনার মোবাইল নাম্বার *"}</label>
                       <input
-                        type="tel" required value={toBengaliDigits(contributorPhone)} onChange={(e) => setContributorPhone(toEnglishDigits(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        type={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? "text" : "tel"} required 
+                        value={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? contributorPhone : toBengaliDigits(contributorPhone)} 
+                        onChange={(e) => {
+                          if(!(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone))) {
+                            setContributorPhone(toEnglishDigits(e.target.value));
+                          }
+                        }}
+                        readOnly={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone))}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 ${(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                         placeholder="01XXXXXXXXX"
                       />
                     </div>
