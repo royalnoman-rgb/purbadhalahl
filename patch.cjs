@@ -1,81 +1,51 @@
 const fs = require('fs');
-const code = fs.readFileSync('src/App.tsx', 'utf8');
-
-const target = `  const handleLikeReview = async (review: any) => {
-    if (contributorPhone && review.authorPhone === contributorPhone) {
-      alert('আপনি নিজের রিভিওটিতে রেটিং/লাইক দিতে পারবেন না।');
-      return;
-    }
-
-    const likedReviews = JSON.parse(localStorage.getItem('likedReviews') || '[]');
-    if (likedReviews.includes(review.id)) {
-      alert('আপনি ইতিমধ্যে এই রিভিওটিতে রেটিং/লাইক দিয়েছেন।');
-      return;
-    }
-
-    try {
-      await updateDoc(doc(db, 'public_reviews', review.id), {
-        likes: (review.likes || 0) + 1
-      });
-      likedReviews.push(review.id);
-      localStorage.setItem('likedReviews', JSON.stringify(likedReviews));
-    } catch (err) {
-      console.error("Error liking review", err);
-    }
-  };`;
-
-const replacement = `  const getUserId = () => {
-    if (contributorPhone) return contributorPhone;
-    let did = localStorage.getItem('deviceId');
-    if (!did) {
-      did = 'anon_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('deviceId', did);
-    }
-    return did;
-  };
-
-  const handleReviewReaction = async (review: any, reactionType: 'like' | 'love') => {
-    if (contributorPhone && review.authorPhone === contributorPhone) {
-      alert('আপনি নিজের রিভিওটিতে রিয়েক্ট দিতে পারবেন না।');
-      return;
-    }
-    const userId = getUserId();
-    try {
-      const reviewRef = doc(db, 'public_reviews', review.id);
-      const reviewDoc = await getDoc(reviewRef);
-      if (!reviewDoc.exists()) return;
-      const data = reviewDoc.data();
-      let likesArray = data.likesArray || [];
-      let lovesArray = data.lovesArray || [];
-      
-      const hasLiked = likesArray.includes(userId);
-      const hasLoved = lovesArray.includes(userId);
-      
-      if (reactionType === 'like') {
-        if (hasLiked) {
-          likesArray = likesArray.filter((id) => id !== userId);
-        } else {
-          likesArray.push(userId);
-          lovesArray = lovesArray.filter((id) => id !== userId);
-        }
-      } else if (reactionType === 'love') {
-        if (hasLoved) {
-          lovesArray = lovesArray.filter((id) => id !== userId);
-        } else {
-          lovesArray.push(userId);
-          likesArray = likesArray.filter((id) => id !== userId);
-        }
-      }
-      await updateDoc(reviewRef, { likesArray, lovesArray, likes: likesArray.length + lovesArray.length });
-    } catch (err) {
-      console.error("Error reacting to review", err);
-    }
-  };`;
-
-const newCode = code.replace(target, replacement);
-if (code === newCode) {
-  console.log("NOT REPLACED");
-} else {
-  fs.writeFileSync('src/App.tsx', newCode);
-  console.log("REPLACED");
-}
+const file = 'src/components/DataManagementTab.tsx';
+let content = fs.readFileSync(file, 'utf8');
+content = content.replace(
+  '<h2 className="text-xl font-bold">কন্টাক্ট মুভ করুন</h2>',
+  `<div>
+            <h2 className="text-xl font-bold">কন্টাক্ট ম্যানেজমেন্ট</h2>
+            <p className="text-sm text-gray-500 mt-1">সর্বমোট কন্টাক্ট: <strong className="text-emerald-600">{toBengaliDigits(contacts.length)}</strong> | বর্তমানে দেখাচ্ছে: <strong className="text-blue-600">{toBengaliDigits(filteredContacts.length)}</strong></p>
+          </div>`
+);
+content = content.replace(
+  '<ArrowRight className="w-4 h-4" /> মুভ করুন ({selectedContacts.size})',
+  '<ArrowRight className="w-4 h-4" /> মুভ করুন ({toBengaliDigits(selectedContacts.size)})'
+);
+content = content.replace(
+  '<button \n            disabled={selectedContacts.size === 0}\n            onClick={() => setIsMoveModalOpen(true)}\n            className="bg-emerald-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"\n          >',
+  `<div className="flex gap-2">
+            <button 
+              disabled={selectedContacts.size === 0}
+              onClick={async () => {
+                if (window.confirm(\`আপনি কি সত্যিই \${selectedContacts.size}টি কন্টাক্ট ডিলিট করতে চান?\`)) {
+                  try {
+                    const batch = writeBatch(db);
+                    selectedContacts.forEach(id => {
+                      if (!id.startsWith('static_')) {
+                        batch.delete(doc(db, 'contacts', id));
+                      }
+                    });
+                    await batch.commit();
+                    setSelectedContacts(new Set());
+                    alert('কন্টাক্ট ডিলিট সফল হয়েছে!');
+                  } catch(e) {
+                    alert('ডিলিট করতে সমস্যা হয়েছে।');
+                  }
+                }
+              }}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> ডিলিট ({toBengaliDigits(selectedContacts.size)})
+            </button>
+            <button 
+              disabled={selectedContacts.size === 0}
+              onClick={() => setIsMoveModalOpen(true)}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
+            >`
+);
+content = content.replace(
+  '</button>\n        </div>',
+  '</button>\n          </div>\n        </div>'
+);
+fs.writeFileSync(file, content);

@@ -36,7 +36,7 @@ export default function DataManagementTab() {
       setSubCategories(snap.docs.map(d => ({ ...d.data(), id: d.id })));
     });
 
-    const qContacts = query(collection(db, 'contacts'), where('status', '==', 'approved'));
+    const qContacts = query(collection(db, 'contacts'));
     const unsubContacts = onSnapshot(qContacts, (snap) => {
       const dynamicContacts = snap.docs.map(d => ({ ...d.data(), id: d.id } as any));
       const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
@@ -200,14 +200,42 @@ export default function DataManagementTab() {
 
       <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">কন্টাক্ট মুভ করুন</h2>
-          <button 
-            disabled={selectedContacts.size === 0}
-            onClick={() => setIsMoveModalOpen(true)}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4" /> মুভ করুন ({selectedContacts.size})
+          <div>
+            <h2 className="text-xl font-bold">কন্টাক্ট ম্যানেজমেন্ট</h2>
+            <p className="text-sm text-gray-500 mt-1">সর্বমোট কন্টাক্ট: <strong className="text-emerald-600">{toBengaliDigits(contacts.length)}</strong> | বর্তমানে দেখাচ্ছে: <strong className="text-blue-600">{toBengaliDigits(filteredContacts.length)}</strong></p>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              disabled={selectedContacts.size === 0}
+              onClick={async () => {
+                if (window.confirm(`আপনি কি সত্যিই ${selectedContacts.size}টি কন্টাক্ট ডিলিট করতে চান?`)) {
+                  try {
+                    const batch = writeBatch(db);
+                    selectedContacts.forEach(id => {
+                      if (!id.startsWith('static_')) {
+                        batch.delete(doc(db, 'contacts', id));
+                      }
+                    });
+                    await batch.commit();
+                    setSelectedContacts(new Set());
+                    alert('কন্টাক্ট ডিলিট সফল হয়েছে!');
+                  } catch(e) {
+                    alert('ডিলিট করতে সমস্যা হয়েছে।');
+                  }
+                }
+              }}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> ডিলিট ({toBengaliDigits(selectedContacts.size)})
+            </button>
+            <button 
+              disabled={selectedContacts.size === 0}
+              onClick={() => setIsMoveModalOpen(true)}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
+            >
+            <ArrowRight className="w-4 h-4" /> মুভ করুন ({toBengaliDigits(selectedContacts.size)})
           </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -242,11 +270,12 @@ export default function DataManagementTab() {
                 <th className="p-3">ফোন</th>
                 <th className="p-3">ক্যাটাগরি</th>
                 <th className="p-3">সাব-ক্যাটাগরি</th>
+                <th className="p-3">স্ট্যাটাস</th>
               </tr>
             </thead>
             <tbody>
-              {filteredContacts.map(c => (
-                <tr key={c.id} className="border-t hover:bg-gray-50">
+              {filteredContacts.map((c, index) => (
+                <tr key={`${c.id}-${index}`} className="border-t hover:bg-gray-50">
                   <td className="p-3">
                     <input type="checkbox" checked={selectedContacts.has(c.id)} onChange={() => toggleContact(c.id)} />
                   </td>
@@ -254,11 +283,12 @@ export default function DataManagementTab() {
                   <td className="p-3">{toBengaliDigits(c.phone)}</td>
                   <td className="p-3">{categories.find(cat => cat.id === c.categoryId)?.title || c.categoryId}</td>
                   <td className="p-3">{c.subCategory || '-'}</td>
+                  <td className="p-3">{c.status === 'pending' ? <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs">পেন্ডিং</span> : <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs">অ্যাপ্রুভড</span>}</td>
                 </tr>
               ))}
               {filteredContacts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">কোনো কন্টাক্ট পাওয়া যায়নি</td>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">কোনো কন্টাক্ট পাওয়া যায়নি</td>
                 </tr>
               )}
             </tbody>

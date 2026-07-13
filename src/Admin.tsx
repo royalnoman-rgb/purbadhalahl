@@ -9,7 +9,7 @@ import { categories as staticCategories, predefinedSubCategories } from './data'
 import { ConfirmDialog } from './components/ConfirmDialog';
 import EmojiPicker from 'emoji-picker-react';
 import DataManagementTab from './components/DataManagementTab';
-import DuplicatesTab from './components/DuplicatesTab';
+
 
 const VerifiedBadge = () => {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -60,6 +60,21 @@ export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(safeStorage.getItem('adminAuth') === 'true');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const adminNotifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (adminNotifRef.current && !adminNotifRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
   const prevNotifCount = useRef(0);
   const isInitialLoad = useRef(true);
   
@@ -87,7 +102,8 @@ export default function Admin() {
   };
   const [allCats, setAllCats] = useState<any[]>([]);
   const [allSubCats, setAllSubCats] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle' | 'inbox' | 'data' | 'duplicates'>('requests');
+  const initialTab = new URLSearchParams(window.location.search).get('tab') as any || 'requests';
+  const [activeTab, setActiveTab] = useState<'requests' | 'feedbacks' | 'reviews' | 'contributors' | 'history' | 'recycle' | 'inbox' | 'data'>(['requests', 'feedbacks', 'reviews', 'contributors', 'history', 'recycle', 'inbox', 'data'].includes(initialTab) ? initialTab : 'requests');
   const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
   const [editRequestData, setEditRequestData] = useState<any>({});
   
@@ -824,7 +840,7 @@ export default function Admin() {
           <h1 className="text-xl font-bold">অ্যাডমিন ড্যাশবোর্ড</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative" ref={adminNotifRef}>
             <button 
               onClick={() => {
                 setShowNotifications(!showNotifications);
@@ -846,7 +862,7 @@ export default function Admin() {
               )}
             </button>
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 text-gray-800">
+              <div className="absolute right-0 sm:right-0 mt-2 w-[90vw] sm:w-80 max-w-[320px] bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 text-gray-800 -mr-16 sm:mr-0">
                 <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                   <h3 className="font-semibold text-gray-900">নোটিফিকেশন</h3>
                   {notifications.length > 0 && (
@@ -872,7 +888,10 @@ export default function Admin() {
                         onClick={() => {
                           setShowNotifications(false);
                           if (notif.link) {
-                            setActiveTab(notif.link === 'messages' ? 'inbox' : notif.link as any);
+                            const newTab = notif.link === 'messages' ? 'inbox' : notif.link as any;
+                            if (['requests', 'feedbacks', 'reviews', 'contributors', 'history', 'recycle', 'inbox', 'data'].includes(newTab)) {
+                              setActiveTab(newTab);
+                            }
                           }
                         }}
                       >
@@ -919,12 +938,6 @@ export default function Admin() {
           </button>
           <button onClick={() => setActiveTab('data')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'data' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             ডেটা ম্যানেজমেন্ট
-          </button>
-          <button onClick={() => setActiveTab('duplicates')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'duplicates' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            ডুপলিকেট
-          </button>
-          <button onClick={() => setActiveTab('duplicates')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'duplicates' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            ডুপলিকেট
           </button>
           
 
@@ -1406,12 +1419,8 @@ export default function Admin() {
         {activeTab === 'data' && (
           <DataManagementTab />
         )}
-        {activeTab === 'duplicates' && (
-          <DuplicatesTab />
-        )}
-        {activeTab === 'duplicates' && (
-          <DuplicatesTab />
-        )}
+        
+        
         
         {activeTab === 'recycle' && (
           <section>

@@ -99,6 +99,21 @@ export default function App() {
   // Dynamic Data
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const userNotifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userNotifRef.current && !userNotifRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
   const prevNotifCount = useRef(0);
   const isInitialLoad = useRef(true);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
@@ -468,38 +483,39 @@ export default function App() {
     setRequestStatus('submitting');
     
     try {
-      // Check for duplicates in static contacts
-      const isStaticDuplicate = staticContacts.some(c => 
-        (c.phone === newPhone || c.name.toLowerCase() === newName.toLowerCase()) && 
-        (!editingContactId || c.id !== editingContactId)
+      // Helper to get category name
+      const getCatName = (catId) => allCategories.find(c => c.id === catId)?.title || catId;
+
+      // 1. Check in allContacts (which has the latest state for approved static/dynamic contacts)
+      const existingDup = allContacts.find(c => 
+         (c.phone === newPhone || c.name.toLowerCase() === newName.toLowerCase()) && 
+         (!editingContactId || c.id !== editingContactId)
       );
-      if (isStaticDuplicate) {
-        alert('এই নাম বা নাম্বারটি ইতিমধ্যে যুক্ত করা আছে!');
+      if (existingDup) {
+        alert(`এই নাম বা নাম্বারটি ইতিমধ্যে যুক্ত করা আছে!\nক্যাটাগরি: ${getCatName(existingDup.categoryId)}\nসাব-ক্যাটাগরি: ${existingDup.subCategory || '-'}`);
         setRequestStatus('idle');
         return;
       }
 
-      // Check for duplicates in firestore
+      // 2. Check for pending duplicates in firestore
       const qPhone = query(collection(db, 'contacts'), where('phone', '==', newPhone));
       const phoneSnapshot = await getDocs(qPhone);
-      if (!phoneSnapshot.empty) {
-        const isOnlySelf = phoneSnapshot.docs.every(d => d.id === editingContactId || d.data().replacesId === editingContactId);
-        if (!isOnlySelf) {
-          alert('এই নাম্বারটি ইতিমধ্যে যুক্ত করা আছে!');
-          setRequestStatus('idle');
-          return;
-        }
+      const phoneDup = phoneSnapshot.docs.find(d => d.id !== editingContactId && d.data().replacesId !== editingContactId && d.data().status === 'pending');
+      if (phoneDup) {
+        const data = phoneDup.data();
+        alert(`এই নাম্বারটি ইতিমধ্যে যুক্ত করা আছে (পেন্ডিং অবস্থায়)!\nক্যাটাগরি: ${getCatName(data.categoryId)}\nসাব-ক্যাটাগরি: ${data.subCategory || '-'}`);
+        setRequestStatus('idle');
+        return;
       }
 
       const qName = query(collection(db, 'contacts'), where('name', '==', newName));
       const nameSnapshot = await getDocs(qName);
-      if (!nameSnapshot.empty) {
-        const isOnlySelf = nameSnapshot.docs.every(d => d.id === editingContactId || d.data().replacesId === editingContactId);
-        if (!isOnlySelf) {
-          alert('এই নামটি ইতিমধ্যে যুক্ত করা আছে!');
-          setRequestStatus('idle');
-          return;
-        }
+      const nameDup = nameSnapshot.docs.find(d => d.id !== editingContactId && d.data().replacesId !== editingContactId && d.data().status === 'pending');
+      if (nameDup) {
+        const data = nameDup.data();
+        alert(`এই নামটি ইতিমধ্যে যুক্ত করা আছে (পেন্ডিং অবস্থায়)!\nক্যাটাগরি: ${getCatName(data.categoryId)}\nসাব-ক্যাটাগরি: ${data.subCategory || '-'}`);
+        setRequestStatus('idle');
+        return;
       }
 
       const payload: any = {
@@ -529,9 +545,29 @@ export default function App() {
         } else {
           payload.replacesId = editingContactId;
           await addDoc(collection(db, 'contacts'), payload);
+          await addDoc(collection(db, 'notifications'), {
+            receiverPhone: 'admin',
+            type: 'number_edit_request',
+            title: 'নাম্বার এডিট রিকোয়েস্ট',
+            body: `${newName} - ${newPhone}`,
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: 'requests'
+          });
         }
       } else {
         await addDoc(collection(db, 'contacts'), payload);
+        if (!isAdmin) {
+          await addDoc(collection(db, 'notifications'), {
+            receiverPhone: 'admin',
+            type: 'number_request',
+            title: 'নতুন নাম্বার রিকোয়েস্ট',
+            body: `${newName} - ${newPhone}`,
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: 'requests'
+          });
+        }
       }
       
       setRequestStatus('success');
@@ -1642,7 +1678,7 @@ export default function App() {
           >
             <Trophy className="w-6 h-6" />
           </button>
-          <div className="relative">
+          <div className="relative" ref={userNotifRef}>
             <button 
               onClick={() => {
                 setShowNotifications(!showNotifications);
@@ -1664,7 +1700,7 @@ export default function App() {
               )}
             </button>
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+              <div className="absolute right-[-60px] sm:right-0 mt-2 w-[90vw] sm:w-80 max-w-[320px] bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
                 <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                   <h3 className="font-semibold text-gray-900">নোটিফিকেশন</h3>
                   {notifications.length > 0 && (
@@ -1695,9 +1731,12 @@ export default function App() {
                             setSelectedCategory(null);
                           } else if (notif.link === 'messages' || notif.link === 'inbox' || notif.link === 'feedbacks' || notif.link === 'requests' || notif.link === 'reviews') {
                             if (isAdmin && notif.receiverPhone === 'admin') {
-                                window.location.href = '/admin';
+                                window.location.href = `/admin?tab=${notif.link === 'messages' ? 'inbox' : notif.link}`;
                             } else {
                                 setIsContributorProfileOpen(true);
+                                if (notif.link === 'messages' || notif.link === 'inbox') setActiveUserTab('messages');
+                                else if (notif.link === 'requests') setActiveUserTab('contacts');
+                                else if (notif.link === 'feedbacks') setActiveUserTab('feedbacks');
                             }
                           }
                         }}
@@ -1971,7 +2010,7 @@ export default function App() {
                 <div key={subCat} className="space-y-3">
                   {subCat !== 'ফলাফল' && <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider ml-1">{subCat}</h3>}
                   {contacts.map((contact, index) => (
-                    <div key={contact.id || contact.phone} className="bg-white rounded-lg p-2.5 sm:p-3 shadow-sm border border-gray-100 flex items-center justify-between gap-3 hover:shadow-md transition-shadow group">
+                    <div key={`${contact.id || contact.phone}-${index}`} className="bg-white rounded-lg p-2.5 sm:p-3 shadow-sm border border-gray-100 flex items-center justify-between gap-3 hover:shadow-md transition-shadow group">
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-gray-900 text-[14px] sm:text-[15px] truncate">{contact.name}</h3>
