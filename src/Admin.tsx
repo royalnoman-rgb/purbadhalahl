@@ -1,7 +1,7 @@
 import { safeStorage, safeSession } from "./utils/storage";
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell, Smile } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -109,8 +109,49 @@ export default function Admin() {
   const [editRequestData, setEditRequestData] = useState<any>({});
   
   const [replyingToRequest, setReplyingToRequest] = useState<string | null>(null);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcasting, setBroadcasting] = useState(false);
   const [requestReplyText, setRequestReplyText] = useState('');
   
+  const handleBroadcast = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
+    setBroadcasting(true);
+    try {
+      // Chunk batches to avoid 500 limit
+      const chunkSize = 400;
+      for (let i = 0; i < contributors.length; i += chunkSize) {
+        const chunk = contributors.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(cont => {
+          const notifRef = doc(collection(db, 'notifications'));
+          batch.set(notifRef, {
+            receiverPhone: cont.id,
+            senderPhone: 'admin',
+            type: 'broadcast',
+            title: broadcastTitle.trim(),
+            body: broadcastMessage.trim(),
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+        });
+        await batch.commit();
+      }
+      
+      await logAdminAction(`Broadcasted notice: ${broadcastTitle.trim()}`);
+      setShowBroadcastModal(false);
+      setBroadcastTitle('');
+      setBroadcastMessage('');
+      alert('সকলকে নোটিশ পাঠানো হয়েছে!');
+    } catch (e) {
+      console.error(e);
+      alert('নোটিশ পাঠাতে সমস্যা হয়েছে।');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
   const handleEditRequestSave = async (id: string, type: 'contact' | 'category' | 'subcategory') => {
     try {
       const collectionName = type === 'contact' ? 'contacts' : type === 'subcategory' ? 'subcategories' : 'categories';
@@ -976,7 +1017,33 @@ export default function Admin() {
         </div>
 
         
-        <ConfirmDialog 
+        {showBroadcastModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Bell className="w-5 h-5 text-emerald-600" /> সকল ইউজারকে নোটিশ দিন
+              </h3>
+              <button onClick={() => setShowBroadcastModal(false)} className="text-gray-500 hover:bg-gray-200 p-1 rounded-full"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">নোটিশের টাইটেল</label>
+                <input type="text" value={broadcastTitle} onChange={e => setBroadcastTitle(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500" placeholder="যেমন: নতুন আপডেট" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">বিস্তারিত ম্যাসেজ</label>
+                <textarea value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 min-h-[100px]" placeholder="ম্যাসেজ লিখুন..." />
+              </div>
+              <button onClick={handleBroadcast} disabled={broadcasting || !broadcastTitle.trim() || !broadcastMessage.trim()} className="w-full bg-emerald-600 text-white py-2 rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 flex justify-center items-center gap-2">
+                {broadcasting ? 'পাঠানো হচ্ছে...' : <><Send className="w-4 h-4" /> নোটিশ পাঠান</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog 
           isOpen={confirmConfig.isOpen} 
           message={confirmConfig.message} 
           onConfirm={() => { confirmConfig.action(); setConfirmConfig({...confirmConfig, isOpen: false}); }} 
@@ -1537,7 +1604,12 @@ export default function Admin() {
         {/* Contributors */}
         {activeTab === 'contributors' && (
           <section>
-          <h2 className="text-lg font-semibold mb-4 border-b pb-2">অবদানকারীগণ (Contributors) - {contributors.length}</h2>
+          <div className="flex items-center justify-between mb-4 border-b pb-2">
+            <h2 className="text-lg font-semibold">অবদানকারীগণ (Contributors) - {contributors.length}</h2>
+            <button onClick={() => setShowBroadcastModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1">
+              <Send className="w-4 h-4" /> সকলকে নোটিশ দিন
+            </button>
+          </div>
           {contributors.length === 0 ? <p className="text-gray-500">কোনো অবদানকারী নেই।</p> : (
             <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
               {contributors.map(cont => (
