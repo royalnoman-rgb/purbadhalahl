@@ -547,6 +547,7 @@ export default function App() {
           await addDoc(collection(db, 'contacts'), payload);
           await addDoc(collection(db, 'notifications'), {
             receiverPhone: 'admin',
+            senderPhone: contributorPhone,
             type: 'number_edit_request',
             title: 'নাম্বার এডিট রিকোয়েস্ট',
             body: `${newName} - ${newPhone}`,
@@ -560,6 +561,7 @@ export default function App() {
         if (!isAdmin) {
           await addDoc(collection(db, 'notifications'), {
             receiverPhone: 'admin',
+            senderPhone: contributorPhone,
             type: 'number_request',
             title: 'নতুন নাম্বার রিকোয়েস্ট',
             body: `${newName} - ${newPhone}`,
@@ -622,6 +624,7 @@ export default function App() {
         
         await addDoc(collection(db, 'notifications'), {
           receiverPhone: 'admin',
+          senderPhone: contributorPhone,
           type: 'subcategory_request',
           title: 'নতুন সাব-ক্যাটাগরি রিকোয়েস্ট',
           body: newSubCatTitle,
@@ -670,6 +673,7 @@ export default function App() {
         if (!isAdmin) {
           await addDoc(collection(db, 'notifications'), {
             receiverPhone: 'admin',
+            senderPhone: contributorPhone,
             type: 'category_request',
             title: 'নতুন ক্যাটাগরি রিকোয়েস্ট',
             body: `${newCatTitle} - ${newCatEnglish}`,
@@ -872,6 +876,7 @@ export default function App() {
       // Notify admin
       await addDoc(collection(db, 'notifications'), {
         receiverPhone: 'admin',
+        senderPhone: contributorPhone,
         type: 'user_message',
         title: `${contributorName} থেকে ম্যাসেজ`,
         body: userMessageText.trim(),
@@ -1038,6 +1043,7 @@ export default function App() {
       // Notify admin
       await addDoc(collection(db, 'notifications'), {
         receiverPhone: 'admin',
+        senderPhone: contributorPhone,
         type: 'feedback',
         title: 'নতুন মতামত/আইডিয়া',
         body: `${contributorName || newFeedbackName}: ${newFeedbackMessage}`,
@@ -1078,6 +1084,7 @@ export default function App() {
       // Notify admin
       await addDoc(collection(db, 'notifications'), {
         receiverPhone: 'admin',
+        senderPhone: contributorPhone,
         type: 'review',
         title: 'নতুন পাবলিক রিভিউ',
         body: `${contributorName || newReviewName} ${newReviewRating} রেটিং দিয়েছেন`,
@@ -1741,7 +1748,10 @@ export default function App() {
                           }
                         }}
                       >
-                        <h4 className="font-semibold text-gray-900 text-xs mb-1">{notif.title}</h4>
+                        <h4 className="font-semibold text-gray-900 text-xs mb-1 relative w-fit">
+                          {notif.title}
+                          {notif.senderPhone && onlineUsers.includes(notif.senderPhone) && <span className="absolute -top-0.5 -right-2.5 w-2 h-2 bg-green-500 rounded-full border border-white"></span>}
+                        </h4>
                         <p className="text-gray-600 text-[11px] line-clamp-2">{notif.body}</p>
                         <span className="text-[9px] text-gray-400 mt-1 block">{new Date(notif.createdAt).toLocaleString('bn-BD')}</span>
                       </div>
@@ -1943,6 +1953,10 @@ export default function App() {
                else if (subCat === 'টিভি/ফ্রিজ মেকানিক') IconComponent = Tv;
                else if (subCat === 'রাজমিস্ত্রি/কাঠমিস্ত্রি') IconComponent = Hammer;
                else if (subCat === 'আইনজীবী') IconComponent = Scale;
+               else if (subCat === 'ফায়ার সার্ভিস' || subCat === 'ফায়ার সার্ভিস') IconComponent = Flame;
+               else if (subCat === 'থানা পুলিশ' || subCat === 'থানা / পুলিশ কন্ট্রোল রুম') IconComponent = Shield;
+               else if (subCat === 'বিদ্যুৎ অফিস' || subCat === 'পবিস অভিযোগ কেন্দ্র') IconComponent = Zap;
+               else if (subCat === 'হাসপাতাল জরুরী বিভাগ') IconComponent = Ambulance;
                else if (subCat === 'গ্যাস সিলিন্ডার') IconComponent = Flame;
                else if (subCat === 'রেস্টুরেন্ট/খাবার দোকান') IconComponent = Utensils;
                else if (subCat === 'কম্পিউটার/ইন্টারনেট/ওয়াইফাই') IconComponent = Wifi;
@@ -1955,7 +1969,7 @@ export default function App() {
                else if (subCat === 'মসজিদ/মন্দির') IconComponent = MoonStar;
                else if (subCat === 'স্বেচ্ছাসেবী সংগঠন') IconComponent = Heart;
                else if (['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'রক্তদাতা', 'ব্লাড ব্যাংক'].includes(subCat)) IconComponent = Droplets;
-
+               const subCatContactCount = filteredContacts.filter(c => (c.subCategory || 'অন্যান্য') === subCat).length;
                return (
               <div key={subCat} className="relative group">
               {editingSubCatIdFront === subCat ? (
@@ -1974,7 +1988,10 @@ export default function App() {
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedCategory.color.split(' ')[0]} bg-opacity-10`}> 
                     <IconComponent className={`w-6 h-6 ${selectedCategory.color.split(' ')[1]}`} />
                   </div>
-                  <span className="text-sm font-medium text-center text-gray-800">{subCat}</span>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-sm font-medium text-center text-gray-800">{subCat}</span>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{toBengaliDigits(subCatContactCount.toString())} টি নাম্বার</span>
+                  </div>
                   
                   {isAdmin && (
                     <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>

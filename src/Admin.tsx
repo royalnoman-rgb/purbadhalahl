@@ -100,6 +100,7 @@ export default function Admin() {
   const confirmAction = (message: string, action: () => void) => {
     setConfirmConfig({ isOpen: true, message, action });
   };
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [allCats, setAllCats] = useState<any[]>([]);
   const [allSubCats, setAllSubCats] = useState<any[]>([]);
   const initialTab = new URLSearchParams(window.location.search).get('tab') as any || 'requests';
@@ -141,6 +142,7 @@ export default function Admin() {
         // Notify user
         await addDoc(collection(db, 'notifications'), {
           receiverPhone: contributorPhone,
+          senderPhone: 'admin',
           type: 'admin_message',
           title: 'অ্যাডমিনের থেকে ম্যাসেজ',
           body: requestReplyText.trim(),
@@ -297,11 +299,33 @@ export default function Admin() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    const fetchOnlineUsers = async () => {
+      try {
+        const threshold = Date.now() - 5 * 60 * 1000;
+        const q = query(collection(db, 'contributors'), where('lastActive', '>', threshold));
+        const snapshot = await getDocs(q);
+        setOnlineUsers(snapshot.docs.map(d => d.id));
+      } catch(e) {}
+    };
+    fetchOnlineUsers();
+    const interval = setInterval(fetchOnlineUsers, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     const updatePresence = async () => {
       try {
         await setDoc(doc(db, 'contributors', 'admin'), {
           lastActive: Date.now()
         }, { merge: true });
+        
+        // Also update personal phone presence if logged in
+        const phone = safeStorage.getItem('contributorPhone');
+        if (phone) {
+          await updateDoc(doc(db, 'contributors', phone), {
+            lastActive: Date.now()
+          }).catch(() => {});
+        }
       } catch (e) {}
     };
     
@@ -370,6 +394,7 @@ export default function Admin() {
         // Notify user
         await addDoc(collection(db, 'notifications'), {
           receiverPhone: contactData.contributorPhone,
+          senderPhone: 'admin',
           type: 'contact_approved',
           title: 'আপনার নাম্বার এপ্রুভ হয়েছে!',
           body: `${contactData.name} নাম্বারটি এপ্রুভ করা হয়েছে এবং আপনি 10 পয়েন্ট পেয়েছেন।`,
@@ -452,6 +477,7 @@ export default function Admin() {
       if (data.contributorPhone) {
         await addDoc(collection(db, 'notifications'), {
           receiverPhone: data.contributorPhone,
+          senderPhone: 'admin',
           type: 'approval',
           title: 'রিকোয়েস্ট এপ্রুভ হয়েছে!',
           body: `আপনার দেওয়া "${data.title}" ক্যাটাগরিটি এপ্রুভ করা হয়েছে।`,
@@ -535,6 +561,7 @@ export default function Admin() {
         if (feedback.contributorPhone) {
           await addDoc(collection(db, 'notifications'), {
             receiverPhone: feedback.contributorPhone,
+            senderPhone: 'admin',
             type: 'admin_reply',
             title: 'অ্যাডমিন আপনার মতামতে রিপ্লাই করেছেন',
             body: replyText[feedbackId].trim(),
@@ -606,6 +633,7 @@ export default function Admin() {
         // Notify user
         await addDoc(collection(db, 'notifications'), {
           receiverPhone: id,
+          senderPhone: 'admin',
           type: 'admin_message',
           title: 'অ্যাডমিন থেকে নতুন ম্যাসেজ',
           body: contributorMessageText[id].trim(),
@@ -668,6 +696,7 @@ export default function Admin() {
         // Notify user
         await addDoc(collection(db, 'notifications'), {
           receiverPhone: contributorId,
+          senderPhone: 'admin',
           type: 'admin_message',
           title: 'অ্যাডমিনের থেকে ম্যাসেজ',
           body: adminMessageText.trim(),
@@ -895,7 +924,10 @@ export default function Admin() {
                           }
                         }}
                       >
-                        <h4 className="font-semibold text-gray-900 text-xs mb-1">{notif.title}</h4>
+                        <h4 className="font-semibold text-gray-900 text-xs mb-1 relative w-fit">
+                          {notif.title}
+                          {notif.senderPhone && onlineUsers.includes(notif.senderPhone) && <span className="absolute -top-0.5 -right-2.5 w-2 h-2 bg-green-500 rounded-full border border-white"></span>}
+                        </h4>
                         <p className="text-gray-600 text-[11px] line-clamp-2">{notif.body}</p>
                         <span className="text-[9px] text-gray-400 mt-1 block">{new Date(notif.createdAt).toLocaleString('bn-BD')}</span>
                       </div>
@@ -971,9 +1003,10 @@ export default function Admin() {
                         ) : (
                           <UserCircle className="w-6 h-6 text-emerald-600" />
                         )}
-                        <span className="flex items-center">
+                        <span className="flex items-center relative">
                           {cont.name}
                           {isVerifiedContributor(cont.name, cont.phone) && <VerifiedBadge />}
+                          {onlineUsers.includes(cont.id) && <span className="absolute -top-1 -right-3 w-2.5 h-2.5 bg-green-500 rounded-full border border-white"></span>}
                         </span>
                       </h3>
                       <p className="text-sm text-gray-600">{toBengaliDigits(cont.phone)}</p>
@@ -1517,9 +1550,10 @@ export default function Admin() {
                         ) : (
                           <UserCircle className="w-6 h-6 text-emerald-600" />
                         )}
-                        <span className="flex items-center">
+                        <span className="flex items-center relative">
                           {cont.name}
                           {isVerifiedContributor(cont.name, cont.phone) && <VerifiedBadge />}
+                          {onlineUsers.includes(cont.id) && <span className="absolute -top-1 -right-3 w-2.5 h-2.5 bg-green-500 rounded-full border border-white"></span>}
                         </span>
                       </h3>
                       <p className="text-sm text-gray-600">{toBengaliDigits(cont.phone)}</p>
