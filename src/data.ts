@@ -231,7 +231,7 @@ export const contacts: Contact[] = [
     "details": "প্রধান শিক্ষক",
     "phone": "01700-444441",
     "categoryId": "education",
-    "subCategory": "স্কুল, কলেজ ও মাদ্রাসা"
+    "subCategory": "স্কুল"
   },
   {
     "id": "ed2",
@@ -239,7 +239,7 @@ export const contacts: Contact[] = [
     "details": "অধ্যক্ষের কার্যালয়",
     "phone": "01700-444442",
     "categoryId": "education",
-    "subCategory": "স্কুল, কলেজ ও মাদ্রাসা"
+    "subCategory": "কলেজ"
   },
   {
     "id": "ed3",
@@ -504,7 +504,7 @@ export const predefinedSubCategories: { categoryId: string, subCategories: strin
   { categoryId: "blood_donors", subCategories: ["রক্তদাতা", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "ব্লাড ব্যাংক"] },
   { categoryId: "administration", subCategories: ["উপজেলা নির্বাহী অফিস", "থানা পুলিশ", "উপজেলা কৃষি অফিস", "উপজেলা ভূমি অফিস", "উপজেলা সমাজসেবা অফিস", "উপজেলা সমবায় অফিস", "অন্যান্য অফিস"] },
   { categoryId: "representatives", subCategories: ["সংসদ সদস্য (এমপি)", "উপজেলা পরিষদ", "ইউনিয়ন পরিষদ"] },
-  { categoryId: "education", subCategories: ["স্কুল/কলেজ/মাদ্রাসা", "কিন্ডারগার্টেন", "প্রাইভেট টিউটর"] },
+  { categoryId: "education", subCategories: ["স্কুল", "কলেজ", "মাদ্রাসা", "কিন্ডারগার্টেন", "প্রাইভেট টিউটর"] },
   { categoryId: "transport", subCategories: ["বাস", "ট্রেন", "রেন্ট-এ-কার", "সিএনজি/অটো স্ট্যান্ড", "ট্রাক/পিকআপ"] },
   { categoryId: "daily_services", subCategories: ["ইলেকট্রিশিয়ান", "প্লাম্বার", "টিভি/ফ্রিজ মেকানিক", "রাজমিস্ত্রি/কাঠমিস্ত্রি", "আইনজীবী"] },
   { categoryId: "business", subCategories: ["গ্যাস সিলিন্ডার", "রেস্টুরেন্ট/খাবার দোকান", "কম্পিউটার/ইন্টারনেট/ওয়াইফাই", "হার্ডওয়্যার/ডেকোরেটর", "মুদি দোকান/সুপার শপ"] },

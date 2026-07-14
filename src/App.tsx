@@ -1968,7 +1968,7 @@ export default function App() {
                else if (subCat === 'সংসদ সদস্য (এমপি)') IconComponent = UserCheck;
                else if (subCat === 'উপজেলা পরিষদ') IconComponent = Landmark;
                else if (subCat === 'ইউনিয়ন পরিষদ') IconComponent = Home;
-               else if (subCat === 'স্কুল/কলেজ/মাদ্রাসা') IconComponent = School;
+               else if (subCat === 'স্কুল' || subCat === 'কলেজ' || subCat === 'মাদ্রাসা') IconComponent = School;
                else if (subCat === 'কিন্ডারগার্টেন') IconComponent = Baby;
                else if (subCat === 'প্রাইভেট টিউটর') IconComponent = BookOpen;
                else if (subCat === 'বাস') IconComponent = Bus;
@@ -2530,7 +2530,7 @@ export default function App() {
               ) : isOtpMode ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    আপনার মোবাইল নাম্বারে পাঠানো ৪-ডিজিটের কোডটি এখানে লিখুন।
+                    আপনার মোবাইল বা ইমেইলে পাঠানো ৪-ডিজিটের কোডটি এখানে লিখুন। (ডেমো হিসেবে পপআপে দেখানো কোডটি ব্যবহার করুন)
                   </p>
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     <div>
