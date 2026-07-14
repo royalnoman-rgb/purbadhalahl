@@ -7,7 +7,7 @@ import { safeStorage, safeSession } from "./utils/storage";
 import { VisitorStats } from './components/VisitorStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor } from 'lucide-react';
+import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
@@ -1976,7 +1976,7 @@ export default function App() {
               আমাদের ভিশন ও আপনার অবদান
             </h2>
             <p className="text-sm leading-relaxed mb-4 text-emerald-800">
-              আমরা পূর্বধলার মানুষের জন্য একটি পূর্ণাঙ্গ প্লে-স্টোর অ্যাপস তৈরি করতে যাচ্ছি। এখানে সিএনজি, পিকআপ, প্রাইভেট কার ড্রাইভারদের নাম্বার ও লাইভ লোকেশন (চেক-ইন) যুক্ত করার প্ল্যান রয়েছে। এই অ্যাপটিকে আরও সমৃদ্ধ করতে আপনার মতামত, আইডিয়া এবং নতুন নাম্বার যুক্ত করে আমাদের সহায়তা করুন।
+              পূর্বধলা হেল্পলাইন-কে একটি স্বয়ংসম্পূর্ণ ও আধুনিক ডিজিটাল প্ল্যাটফর্ম হিসেবে গড়ে তোলাই আমাদের মূল লক্ষ্য। ভবিষ্যতে এটিকে একটি পূর্ণাঙ্গ স্মার্টফোন অ্যাপে রূপান্তরিত করার কাজ চলছে, যেখানে জরুরি সেবাসহ পরিবহন শ্রমিকদের (সিএনজি, পিকআপ, অ্যাম্বুলেন্স) লাইভ লোকেশন সুবিধাসহ আরও আধুনিক ফিচার যুক্ত করা হবে। এই উদ্যোগকে সফল ও সবার জন্য উপকারী করতে আপনার গঠনমূলক মতামত, নতুন আইডিয়া এবং প্রয়োজনীয় কন্টাক্ট নাম্বার যুক্ত করে আমাদের সাথে থাকুন।
             </p>
             <div className="flex flex-wrap gap-3">
               <button
@@ -2360,6 +2360,16 @@ export default function App() {
       {/* Footer */}
       <footer className="text-center py-6 text-gray-400 text-sm">
         <VisitorStats />
+        <div className="mt-4 mb-5 flex justify-center items-center gap-3">
+          <a href="https://web.facebook.com/groups/purbadhalahl" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-gray-200">
+            <Facebook className="w-4 h-4 text-[#1877F2]" />
+            <span className="text-gray-600 font-medium text-xs">আমাদের গ্রুপ</span>
+          </a>
+          <a href="https://web.facebook.com/purbadhalahelpline/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-gray-200">
+            <Facebook className="w-4 h-4 text-[#1877F2]" />
+            <span className="text-gray-600 font-medium text-xs">আমাদের পেইজ</span>
+          </a>
+        </div>
         <p>
           &copy; {new Date().getFullYear()} পূর্বধলা হেল্পলাইন
           <br />
