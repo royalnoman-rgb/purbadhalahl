@@ -195,6 +195,60 @@ export default function App() {
   const [activeUserTab, setActiveUserTab] = useState<'stats' | 'contacts' | 'feedbacks' | 'messages'>('stats');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
 
+  const activeViewsCount = [
+    isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
+    isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
+    !!selectedUserProfile, isContributorProfileOpen, !!selectedBloodGroup,
+    !!selectedSubCategory, !!selectedCategory, showCommunity, showMap
+  ].filter(Boolean).length;
+
+  const prevActiveViewsCount = useRef(activeViewsCount);
+
+  useEffect(() => {
+    if (activeViewsCount === 1 && prevActiveViewsCount.current === 0) {
+      if (window.history.state?.dummy !== true) {
+        window.history.pushState({ dummy: true }, '');
+      }
+    }
+    prevActiveViewsCount.current = activeViewsCount;
+  }, [activeViewsCount]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (activeViewsCount > 0) {
+        handleBack();
+        if (activeViewsCount > 1) {
+          window.history.pushState({ dummy: true }, '');
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
+    isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
+    selectedUserProfile, isContributorProfileOpen, selectedBloodGroup,
+    selectedSubCategory, selectedCategory, showCommunity, showMap
+  ]);
+
+
+  function handleBack() {
+    if (isRequestModalOpen) setIsRequestModalOpen(false);
+    else if (isCategoryModalOpen) setIsCategoryModalOpen(false);
+    else if (isSubCategoryModalOpen) setIsSubCategoryModalOpen(false);
+    else if (isFeedbackModalOpen) setIsFeedbackModalOpen(false);
+    else if (isReviewsModalOpen) setIsReviewsModalOpen(false);
+    else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
+    else if (selectedUserProfile) setSelectedUserProfile(null);
+    else if (selectedBloodGroup) setSelectedBloodGroup(null);
+    else if (selectedSubCategory) setSelectedSubCategory(null);
+    else if (selectedCategory) setSelectedCategory(null);
+    else if (isContributorProfileOpen) setIsContributorProfileOpen(false);
+    else if (showCommunity) setShowCommunity(false);
+    else if (showMap) setShowMap(false);
+  };
+
+
   useEffect(() => {
     if (contributorPhone && messaging) {
       // request permission
@@ -2073,7 +2127,10 @@ export default function App() {
               const sortedSubCats = rawSubCats.sort((a, b) => {
                 const indexA = orderMap.has(a) ? orderMap.get(a)! : 999;
                 const indexB = orderMap.has(b) ? orderMap.get(b)! : 999;
-                return indexA - indexB;
+                if (indexA !== indexB) {
+                  return indexA - indexB;
+                }
+                return a.localeCompare(b, 'bn');
               });
               
               return sortedSubCats.map((subCat, index) => {
@@ -2462,7 +2519,7 @@ export default function App() {
         ...allContacts.filter(c => c.categoryId === newCategory && c.subCategory).map(c => c.subCategory),
         ...(predefinedSubCategories.find(pc => pc.categoryId === newCategory)?.subCategories || []),
         ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory).map(sc => sc.title)
-      ])).map(sub => (
+      ])).sort((a, b) => a.localeCompare(b, 'bn')).map(sub => (
          <option key={sub} value={sub}>{sub}</option>
       ))}
       {!Array.from(new Set([

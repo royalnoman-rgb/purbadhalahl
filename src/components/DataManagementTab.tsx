@@ -137,7 +137,7 @@ export default function DataManagementTab() {
     const fromDocs = subcategories.filter(sc => sc.categoryId === catId).map(sc => sc.title);
     const fromPredefined = predefinedSubCategories.find(pc => pc.categoryId === catId)?.subCategories || [];
     
-    return Array.from(new Set([...fromContacts, ...fromDocs, ...fromPredefined])).map(title => {
+    return Array.from(new Set([...fromContacts, ...fromDocs, ...fromPredefined])).sort((a, b) => a.localeCompare(b, 'bn')).map(title => {
       const docInfo = subcategories.find(sc => sc.categoryId === catId && sc.title === title);
       return {
         id: docInfo ? docInfo.id : `virtual_${title}`,
