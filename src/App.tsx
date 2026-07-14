@@ -412,8 +412,16 @@ export default function App() {
   // Handle replaced contacts (edits)
   const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
   const dynamicContactIds = new Set(dynamicContacts.map(c => c.id));
-  const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id) && !dynamicContactIds.has(c.id));
-  const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id));
+  
+  const deletedContactIds = new Set();
+  dynamicCategories.forEach(cat => {
+    if (cat.deletedContacts) {
+      cat.deletedContacts.forEach((id: string) => deletedContactIds.add(id));
+    }
+  });
+
+  const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id) && !dynamicContactIds.has(c.id) && !deletedContactIds.has(c.id));
+  const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id) && !deletedContactIds.has(c.id));
   const allContacts = [...activeStaticContacts, ...activeDynamicContacts].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
 
 
@@ -918,6 +926,12 @@ export default function App() {
     confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
       try {
         await deleteDoc(doc(db, 'categories', id));
+        setDynamicCategories(prev => prev.filter(c => c.id !== id));
+        safeStorage.removeItem('cats_cache');
+        safeStorage.removeItem('cats_cache_time');
+        if (selectedCategory?.id === id) {
+          setSelectedCategory(null);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -1036,11 +1050,29 @@ export default function App() {
     }
   };
 
-  const handleDeleteContactApp = (id: string, e: React.MouseEvent) => {
+  const handleDeleteContactApp = (contact: any, e: React.MouseEvent) => {
     e.stopPropagation();
     confirmAction('আপনি কি নিশ্চিত যে এটি মুছে ফেলতে চান?', async () => {
       try {
-        await deleteDoc(doc(db, 'contacts', id));
+        await deleteDoc(doc(db, 'contacts', contact.id));
+        setDynamicContacts(prev => prev.filter(c => c.id !== contact.id));
+        
+        if (contact.categoryId) {
+          const cat = dynamicCategories.find(c => c.id === contact.categoryId);
+          if (cat) {
+            const newDeleted = [...(cat.deletedContacts || []), contact.id];
+            await updateDoc(doc(db, 'categories', contact.categoryId), { deletedContacts: newDeleted });
+            setDynamicCategories(prev => prev.map(c => c.id === contact.categoryId ? { ...c, deletedContacts: newDeleted } : c));
+            if (selectedCategory?.id === contact.categoryId) {
+              setSelectedCategory({ ...selectedCategory, deletedContacts: newDeleted });
+            }
+            safeStorage.removeItem('cats_cache');
+            safeStorage.removeItem('cats_cache_time');
+          }
+        }
+        
+        safeStorage.removeItem('contacts_cache');
+        safeStorage.removeItem('contacts_cache_time');
       } catch (err) {
         console.error(err);
       }
@@ -2175,7 +2207,7 @@ export default function App() {
                               <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-colors" title="সংশোধন করুন">
                                 <Edit3 className="w-4 h-4" />
                               </button>
-                              <button onClick={(e) => handleDeleteContactApp(contact.id, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors" title="ডিলিট করুন">
+                              <button onClick={(e) => handleDeleteContactApp(contact, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors" title="ডিলিট করুন">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                               <div className="flex flex-col ml-1 bg-gray-50 rounded border border-gray-100">
