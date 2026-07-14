@@ -24,7 +24,11 @@ export default defineConfig(() => {
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
-          manualChunks: undefined
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            firebase: ['firebase/app', 'firebase/firestore', 'firebase/auth', 'firebase/messaging'],
+            icons: ['lucide-react']
+          }
         }
       }
     }

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://purbadhala-smart-helpline.web.app/sitemap.xml
