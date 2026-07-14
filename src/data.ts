@@ -501,7 +501,7 @@ export const contacts: Contact[] = [
 export const predefinedSubCategories: { categoryId: string, subCategories: string[] }[] = [
   { categoryId: "emergency", subCategories: ["ফায়ার সার্ভিস", "থানা / পুলিশ কন্ট্রোল রুম", "হাসপাতাল জরুরী বিভাগ", "বিদ্যুৎ অফিস", "পবিস অভিযোগ কেন্দ্র"] },
   { categoryId: "healthcare", subCategories: ["হাসপাতাল/ক্লিনিক", "ডাক্তার", "ডায়াগনস্টিক সেন্টার", "ফার্মেসি"] },
-  { categoryId: "blood_donors", subCategories: ["রক্তদাতা", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "ব্লাড ব্যাংক"] },
+  { categoryId: "blood_donors", subCategories: ["স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন", "রক্তদাতা", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "ব্লাড ব্যাংক"] },
   { categoryId: "administration", subCategories: ["উপজেলা নির্বাহী অফিস", "থানা পুলিশ", "উপজেলা কৃষি অফিস", "উপজেলা ভূমি অফিস", "উপজেলা সমাজসেবা অফিস", "উপজেলা সমবায় অফিস", "অন্যান্য অফিস"] },
   { categoryId: "representatives", subCategories: ["সংসদ সদস্য (এমপি)", "উপজেলা পরিষদ", "ইউনিয়ন পরিষদ"] },
   { categoryId: "education", subCategories: ["স্কুল", "কলেজ", "মাদ্রাসা", "কিন্ডারগার্টেন", "প্রাইভেট টিউটর"] },

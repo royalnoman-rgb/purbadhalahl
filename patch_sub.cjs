@@ -1,0 +1,10 @@
+const fs = require('fs');
+let content = fs.readFileSync('src/App.tsx', 'utf8');
+
+content = content.replace(
+  '<option value="রক্তদাতা">রক্তদাতা (গ্রুপ জানা নেই)</option>',
+  '<option value="স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন">স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন</option>\n      <option value="রক্তদাতা (গ্রুপ জানা নেই)">রক্তদাতা (গ্রুপ জানা নেই)</option>'
+);
+
+fs.writeFileSync('src/App.tsx', content);
+console.log("App.tsx select patched");

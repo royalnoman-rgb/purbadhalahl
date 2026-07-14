@@ -414,6 +414,15 @@ export default function Admin() {
       await updateDoc(contactRef, { status: 'approved' });
       await logAdminAction(`Contact approved: ${contactData.name || 'Unknown'}`);
       
+      // If this was an edit request replacing an old contact, delete the old contact
+      if (contactData.replacesId) {
+        try {
+          await deleteDoc(doc(db, 'contacts', contactData.replacesId));
+        } catch (e) {
+          console.error("Failed to delete replaced contact", e);
+        }
+      }
+
       if (contactData.contributorPhone && contactData.contributorName) {
         const contributorRef = doc(db, 'contributors', contactData.contributorPhone);
         const contributorDoc = await getDoc(contributorRef);
