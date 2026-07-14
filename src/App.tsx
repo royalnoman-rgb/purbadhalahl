@@ -16,6 +16,7 @@ import { db, auth, googleProvider, facebookProvider, messaging, getToken, onMess
 import { signInWithPopup } from 'firebase/auth';
 
 import MapTracker from './MapTracker';
+import TrainTracker from './TrainTracker';
 import Community from './Community';
 import UserProfileModal from './UserProfileModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
@@ -84,6 +85,7 @@ export default function App() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
+  const [showTrainTracker, setShowTrainTracker] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [selectedUserProfile, setSelectedUserProfile] = useState<string | null>(null);
@@ -199,7 +201,7 @@ export default function App() {
     isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
     isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
     !!selectedUserProfile, isContributorProfileOpen, !!selectedBloodGroup,
-    !!selectedSubCategory, !!selectedCategory, showCommunity, showMap
+    !!selectedSubCategory, !!selectedCategory, showCommunity, showMap, showTrainTracker
   ].filter(Boolean).length;
 
   const prevActiveViewsCount = useRef(activeViewsCount);
@@ -228,7 +230,7 @@ export default function App() {
     isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
     isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
     selectedUserProfile, isContributorProfileOpen, selectedBloodGroup,
-    selectedSubCategory, selectedCategory, showCommunity, showMap
+    selectedSubCategory, selectedCategory, showCommunity, showMap, showTrainTracker
   ]);
 
 
@@ -246,6 +248,7 @@ export default function App() {
     else if (isContributorProfileOpen) setIsContributorProfileOpen(false);
     else if (showCommunity) setShowCommunity(false);
     else if (showMap) setShowMap(false);
+    else if (showTrainTracker) setShowTrainTracker(false);
   };
 
 
@@ -1809,7 +1812,7 @@ export default function App() {
       {/* Header */}
       <header className="bg-emerald-600 text-white shadow-md sticky top-0 z-10 transition-all">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center">
-          {selectedCategory || showMap || showCommunity ? (
+          {selectedCategory || showMap || showTrainTracker || showCommunity ? (
             <button
               onClick={() => {
                 if (selectedBloodGroup) {
@@ -1819,6 +1822,7 @@ export default function App() {
                 } else {
                   setSelectedCategory(null);
                   setShowMap(false);
+                  setShowTrainTracker(false);
                   setShowCommunity(false);
                 }
               }}
@@ -1841,7 +1845,7 @@ export default function App() {
             </div>
           )}
           <h1 className="text-xl font-semibold tracking-tight truncate flex-1">
-            {showCommunity ? 'কমিউনিটি' : showMap ? 'গাড়ির লাইভ অবস্থান' : selectedCategory ? selectedCategory.title : 'পূর্বধলা হেল্পলাইন'}
+            {showCommunity ? 'কমিউনিটি' : showMap ? 'গাড়ির লাইভ অবস্থান' : showTrainTracker ? 'লাইভ ট্রেন ট্র্যাকিং' : selectedCategory ? selectedCategory.title : 'পূর্বধলা হেল্পলাইন'}
           </h1>
           {isAdmin && (
             <a href="/admin" className="ml-2 text-[10px] bg-red-500 text-white px-2 py-1 rounded shadow-sm hover:bg-red-600 transition-colors font-medium">
@@ -1905,6 +1909,7 @@ export default function App() {
                           if (notif.link === 'community') {
                             setShowCommunity(true);
                             setShowMap(false);
+                            setShowTrainTracker(false);
                             setSelectedCategory(null);
                           } else if (notif.link === 'messages' || notif.link === 'inbox' || notif.link === 'feedbacks' || notif.link === 'requests' || notif.link === 'reviews') {
                             if (isAdmin && notif.receiverPhone === 'admin') {
@@ -1953,7 +1958,7 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         {/* Search Bar - only show if no category is selected or if there are many contacts */}
-        {!selectedCategory && !showMap && !showCommunity && (
+        {!selectedCategory && !showMap && !showTrainTracker && !showCommunity && (
           <div className="relative mb-6">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
@@ -1969,7 +1974,7 @@ export default function App() {
         )}
 
         {/* Contribution Banner */}
-        {!selectedCategory && !showMap && !showCommunity && !searchQuery && (
+        {!selectedCategory && !showMap && !showTrainTracker && !showCommunity && !searchQuery && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-6 text-emerald-900 shadow-sm">
             <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-emerald-600" />
@@ -1996,9 +2001,16 @@ export default function App() {
         )}
 
         {/* Live Tracking Map */}
-        {showMap && !showCommunity && (
+        {showMap && !showCommunity && !showTrainTracker && (
           <div className="mb-8">
             <MapTracker />
+          </div>
+        )}
+        
+        {/* Train Tracker */}
+        {showTrainTracker && !showMap && !showCommunity && (
+          <div className="mb-8">
+            <TrainTracker contributorName={contributorName} />
           </div>
         )}
 
@@ -2017,7 +2029,7 @@ export default function App() {
         )}
 
         {/* Dashboard Grid (Shown when no category is selected and no search typed) */}
-        {!selectedCategory && !showMap && !showCommunity && !searchQuery && (
+        {!selectedCategory && !showMap && !showTrainTracker && !showCommunity && !searchQuery && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
             <button
               onClick={() => setShowCommunity(true)}
@@ -2032,6 +2044,13 @@ export default function App() {
             >
               <Navigation className="w-10 h-10 mb-1" strokeWidth={1.5} />
               <span className="text-sm sm:text-base font-medium text-center">গাড়ির অবস্থান</span>
+            </button>
+            <button
+              onClick={() => setShowTrainTracker(true)}
+              className="bg-orange-50 text-orange-700 border border-orange-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-orange-500 focus:ring-opacity-50"
+            >
+              <Train className="w-10 h-10 mb-1" strokeWidth={1.5} />
+              <span className="text-sm sm:text-base font-medium text-center">ট্রেন ট্র্যাকিং</span>
             </button>
             {allCategories.map((category, index) => {
               const IconComponent = iconMap[category.iconName] || Building2;
