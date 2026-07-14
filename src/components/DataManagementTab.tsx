@@ -34,7 +34,7 @@ export default function DataManagementTab() {
     const qSubCat = query(collection(db, 'subcategories'), where('status', '==', 'approved'));
     const unsubSubCat = onSnapshot(qSubCat, (snap) => {
       setSubCategories(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-    });
+    }, (error) => console.error("DataManagementTab SubCategories Error:", error));
 
     const qContacts = query(collection(db, 'contacts'));
     const unsubContacts = onSnapshot(qContacts, (snap) => {

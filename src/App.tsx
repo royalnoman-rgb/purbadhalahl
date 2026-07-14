@@ -134,6 +134,8 @@ export default function App() {
   const [newSubCategory, setNewSubCategory] = useState("");
   const [newCategory, setNewCategory] = useState('');
   const [newBloodGroup, setNewBloodGroup] = useState('');
+  const [newBloodDonorGender, setNewBloodDonorGender] = useState('male');
+  const [newLastDonationDate, setNewLastDonationDate] = useState('');
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
 
   // Form states - Category
@@ -225,14 +227,18 @@ export default function App() {
   }, [contributorPhone]);
 
 
-    useEffect(() => {
+  const attemptedMarkRead = useRef<Set<string>>(new Set());
+  useEffect(() => {
     if (activeUserTab === 'messages' && contributorPhone) {
       const markAsRead = async () => {
-        const unreadMsgs = userMessages.filter(msg => msg.receiverPhone === contributorPhone && !msg.read);
+        const unreadMsgs = userMessages.filter(msg => msg.receiverPhone === contributorPhone && !msg.read && !attemptedMarkRead.current.has(msg.id));
         for (const msg of unreadMsgs) {
+          attemptedMarkRead.current.add(msg.id);
           try {
             await updateDoc(doc(db, 'user_messages', msg.id), { read: true });
-          } catch(e) {}
+          } catch(e) {
+            console.error("markAsRead error", e);
+          }
         }
       };
       markAsRead();
@@ -490,6 +496,8 @@ export default function App() {
     setNewCategory(contact.categoryId);
     setNewSubCategory(contact.subCategory || '');
     setNewBloodGroup(contact.categoryId === 'blood_donors' ? (contact.subCategory || '') : '');
+    setNewBloodDonorGender(contact.gender || 'male');
+    setNewLastDonationDate(contact.lastDonationDate || '');
     setEditingContactId(contact.id);
     setIsRequestModalOpen(true);
   };
@@ -502,6 +510,8 @@ export default function App() {
     setNewCategory('');
     setNewSubCategory('');
     setNewBloodGroup('');
+    setNewBloodDonorGender('male');
+    setNewLastDonationDate('');
     setEditingContactId(null);
     setIsRequestModalOpen(true);
   };
@@ -559,17 +569,27 @@ export default function App() {
         contributorFacebook: contributorFacebook || null,
       };
       
+      if (newCategory === 'blood_donors' && newBloodGroup !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && newBloodGroup !== 'ব্লাড ব্যাংক') {
+        payload.gender = newBloodDonorGender;
+        payload.lastDonationDate = newLastDonationDate || null;
+      }
+      
       if (editingContactId) {
         if (isAdmin) {
           // If admin, direct update
-          await setDoc(doc(db, 'contacts', editingContactId), {
+          const updatePayload: any = {
             name: newName,
             phone: newPhone,
             details: newDetails,
             subDetails: newSubDetails,
             categoryId: newCategory,
             subCategory: newCategory === 'blood_donors' ? newBloodGroup : newSubCategory,
-          }, { merge: true });
+          };
+          if (newCategory === 'blood_donors' && newBloodGroup !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && newBloodGroup !== 'ব্লাড ব্যাংক') {
+            updatePayload.gender = newBloodDonorGender;
+            updatePayload.lastDonationDate = newLastDonationDate || null;
+          }
+          await setDoc(doc(db, 'contacts', editingContactId), updatePayload, { merge: true });
         } else {
           payload.replacesId = editingContactId;
           await addDoc(collection(db, 'contacts'), payload);
@@ -1203,6 +1223,20 @@ export default function App() {
         }
       }
       await updateDoc(reviewRef, { likesArray, lovesArray, likes: likesArray.length + lovesArray.length });
+      
+      const newReviewData = { ...review, likesArray, lovesArray, likes: likesArray.length + lovesArray.length };
+      setPublicReviews(prev => {
+        const newReviews = prev.map(r => r.id === review.id ? newReviewData : r);
+        safeStorage.setItem('reviews_cache', JSON.stringify(newReviews));
+        return newReviews;
+      });
+      
+      const likedReviews = JSON.parse(safeStorage.getItem('likedReviews') || '[]');
+      if (reactionType === 'like' && !hasLiked) {
+        safeStorage.setItem('likedReviews', JSON.stringify([...likedReviews, review.id]));
+      } else if (reactionType === 'like' && hasLiked) {
+        safeStorage.setItem('likedReviews', JSON.stringify(likedReviews.filter(id => id !== review.id)));
+      }
     } catch (err) {
       console.error("Error reacting to review", err);
     }
@@ -1333,7 +1367,7 @@ export default function App() {
       const unsubSent = onSnapshot(sentMessagesQuery, (snapshot) => {
         sentMsgs = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
         updateUnifiedMessages();
-      });
+      }, (error) => console.error("SentMsgs Snapshot Error:", error));
       
       // Store unsubSent to use in cleanup
       (window as any)._unsubSent = unsubSent;
@@ -2162,7 +2196,14 @@ export default function App() {
                     <div key={`${contact.id || contact.phone}-${index}`} className="bg-white rounded-lg p-2.5 sm:p-3 shadow-sm border border-gray-100 flex items-center justify-between gap-3 hover:shadow-md transition-shadow group">
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold text-gray-900 text-[14px] sm:text-[15px] truncate">{contact.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 text-[14px] sm:text-[15px] truncate">{contact.name}</h3>
+                            {contact.categoryId === 'blood_donors' && contact.subCategory !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && contact.subCategory !== 'ব্লাড ব্যাংক' && (
+                              <span className="text-[10px] font-semibold bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">
+                                রক্তদাতা
+                              </span>
+                            )}
+                          </div>
                           <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 font-medium whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded text-[13px]">
                             <Phone className="w-3 h-3 text-emerald-600" />
                             {toBengaliDigits(contact.phone)}
@@ -2170,6 +2211,30 @@ export default function App() {
                         </div>
                         
                         <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 mt-0.5">
+                          {contact.categoryId === 'blood_donors' && contact.subCategory !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && contact.subCategory !== 'ব্লাড ব্যাংক' && (
+                            <div className="mt-0.5">
+                              {(() => {
+                                if (!contact.lastDonationDate) {
+                                  return <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">রক্ত দানে প্রস্তুত</span>;
+                                }
+                                const lastDate = new Date(contact.lastDonationDate);
+                                const today = new Date();
+                                const diffTime = Math.abs(today.getTime() - lastDate.getTime());
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                const requiredDays = contact.gender === 'female' ? 120 : 90;
+                                const isEligible = diffDays >= requiredDays;
+                                
+                                return (
+                                  <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${isEligible ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-red-600 bg-red-50 border-red-100'}`}>
+                                    {isEligible ? 'রক্ত দানে প্রস্তুত' : 'রক্ত দানের সময় হয়নি'} 
+                                    <span className="text-gray-500 ml-1 font-normal">
+                                      ({contact.lastDonationDate.split('-').reverse().join('/')})
+                                    </span>
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
                           {contact.details && (
                             <p className="text-[12px] sm:text-[13px] text-gray-600 truncate">{contact.details}</p>
                           )}
@@ -2351,22 +2416,42 @@ export default function App() {
                     </select>
                   </div>
 {newCategory === 'blood_donors' ? (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">রক্তের গ্রুপ ও ধরন *</label>
-    <select required value={newBloodGroup} onChange={(e) => setNewBloodGroup(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
-      <option value="" disabled>নির্বাচন করুন</option>
-      <option value="A+">A+</option>
-      <option value="A-">A-</option>
-      <option value="B+">B+</option>
-      <option value="B-">B-</option>
-      <option value="O+">O+</option>
-      <option value="O-">O-</option>
-      <option value="AB+">AB+</option>
-      <option value="AB-">AB-</option>
-      <option value="স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন">স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন</option>
-      <option value="রক্তদাতা">রক্তদাতা (গ্রুপ জানা নেই)</option>
-      <option value="ব্লাড ব্যাংক">ব্লাড ব্যাংক</option>
-    </select>
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">রক্তের গ্রুপ ও ধরন *</label>
+      <select required value={newBloodGroup} onChange={(e) => setNewBloodGroup(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+        <option value="" disabled>নির্বাচন করুন</option>
+        <option value="A+">A+</option>
+        <option value="A-">A-</option>
+        <option value="B+">B+</option>
+        <option value="B-">B-</option>
+        <option value="O+">O+</option>
+        <option value="O-">O-</option>
+        <option value="AB+">AB+</option>
+        <option value="AB-">AB-</option>
+        <option value="স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন">স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন</option>
+        <option value="রক্তদাতা">রক্তদাতা (গ্রুপ জানা নেই)</option>
+        <option value="ব্লাড ব্যাংক">ব্লাড ব্যাংক</option>
+      </select>
+    </div>
+    {newBloodGroup && newBloodGroup !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && newBloodGroup !== 'ব্লাড ব্যাংক' && (
+      <>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">লিঙ্গ * (রক্তদানের যোগ্যতার জন্য)</label>
+          <select required value={newBloodDonorGender} onChange={(e) => setNewBloodDonorGender(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+            <option value="male">পুরুষ</option>
+            <option value="female">নারী</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">সর্বশেষ রক্তদানের তারিখ (যদি দিয়ে থাকেন)</label>
+          <input type="date" value={newLastDonationDate} onChange={(e) => setNewLastDonationDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
+          <p className="text-xs text-gray-500 mt-1">
+            * বিশ্ব স্বাস্থ্য সংস্থার মতে, পুরুষরা ৩ মাস পর পর এবং নারীরা ৪ মাস পর পর রক্ত দিতে পারবেন।
+          </p>
+        </div>
+      </>
+    )}
   </div>
 ) : (
   <div>
@@ -2590,16 +2675,21 @@ export default function App() {
       )}
 
       {/* Contributor Profile Modal */}
-      <UserProfileModal isOpen={!!selectedUserProfile} onClose={() => setSelectedUserProfile(null)} userPhone={selectedUserProfile || ""} currentUserId={contributorPhone} currentUserName={contributorName} currentUserAvatar={contributorAvatar} onlineUsers={onlineUsers} />
+      <UserProfileModal isOpen={!!selectedUserProfile} onClose={() => setSelectedUserProfile(null)} userPhone={selectedUserProfile || ""} currentUserId={contributorPhone} currentUserName={contributorName} currentUserAvatar={contributorAvatar} onlineUsers={onlineUsers} isBloodDonor={allContacts.some(c => c.categoryId === 'blood_donors' && c.phone === selectedUserProfile && c.status === 'approved' && c.subCategory !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && c.subCategory !== 'ব্লাড ব্যাংক')} />
       {isContributorProfileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <UserCircle className="w-5 h-5 text-emerald-600" /> 
-                <span className="flex items-center">
+                <span className="flex items-center gap-1.5 flex-wrap">
                   {isLoginMode ? 'লগইন' : 'আমার প্রোফাইল'}
                   {!isLoginMode && contributorName && isVerifiedContributor(contributorName) && <VerifiedBadge />}
+                  {!isLoginMode && contributorPhone && allContacts.some(c => c.categoryId === 'blood_donors' && c.phone === contributorPhone && c.status === 'approved' && c.subCategory !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && c.subCategory !== 'ব্লাড ব্যাংক') && (
+                    <span className="text-[11px] font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">
+                      রক্তদাতা
+                    </span>
+                  )}
                 </span>
               </h2>
               <button

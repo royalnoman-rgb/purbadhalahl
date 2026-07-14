@@ -120,7 +120,7 @@ export default function Community({ contributorPhone, contributorName, contribut
     const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       setPosts(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })).filter((p: any) => !p.isDeleted));
-    });
+    }, (error) => console.error("Community Posts Snapshot Error:", error));
     return () => unsub();
   }, [effectivePhone]);
 

@@ -12,9 +12,10 @@ interface UserProfileModalProps {
   currentUserName: string;
   currentUserAvatar: string;
   onlineUsers: string[];
+  isBloodDonor?: boolean;
 }
 
-export default function UserProfileModal({ isOpen, onClose, userPhone, currentUserId, currentUserName, currentUserAvatar, onlineUsers }: UserProfileModalProps) {
+export default function UserProfileModal({ isOpen, onClose, userPhone, currentUserId, currentUserName, currentUserAvatar, onlineUsers, isBloodDonor }: UserProfileModalProps) {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -95,9 +96,16 @@ export default function UserProfileModal({ isOpen, onClose, userPhone, currentUs
                 {onlineUsers.includes(userPhone) && <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-white rounded-full"></div>}
               </div>
               
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-1">
-                {userData.name}
-              </h3>
+              <div className="flex flex-col items-center mb-1">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  {userData.name}
+                </h3>
+                {isBloodDonor && (
+                  <span className="mt-1 text-[11px] font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">
+                    রক্তদাতা
+                  </span>
+                )}
+              </div>
               
               <div className="flex gap-4 mt-4 w-full">
                 <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
