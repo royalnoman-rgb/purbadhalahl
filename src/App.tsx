@@ -377,9 +377,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!contributorPhone && !isAdmin) return;
+    const savedPhone = safeStorage.getItem('contributorPhone');
+    const isSavedSession = !!safeStorage.getItem('contributorName') && !!savedPhone;
+    const activeContributorPhone = (contributorPhone && isSavedSession && contributorPhone === savedPhone) ? contributorPhone : null;
+
+    if (!activeContributorPhone && !isAdmin) {
+      setNotifications([]);
+      return;
+    }
     const receiverIds = [];
-    if (contributorPhone) receiverIds.push(contributorPhone);
+    if (activeContributorPhone) receiverIds.push(activeContributorPhone);
     if (isAdmin) receiverIds.push('admin');
     
     const qNotif = query(collection(db, 'notifications'), where('receiverPhone', 'in', receiverIds));
@@ -1354,7 +1361,11 @@ export default function App() {
   useEffect(() => {
     let unsubContributor: any = null;
     let unsubUserMessages: any = null;
-    if (isContributorProfileOpen && contributorPhone) {
+    
+    const savedPhone = safeStorage.getItem('contributorPhone');
+    const isSavedSession = !!safeStorage.getItem('contributorName') && !!savedPhone;
+
+    if (isContributorProfileOpen && contributorPhone && isSavedSession && contributorPhone === savedPhone) {
       fetchContributorStats();
       
       const docRef = doc(db, 'contributors', contributorPhone);
