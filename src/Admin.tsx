@@ -935,7 +935,7 @@ export default function Admin() {
           <h1 className="text-xl font-bold">অ্যাডমিন ড্যাশবোর্ড</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative" ref={adminNotifRef}>
+          {isSuperAdmin && (<div className="relative" ref={adminNotifRef}>
             <button 
               onClick={() => {
                 setShowNotifications(!showNotifications);
@@ -1002,7 +1002,7 @@ export default function Admin() {
                 </div>
               </div>
             )}
-          </div>
+          </div>)}
           <button onClick={() => { setIsAuthenticated(false); safeStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
         </div>
       </header>
@@ -1010,30 +1010,36 @@ export default function Admin() {
       <main className="max-w-4xl mx-auto p-4 mt-6">
         {/* Tabs */}
         <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide border-b">
-          <button onClick={() => setActiveTab('inbox')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors relative ${activeTab === 'inbox' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-  ইনবক্স
-  {contributors.some(c => c.hasUnreadAdminMessage) && (
-    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-  )}
-</button>
+          {isSuperAdmin && (
+            <button onClick={() => setActiveTab('inbox')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors relative ${activeTab === 'inbox' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              ইনবক্স
+              {contributors.some(c => c.hasUnreadAdminMessage) && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
+            </button>
+          )}
           <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'requests' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             অপেক্ষমান রিকোয়েস্ট ({pendingContacts.length + pendingCategories.length + pendingSubCategories.length})
           </button>
-          <button onClick={() => setActiveTab('feedbacks')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            মতামত ({feedbacks.length})
-          </button>
-          <button onClick={() => setActiveTab('reviews')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'reviews' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            রিভিউ ({publicReviews.length})
-          </button>
-          <button onClick={() => setActiveTab('contributors')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'contributors' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            অবদানকারী
-          </button>
-          <button onClick={() => setActiveTab('history')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'history' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            অ্যাডমিন হিস্ট্রি
-          </button>
-          <button onClick={() => setActiveTab('recycle')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'recycle' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            রিসাইকেল বিন ({deletedPosts.length})
-          </button>
+          {isSuperAdmin && (
+            <>
+              <button onClick={() => setActiveTab('feedbacks')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                মতামত ({feedbacks.length})
+              </button>
+              <button onClick={() => setActiveTab('reviews')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'reviews' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                রিভিউ ({publicReviews.length})
+              </button>
+              <button onClick={() => setActiveTab('contributors')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'contributors' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                অবদানকারী
+              </button>
+              <button onClick={() => setActiveTab('history')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'history' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                অ্যাডমিন হিস্ট্রি
+              </button>
+              <button onClick={() => setActiveTab('recycle')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'recycle' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                রিসাইকেল বিন ({deletedPosts.length})
+              </button>
+            </>
+          )}
           <button onClick={() => setActiveTab('data')} className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === 'data' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             ডেটা ম্যানেজমেন্ট
           </button>
@@ -1077,7 +1083,7 @@ export default function Admin() {
         <div className="space-y-8">
         
         {/* Pending Categories */}
-        {activeTab === 'inbox' && (
+        {activeTab === 'inbox' && isSuperAdmin && (
           <section>
             <h2 className="text-lg font-semibold mb-4 border-b pb-2">অ্যাডমিন ইনবক্স</h2>
             <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-2 pb-2">
@@ -1378,7 +1384,7 @@ export default function Admin() {
         )}
 
         {/* Feedbacks */}
-        {activeTab === 'feedbacks' && (
+        {activeTab === 'feedbacks' && isSuperAdmin && (
           <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">মতামত ও আইডিয়া - {feedbacks.length}</h2>
           {feedbacks.length === 0 ? <p className="text-gray-500">কোনো মতামত নেই।</p> : (
@@ -1541,13 +1547,13 @@ export default function Admin() {
         )}
 
         {/* Recycle Bin */}
-        {activeTab === 'data' && (
+        {activeTab === 'data' && isSuperAdmin && (
           <DataManagementTab />
         )}
         
         
         
-        {activeTab === 'recycle' && (
+        {activeTab === 'recycle' && isSuperAdmin && (
           <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">রিসাইকেল বিন (মুছে ফেলা পোস্টসমূহ) - {deletedPosts.length}</h2>
           {deletedPosts.length === 0 ? <p className="text-gray-500">রিসাইকেল বিনে কোনো পোস্ট নেই।</p> : (
@@ -1581,7 +1587,7 @@ export default function Admin() {
         )}
 
         {/* Admin History */}
-        {activeTab === 'history' && (
+        {activeTab === 'history' && isSuperAdmin && (
           <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">অ্যাডমিন হিস্ট্রি (গত ৩০ দিন)</h2>
           {adminHistory.length === 0 ? <p className="text-gray-500">কোনো হিস্ট্রি নেই।</p> : (
@@ -1598,7 +1604,7 @@ export default function Admin() {
           )}
         </section>
         )}{/* Public Reviews */}
-        {activeTab === 'reviews' && (
+        {activeTab === 'reviews' && isSuperAdmin && (
           <section>
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">পাবলিক রিভিও সমূহ - {publicReviews.length}</h2>
           {publicReviews.length === 0 ? <p className="text-gray-500">কোনো রিভিও নেই।</p> : (
@@ -1627,7 +1633,7 @@ export default function Admin() {
         )}
 
         {/* Contributors */}
-        {activeTab === 'contributors' && (
+        {activeTab === 'contributors' && isSuperAdmin && (
           <section>
           <div className="flex items-center justify-between mb-4 border-b pb-2">
             <h2 className="text-lg font-semibold">অবদানকারীগণ (Contributors) - {contributors.length}</h2>
