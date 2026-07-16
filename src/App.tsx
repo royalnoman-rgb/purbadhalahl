@@ -2780,7 +2780,7 @@ export default function App() {
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <UserCircle className="w-5 h-5 text-emerald-600" /> 
                 <span className="flex items-center gap-1.5 flex-wrap">
-                  {isLoginMode ? 'লগইন' : 'আমার প্রোফাইল'}
+                  {isLoginMode ? 'লগইন' : !contributorName ? 'একাউন্ট তৈরি করুন' : 'আমার প্রোফাইল'}
                   {!isLoginMode && contributorName && isVerifiedContributor(contributorName) && <VerifiedBadge />}
                   {!isLoginMode && contributorPhone && allContacts.some(c => c.categoryId === 'blood_donors' && c.phone === contributorPhone && c.status === 'approved' && c.subCategory !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && c.subCategory !== 'ব্লাড ব্যাংক') && (
                     <span className="text-[11px] font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">
@@ -2876,9 +2876,16 @@ export default function App() {
                 </>
               ) : isLoginMode ? (
                 <>
-                  <p className="text-sm text-gray-600 mb-4">
-                    আপনার মোবাইল নাম্বার বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন। আপনি যদি আগে থেকে একাউন্ট করে থাকেন কিন্তু পাসওয়ার্ড সেট না করে থাকেন, তবে শুধু নাম্বার দিয়ে লগইন করে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করুন।
-                  </p>
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <UserCircle className="w-8 h-8 text-emerald-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">ফিরে আসার জন্য ধন্যবাদ!</h2>
+                    <p className="text-gray-500 text-sm mb-4">আপনার মোবাইল নাম্বার বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন।</p>
+                    <p className="text-xs text-emerald-600 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                      আপনি যদি আগে থেকে একাউন্ট করে থাকেন কিন্তু পাসওয়ার্ড সেট না করে থাকেন, তবে শুধু নাম্বার দিয়ে লগইন করে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করুন।
+                    </p>
+                  </div>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
@@ -3359,9 +3366,19 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600 mb-4">
-                    এখানে আপনার তথ্য সেভ করে রাখলে, পরবর্তীতে নতুন কোনো নাম্বার যুক্ত করলে বারবার আপনার নাম ও নাম্বার দিতে হবে না। আপনার যুক্ত করা নাম্বার অ্যাপ্রুভ হলে আপনার অবদান পয়েন্ট বৃদ্ধি পাবে।
-                  </p>
+                  {!contributorName ? (
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <UserPlus className="w-8 h-8 text-emerald-600" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-2">স্বাগতম!</h2>
+                      <p className="text-gray-500 text-sm">পূর্বধলা হেল্পলাইনে যুক্ত হতে একাউন্ট তৈরি করুন</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600 mb-4">
+                      এখানে আপনার তথ্য আপডেট করতে পারবেন। আপনার যুক্ত করা নাম্বার অ্যাপ্রুভ হলে আপনার পয়েন্ট বৃদ্ধি পাবে।
+                    </p>
+                  )}
                   <form onSubmit={async (e) => {
                     await saveContributorProfile(e);
                     setIsEditProfileMode(false);
@@ -3433,9 +3450,9 @@ export default function App() {
                     </div>
                     <button
                       type="submit"
-                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-medium flex justify-center items-center transition-colors shadow-md hover:shadow-lg"
                     >
-                      প্রোফাইল সেভ করুন
+                      {!contributorName ? 'একাউন্ট তৈরি করুন' : 'প্রোফাইল সেভ করুন'}
                     </button>
                   </form>
                   {!contributorName && (
