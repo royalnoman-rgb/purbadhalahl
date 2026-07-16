@@ -79,7 +79,7 @@ export default function App() {
       Notification.requestPermission();
     }
   }, []);
-  const [isAdmin, setIsAdmin] = useState(safeStorage.getItem('adminAuth') === 'true');
+  const [isAdmin, setIsAdmin] = useState(safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'moderator' || safeStorage.getItem('contributorRole') === 'admin');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(null);
@@ -1566,6 +1566,7 @@ export default function App() {
         setContributorPhone(phoneId);
         setContributorAvatar(avatar);
         setHasPassword(false);
+        safeStorage.setItem('contributorRole', 'user');
         safeStorage.setItem('contributorName', user.displayName || 'Unnamed User');
         safeStorage.setItem('contributorPhone', phoneId);
         if(avatar) safeStorage.setItem('contributorAvatar', avatar);
@@ -1582,6 +1583,7 @@ export default function App() {
         if (data.password) safeStorage.setItem('hasPassword', 'true');
         else safeStorage.removeItem('hasPassword');
         
+        safeStorage.setItem('contributorRole', data.role || 'user');
         safeStorage.setItem('contributorName', data.name || '');
         safeStorage.setItem('contributorPhone', phoneId);
         if(data.avatar || avatar) safeStorage.setItem('contributorAvatar', data.avatar || avatar);
@@ -3338,6 +3340,20 @@ export default function App() {
                   </div>
 
                   )} 
+ {(safeStorage.getItem('contributorRole') === 'moderator' || safeStorage.getItem('contributorRole') === 'admin' || isAdmin) && (
+                      <div className="mb-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            safeStorage.setItem('adminAuth', safeStorage.getItem('contributorRole') || 'true');
+                            window.location.href = '/admin';
+                          }}
+                          className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                        >
+                          অ্যাডমিন প্যানেল (কন্ট্রোল রুম)
+                        </button>
+                      </div>
+                    )}
  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
                     <button type="button" onClick={() => setIsEditProfileMode(true)} className="text-sm text-emerald-600 hover:underline font-medium">
                       প্রোফাইল আপডেট করুন
