@@ -1650,6 +1650,8 @@ export default function App() {
           if (data.password) safeStorage.setItem('hasPassword', 'true');
           else safeStorage.removeItem('hasPassword');
         
+        safeStorage.setItem('contributorRole', data.role || 'user');
+        setContributorRole(data.role || 'user');
         safeStorage.setItem('contributorName', data.name || '');
         safeStorage.setItem('contributorPhone', actualPhoneId);
         safeStorage.setItem('contributorFacebook', data.facebookUrl || '');
