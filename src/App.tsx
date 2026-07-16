@@ -182,6 +182,7 @@ export default function App() {
   const [hasPassword, setHasPassword] = useState(safeStorage.getItem('hasPassword') === 'true');
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
+  const [contributorRole, setContributorRole] = useState(safeStorage.getItem('contributorRole') || 'user');
   const [contributorFeedbacks, setContributorFeedbacks] = useState<any[]>([]);
   const [contributorContacts, setContributorContacts] = useState<any[]>([]);
   const [contributorMessages, setContributorMessages] = useState<any[]>([]);
@@ -1343,6 +1344,8 @@ export default function App() {
           setHasPassword(!!data.password);
           if (data.password) safeStorage.setItem('hasPassword', 'true');
           else safeStorage.removeItem('hasPassword');
+          setContributorRole(data.role || 'user');
+          safeStorage.setItem('contributorRole', data.role || 'user');
         }
 
         const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
@@ -1365,7 +1368,7 @@ export default function App() {
     const savedPhone = safeStorage.getItem('contributorPhone');
     const isSavedSession = !!safeStorage.getItem('contributorName') && !!savedPhone;
 
-    if (isContributorProfileOpen && contributorPhone && isSavedSession && contributorPhone === savedPhone) {
+    if (contributorPhone && isSavedSession && contributorPhone === savedPhone) {
       fetchContributorStats();
       
       const docRef = doc(db, 'contributors', contributorPhone);
@@ -1379,6 +1382,8 @@ export default function App() {
           setHasPassword(!!data.password);
           if (data.password) safeStorage.setItem('hasPassword', 'true');
           else safeStorage.removeItem('hasPassword');
+          setContributorRole(data.role || 'user');
+          safeStorage.setItem('contributorRole', data.role || 'user');
         } else {
           // Account was deleted
           safeStorage.removeItem('contributorName');
@@ -1445,7 +1450,7 @@ export default function App() {
       if (unsubUserMessages) unsubUserMessages();
       if ((window as any)._unsubSent) (window as any)._unsubSent();
     };
-  }, [isContributorProfileOpen, contributorPhone]);
+  }, [contributorPhone]);
 
   const handleDeleteUserMessage = async (msgId: string, deleteForEveryone: boolean) => {
     try {
@@ -3340,7 +3345,7 @@ export default function App() {
                   </div>
 
                   )} 
- {(safeStorage.getItem('contributorRole') === 'moderator' || safeStorage.getItem('contributorRole') === 'admin' || isAdmin) && (
+ {(contributorRole === 'moderator' || contributorRole === 'admin' || isAdmin) && (
                       <div className="mb-4">
                         <button
                           type="button"
@@ -3364,6 +3369,8 @@ export default function App() {
                         safeStorage.removeItem('contributorName');
                         safeStorage.removeItem('contributorPhone');
                         safeStorage.removeItem('contributorFacebook');
+                        safeStorage.removeItem('contributorRole');
+                        setContributorRole('user');
                         setContributorName('');
                         setContributorPhone('');
                         setContributorFacebook('');
