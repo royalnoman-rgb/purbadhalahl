@@ -1529,7 +1529,7 @@ export default function App() {
                (window as any).recaptchaVerifier = null;
             }
             if (!targetEmail) {
-              alert('আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই এবং ফোন ভেরিফিকেশন কাজ করছে না।');
+              alert(`আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই এবং ফোন ভেরিফিকেশন কাজ করছে না। Error: ${e.message}`);
               return;
             }
           }
