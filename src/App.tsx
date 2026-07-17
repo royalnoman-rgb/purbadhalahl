@@ -13,7 +13,7 @@ import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
 import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, googleProvider, facebookProvider, messaging, getToken, onMessage } from './firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 import MapTracker from './MapTracker';
 import TrainTracker from './TrainTracker';
@@ -175,12 +175,14 @@ export default function App() {
   const [isOtpMode, setIsOtpMode] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [enteredOtp, setEnteredOtp] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [isResetPasswordMode, setIsResetPasswordMode] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [contributorPassword, setContributorPassword] = useState('');
   const [hasPassword, setHasPassword] = useState(safeStorage.getItem('hasPassword') === 'true');
+  const [logoError, setLogoError] = useState(false);
   const [contributorPoints, setContributorPoints] = useState(0);
   const [contributorApprovedCount, setContributorApprovedCount] = useState(0);
   const [contributorRole, setContributorRole] = useState(safeStorage.getItem('contributorRole') || 'user');
@@ -1500,10 +1502,39 @@ export default function App() {
       }
 
       if (exists) {
-        if (!targetEmail) {
+        if (isEmail && !targetEmail) {
             alert('আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই। অনুগ্রহ করে নতুন করে একাউন্ট তৈরি করুন বা অ্যাডমিনের সাথে যোগাযোগ করুন।');
             return;
         }
+
+        if (!isEmail) {
+          try {
+            if (!(window as any).recaptchaVerifier) {
+              (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+            }
+            const appVerifier = (window as any).recaptchaVerifier;
+            let formattedPhone = loginPhone.startsWith('+') ? loginPhone : '+88' + loginPhone;
+            const confResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+            setConfirmationResult(confResult);
+            
+            setLoginPhone(actualPhoneId);
+            setIsForgotPassword(false);
+            setIsOtpMode(true);
+            alert('আপনার মোবাইল নাম্বারে একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।');
+            return;
+          } catch(e: any) {
+            console.log("Firebase Phone Auth error (falling back to email demo): ", e);
+            if ((window as any).recaptchaVerifier) {
+               try { (window as any).recaptchaVerifier.clear(); } catch(err) {}
+               (window as any).recaptchaVerifier = null;
+            }
+            if (!targetEmail) {
+              alert('আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই এবং ফোন ভেরিফিকেশন কাজ করছে না।');
+              return;
+            }
+          }
+        }
+
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         setGeneratedOtp(otp);
         // store the actual id so OTP verification resets the right account
@@ -1522,14 +1553,26 @@ export default function App() {
     }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredOtp === generatedOtp) {
-      setIsOtpMode(false);
-      setIsResetPasswordMode(true);
-      setEnteredOtp('');
+    if (confirmationResult) {
+      try {
+        await confirmationResult.confirm(enteredOtp);
+        setIsOtpMode(false);
+        setIsResetPasswordMode(true);
+        setEnteredOtp('');
+        setConfirmationResult(null);
+      } catch (error) {
+        alert('ভেরিফিকেশন কোড ভুল হয়েছে!');
+      }
     } else {
-      alert('ভেরিফিকেশন কোড ভুল হয়েছে!');
+      if (enteredOtp === generatedOtp) {
+        setIsOtpMode(false);
+        setIsResetPasswordMode(true);
+        setEnteredOtp('');
+      } else {
+        alert('ভেরিফিকেশন কোড ভুল হয়েছে!');
+      }
     }
   };
 
@@ -1851,6 +1894,7 @@ export default function App() {
         onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
       />
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
+      
       {/* Header */}
       <header className="bg-emerald-600 text-white shadow-md sticky top-0 z-10 transition-all">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center">
@@ -1875,15 +1919,16 @@ export default function App() {
             </button>
           ) : (
             <div className="mr-3 p-1 bg-white rounded-full overflow-hidden flex items-center justify-center w-10 h-10">
-              <img 
-                src="/logo.png" 
-                alt="Logo" 
-                className="w-full h-full object-cover mix-blend-multiply"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-phone text-emerald-600"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
-                }}
-              />
+              {!logoError ? (
+                <img 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  className="w-full h-full object-cover mix-blend-multiply"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Phone className="w-6 h-6 text-emerald-600" />
+              )}
             </div>
           )}
           <h1 className="text-xl font-semibold tracking-tight truncate flex-1">
@@ -2491,6 +2536,7 @@ export default function App() {
             </div>
             
             <div className="p-5">
+              
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
@@ -2632,6 +2678,7 @@ export default function App() {
             </div>
             
             <div className="p-5">
+              
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-orange-500 mb-4" />
@@ -2691,6 +2738,7 @@ export default function App() {
             </div>
             
             <div className="p-5">
+              
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-indigo-500 mb-4" />
@@ -2759,6 +2807,7 @@ export default function App() {
             </div>
             
             <div className="p-5">
+              
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
@@ -2828,6 +2877,7 @@ export default function App() {
               </button>
             </div>
             <div className="p-5">
+              
               {isResetPasswordMode ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">

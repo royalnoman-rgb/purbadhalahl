@@ -4,11 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Purbadhala Smart Helpline - পূর্বধলা স্মার্ট হেল্পলাইন</title>
-    <link rel="icon" type="image/png" href="/logo.png" />    <link rel="manifest" href="/manifest.json" />    <meta name="theme-color" content="#059669" />    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="theme-color" content="#059669" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="description" content="পূর্বধলা উপজেলার সকল প্রয়োজনীয় ও গুরুত্বপূর্ণ ফোন নম্বর, ঠিকানা এবং অন্যান্য তথ্য পাওয়ার একটি বিশ্বস্ত মাধ্যম।" />
     <meta property="og:title" content="Purbadhala Smart Helpline - পূর্বধলা স্মার্ট হেল্পলাইন" />
     <meta property="og:description" content="পূর্বধলা উপজেলার সকল প্রয়োজনীয় ও গুরুত্বপূর্ণ ফোন নম্বর, ঠিকানা এবং অন্যান্য তথ্য পাওয়ার একটি বিশ্বস্ত মাধ্যম।" />
-  
     <meta name="keywords" content="পূর্বধলা, স্মার্ট হেল্পলাইন, Purbadhala, Smart Helpline, Emergency, Hospital, Police, Fire Service, Netrokona, Purbadhala Upazila" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://purbadhala-smart-helpline.web.app/logo.png" />
@@ -17,19 +18,10 @@
     <meta name="twitter:title" content="Purbadhala Smart Helpline - পূর্বধলা স্মার্ট হেল্পলাইন" />
     <meta name="twitter:description" content="পূর্বধলা উপজেলার সকল প্রয়োজনীয় ও গুরুত্বপূর্ণ ফোন নম্বর, ঠিকানা এবং অন্যান্য তথ্য পাওয়ার একটি বিশ্বস্ত মাধ্যম।" />
     <meta name="twitter:image" content="https://purbadhala-smart-helpline.web.app/logo.png" />
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <div id="recaptcha-container"></div>
     <script type="module" src="/src/index.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(error => {
-            console.log('SW registration failed: ', error);
-          });
-        });
-      }
-    </script>
   </body>
 </html>
-

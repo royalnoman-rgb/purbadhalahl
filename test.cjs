@@ -1,11 +1,13 @@
-const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-function tE(str) {
-  if (!str) return str || '';
-  return str.toString().replace(/[০-৯]/g, (w) => bengaliDigits.indexOf(w).toString());
-}
-function tB(str) {
-  if (!str) return str || '';
-  return str.toString().replace(/[0-9]/g, (w) => bengaliDigits[parseInt(w)]);
-}
-console.log(tB('01711'));
-console.log(tE('০১৭১১'));
+const fs = require('fs');
+let content = fs.readFileSync('index.html', 'utf8');
+content = content.replace('</body>', `
+  <div id="error-log" style="position:fixed;bottom:0;left:0;right:0;background:red;color:white;z-index:9999;max-height:200px;overflow:auto;padding:10px;display:none;"></div>
+  <script>
+    window.addEventListener('error', (e) => {
+      const err = document.getElementById('error-log');
+      err.style.display = 'block';
+      err.innerText += '\\n' + (e.error ? e.error.stack : e.message);
+    });
+  </script>
+</body>`);
+fs.writeFileSync('index.html', content);
