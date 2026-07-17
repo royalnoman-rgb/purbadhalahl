@@ -166,6 +166,7 @@ export default function App() {
   const [isContributorProfileOpen, setIsContributorProfileOpen] = useState(false);
   const [contributorName, setContributorName] = useState('');
   const [contributorPhone, setContributorPhone] = useState('');
+  const [contributorEmail, setContributorEmail] = useState('');
   const [contributorFacebook, setContributorFacebook] = useState('');
   const [contributorAvatar, setContributorAvatar] = useState('');
   const [topContributors, setTopContributors] = useState<any[]>([]);
@@ -350,10 +351,12 @@ export default function App() {
   useEffect(() => {
     const savedName = safeStorage.getItem('contributorName');
     const savedPhone = safeStorage.getItem('contributorPhone');
+    const savedEmail = safeStorage.getItem('contributorEmail');
     const savedFb = safeStorage.getItem('contributorFacebook');
     const savedAvatar = safeStorage.getItem('contributorAvatar');
     if (savedName) setContributorName(savedName);
     if (savedPhone) setContributorPhone(savedPhone);
+    if (savedEmail) setContributorEmail(savedEmail);
     if (savedFb) setContributorFacebook(savedFb);
     if (savedAvatar) setContributorAvatar(savedAvatar);
   }, []);
@@ -1480,27 +1483,34 @@ export default function App() {
       let exists = false;
       let actualPhoneId = loginPhone;
       let isEmail = loginPhone.includes('@');
+      let targetEmail = '';
 
       const docSnap = await getDoc(doc(db, 'contributors', loginPhone));
       if (docSnap.exists()) {
         exists = true;
+        targetEmail = docSnap.data().email;
       } else if (isEmail) {
         const q = query(collection(db, 'contributors'), where('email', '==', loginPhone));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           exists = true;
           actualPhoneId = querySnapshot.docs[0].id;
+          targetEmail = loginPhone;
         }
       }
 
       if (exists) {
+        if (!targetEmail) {
+            alert('আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই। অনুগ্রহ করে নতুন করে একাউন্ট তৈরি করুন বা অ্যাডমিনের সাথে যোগাযোগ করুন।');
+            return;
+        }
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         setGeneratedOtp(otp);
         // store the actual id so OTP verification resets the right account
         setLoginPhone(actualPhoneId);
         setIsForgotPassword(false);
         setIsOtpMode(true);
-        alert(`আপনার ${isEmail ? 'ইমেইলে' : 'নাম্বারে'} একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।
+        alert(`আপনার ইমেইলে (${targetEmail}) একটি ভেরিফিকেশন কোড পাঠানো হয়েছে।
 
 (ডেমো কোড: ${otp})`);
       } else {
@@ -1569,11 +1579,13 @@ export default function App() {
         
         setContributorName(user.displayName || 'Unnamed User');
         setContributorPhone(phoneId);
+        setContributorEmail(user.email || '');
         setContributorAvatar(avatar);
         setHasPassword(false);
         safeStorage.setItem('contributorRole', 'user');
         safeStorage.setItem('contributorName', user.displayName || 'Unnamed User');
         safeStorage.setItem('contributorPhone', phoneId);
+        if(user.email) safeStorage.setItem('contributorEmail', user.email);
         if(avatar) safeStorage.setItem('contributorAvatar', avatar);
         
         alert(`স্বাগতম ${user.displayName || ''}! আপনার প্রোফাইল সফলভাবে তৈরি হয়েছে।`);
@@ -1581,6 +1593,7 @@ export default function App() {
         const data = docSnap.data();
         setContributorName(data.name || '');
         setContributorPhone(phoneId);
+        setContributorEmail(data.email || '');
         setContributorFacebook(data.facebookUrl || '');
         setContributorAvatar(data.avatar || avatar); // update avatar if existing doesn't have one
         setContributorPassword(data.password || '');
@@ -1591,6 +1604,7 @@ export default function App() {
         safeStorage.setItem('contributorRole', data.role || 'user');
         safeStorage.setItem('contributorName', data.name || '');
         safeStorage.setItem('contributorPhone', phoneId);
+        if(data.email) safeStorage.setItem('contributorEmail', data.email);
         if(data.avatar || avatar) safeStorage.setItem('contributorAvatar', data.avatar || avatar);
         
         alert(`স্বাগতম ${data.name || ''}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
@@ -1643,6 +1657,7 @@ export default function App() {
         
         setContributorName(data.name || '');
         setContributorPhone(actualPhoneId);
+        setContributorEmail(data.email || '');
         setContributorFacebook(data.facebookUrl || '');
         setContributorAvatar(data.avatar || '');
         setContributorPassword(data.password || '');
@@ -1654,6 +1669,7 @@ export default function App() {
         setContributorRole(data.role || 'user');
         safeStorage.setItem('contributorName', data.name || '');
         safeStorage.setItem('contributorPhone', actualPhoneId);
+        if (data.email) safeStorage.setItem('contributorEmail', data.email);
         safeStorage.setItem('contributorFacebook', data.facebookUrl || '');
         if (data.avatar) {
           safeStorage.setItem('contributorAvatar', data.avatar);
@@ -1736,6 +1752,7 @@ export default function App() {
       
       const updateData: any = {
         name: contributorName,
+        email: contributorEmail,
         facebookUrl: contributorFacebook,
       };
       if (contributorAvatar) {
@@ -1753,6 +1770,10 @@ export default function App() {
             alert("নতুন প্রোফাইল তৈরি করার জন্য পাসওয়ার্ড দেওয়া বাধ্যতামূলক।");
             return;
         }
+        if (!contributorEmail) {
+            alert("একাউন্ট খোলার জন্য ইমেইল দেওয়া বাধ্যতামূলক।");
+            return;
+        }
         await setDoc(docRef, {
           ...updateData,
           phone: contributorPhone,
@@ -1765,6 +1786,7 @@ export default function App() {
       }
       safeStorage.setItem('contributorName', contributorName);
       safeStorage.setItem('contributorPhone', contributorPhone);
+      safeStorage.setItem('contributorEmail', contributorEmail);
       safeStorage.setItem('contributorFacebook', contributorFacebook);
       if (contributorAvatar) {
         safeStorage.setItem('contributorAvatar', contributorAvatar);
@@ -2831,7 +2853,7 @@ export default function App() {
               ) : isOtpMode ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    আপনার মোবাইল বা ইমেইলে পাঠানো ৪-ডিজিটের কোডটি এখানে লিখুন। (ডেমো হিসেবে পপআপে দেখানো কোডটি ব্যবহার করুন)
+                    আপনার ইমেইলে পাঠানো ৪-ডিজিটের কোডটি এখানে লিখুন। (ডেমো হিসেবে পপআপে দেখানো কোডটি ব্যবহার করুন)
                   </p>
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     <div>
@@ -2859,7 +2881,7 @@ export default function App() {
               ) : isForgotPassword ? (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    আপনার মোবাইল নাম্বার বা ইমেইল দিন। আমরা সেখানে একটি ভেরিফিকেশন কোড পাঠাবো।
+                    আপনার মোবাইল নাম্বার বা ইমেইল দিন। আমরা আপনার যুক্ত করা ইমেইলে একটি ভেরিফিকেশন কোড পাঠাবো।
                   </p>
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div>
@@ -3436,6 +3458,14 @@ export default function App() {
                         readOnly={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone))}
                         className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 ${(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                         placeholder="01XXXXXXXXX"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ইমেইল *</label>
+                      <input
+                        type="email" required value={contributorEmail} onChange={(e) => setContributorEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="example@email.com"
                       />
                     </div>
                     <div>

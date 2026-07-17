@@ -34,8 +34,10 @@ export function VisitorStats() {
         } else {
             setTotalVisitors(1);
         }
-      } catch (e) {
-        console.error("Error updating stats", e);
+      } catch (e: any) {
+        if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
+          console.error("Error updating stats", e);
+        }
       }
     };
     
@@ -48,8 +50,10 @@ export function VisitorStats() {
         await setDoc(onlineRef, { 
           lastActive: Date.now() 
         }, { merge: true });
-      } catch (e) {
+      } catch (e: any) {
+        if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
           console.error("Error updating presence", e);
+        }
       }
     };
 
@@ -73,10 +77,14 @@ export function VisitorStats() {
              const q = query(collection(db, 'online_users'), where('lastActive', '>=', threshold));
              getCountFromServer(q).then(snapshot => {
                  setOnlineUsers(snapshot.data().count);
-             }).catch(e => console.error(e));
+             }).catch((e: any) => {
+                 if (e.code !== 'unavailable' && !e.message?.includes('offline')) console.error(e);
+             });
         });
-      } catch (e) {
-        console.error("Error fetching online users", e);
+      } catch (e: any) {
+        if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
+          console.error("Error fetching online users", e);
+        }
       }
     };
     
