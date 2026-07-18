@@ -481,9 +481,21 @@ export default function App() {
     return () => {};
   }, []);
 
-  const dynamicCategoryIds = new Set(dynamicCategories.map(c => c.id));
-  const activeStaticCategories = staticCategories.filter(c => !dynamicCategoryIds.has(c.id));
-  const allCategories = [...activeStaticCategories, ...dynamicCategories].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  const mergedCategories = staticCategories.map(sc => {
+    const dynamicCategory = dynamicCategories.find(dc => dc.id === sc.id);
+    if (dynamicCategory) {
+      return {
+        ...sc,
+        ...dynamicCategory,
+        subCategoriesOrder: dynamicCategory.subCategoriesOrder?.length ? dynamicCategory.subCategoriesOrder : sc.subCategoriesOrder
+      };
+    }
+    return sc;
+  });
+  const allCategories = [
+    ...mergedCategories,
+    ...dynamicCategories.filter(dc => !staticCategories.some(sc => sc.id === dc.id))
+  ].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   
   // Handle replaced contacts (edits)
   const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
@@ -2229,7 +2241,9 @@ export default function App() {
                 ...(predefinedSubCategories.find(pc => pc.categoryId === selectedCategory.id)?.subCategories || [])
               ])).filter(subCat => !(selectedCategory.deletedSubCategories || []).includes(subCat));
           
-              const orderMap = new Map<string, number>((selectedCategory.subCategoriesOrder || []).map((name, i) => [name, i]));
+              const fallbackOrder = predefinedSubCategories.find(pc => pc.categoryId === selectedCategory.id)?.subCategories || [];
+              const orderSource = selectedCategory.id === 'administration' ? fallbackOrder : (selectedCategory.subCategoriesOrder?.length ? selectedCategory.subCategoriesOrder : fallbackOrder);
+              const orderMap = new Map<string, number>(orderSource.map((name, i) => [name, i]));
               const sortedSubCats = rawSubCats.sort((a, b) => {
                 const indexA = orderMap.has(a) ? orderMap.get(a)! : 999;
                 const indexB = orderMap.has(b) ? orderMap.get(b)! : 999;
