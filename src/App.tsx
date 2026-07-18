@@ -7,7 +7,7 @@ import { safeStorage, safeSession } from "./utils/storage";
 import { VisitorStats } from './components/VisitorStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor } from 'lucide-react';
+import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
@@ -131,6 +131,7 @@ export default function App() {
   // Form states - Contact
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('+88');
+  const [newWebsiteUrl, setNewWebsiteUrl] = useState('');
   const [newDetails, setNewDetails] = useState('');
   const [newSubDetails, setNewSubDetails] = useState('');
   const [newSubCategory, setNewSubCategory] = useState("");
@@ -162,6 +163,7 @@ export default function App() {
   const [reviewSubmitStatus, setReviewSubmitStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   // Contributor Modals and State
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isContributorProfileOpen, setIsContributorProfileOpen] = useState(false);
   const [contributorName, setContributorName] = useState('');
@@ -572,7 +574,8 @@ export default function App() {
 
   const handleSuggestEdit = (contact: any) => {
     setNewName(contact.name);
-    setNewPhone(contact.phone);
+    setNewPhone(contact.phone || '');
+    setNewWebsiteUrl(contact.websiteUrl || '');
     setNewDetails(contact.details || '');
     setNewSubDetails(contact.subDetails || '');
     setNewCategory(contact.categoryId);
@@ -587,6 +590,7 @@ export default function App() {
   const openNewRequestModal = () => {
     setNewName('');
     setNewPhone('+88');
+    setNewWebsiteUrl('');
     setNewDetails('');
     setNewSubDetails('');
     setNewCategory('');
@@ -608,9 +612,10 @@ export default function App() {
 
       // 1. Check in allContacts (which has the latest state for approved static/dynamic contacts)
       const existingDup = allContacts.find(c => 
-         (c.phone === newPhone || c.name.toLowerCase() === newName.toLowerCase()) && 
+         ((newPhone && newPhone !== '+88' && c.phone === newPhone) || (c.name.toLowerCase() === newName.toLowerCase() && c.categoryId === newCategory)) && 
          (!editingContactId || c.id !== editingContactId)
       );
+
       if (existingDup) {
         alert(`এই নাম বা নাম্বারটি ইতিমধ্যে যুক্ত করা আছে!\nক্যাটাগরি: ${getCatName(existingDup.categoryId)}\nসাব-ক্যাটাগরি: ${existingDup.subCategory || '-'}`);
         setRequestStatus('idle');
@@ -618,9 +623,13 @@ export default function App() {
       }
 
       // 2. Check for pending duplicates in firestore
-      const qPhone = query(collection(db, 'contacts'), where('phone', '==', newPhone));
-      const phoneSnapshot = await getDocs(qPhone);
-      const phoneDup = phoneSnapshot.docs.find(d => d.id !== editingContactId && d.data().replacesId !== editingContactId && d.data().status === 'pending');
+      let phoneDup = undefined;
+      if (newPhone && newPhone !== '+88') {
+        const qPhone = query(collection(db, 'contacts'), where('phone', '==', newPhone));
+        const phoneSnapshot = await getDocs(qPhone);
+        phoneDup = phoneSnapshot.docs.find(d => d.id !== editingContactId && d.data().replacesId !== editingContactId && d.data().status === 'pending');
+      }
+
       if (phoneDup) {
         const data = phoneDup.data();
         alert(`এই নাম্বারটি ইতিমধ্যে যুক্ত করা আছে (পেন্ডিং অবস্থায়)!\nক্যাটাগরি: ${getCatName(data.categoryId)}\nসাব-ক্যাটাগরি: ${data.subCategory || '-'}`);
@@ -628,9 +637,10 @@ export default function App() {
         return;
       }
 
-      const qName = query(collection(db, 'contacts'), where('name', '==', newName));
+      const qName = query(collection(db, 'contacts'), where('name', '==', newName), where('categoryId', '==', newCategory));
       const nameSnapshot = await getDocs(qName);
       const nameDup = nameSnapshot.docs.find(d => d.id !== editingContactId && d.data().replacesId !== editingContactId && d.data().status === 'pending');
+
       if (nameDup) {
         const data = nameDup.data();
         alert(`এই নামটি ইতিমধ্যে যুক্ত করা আছে (পেন্ডিং অবস্থায়)!\nক্যাটাগরি: ${getCatName(data.categoryId)}\nসাব-ক্যাটাগরি: ${data.subCategory || '-'}`);
@@ -641,6 +651,7 @@ export default function App() {
       const payload: any = {
         name: newName,
         phone: newPhone,
+        websiteUrl: newWebsiteUrl,
         details: newDetails,
         subDetails: newSubDetails,
         subCategory: newCategory === 'blood_donors' ? newBloodGroup : newSubCategory,
@@ -662,6 +673,7 @@ export default function App() {
           const updatePayload: any = {
             name: newName,
             phone: newPhone,
+            websiteUrl: newWebsiteUrl,
             details: newDetails,
             subDetails: newSubDetails,
             categoryId: newCategory,
@@ -708,6 +720,7 @@ export default function App() {
         setRequestStatus('idle');
         setNewName('');
         setNewPhone('+88');
+        setNewWebsiteUrl('');
         setNewDetails('');
         setNewSubDetails('');
         setNewCategory('');
@@ -1952,6 +1965,13 @@ export default function App() {
             </a>
           )}
           <button 
+            onClick={() => setIsGuideOpen(true)}
+            className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
+            title="ব্যবহারবিধি"
+          >
+            <HelpCircle className="w-6 h-6" />
+          </button>
+          <button 
             onClick={() => setIsLeaderboardOpen(true)}
             className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
             title="শীর্ষ অবদানকারী"
@@ -2381,10 +2401,12 @@ export default function App() {
                               </span>
                             )}
                           </div>
-                          <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 font-medium whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded text-[13px]">
-                            <Phone className="w-3 h-3 text-emerald-600" />
-                            {toBengaliDigits(contact.phone)}
-                          </div>
+                          {contact.phone && (
+                            <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 font-medium whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded text-[13px]">
+                              <Phone className="w-3 h-3 text-emerald-600" />
+                              {toBengaliDigits(contact.phone)}
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 mt-0.5">
@@ -2422,19 +2444,27 @@ export default function App() {
                         </div>
                         
                         <div className="flex sm:hidden items-center gap-1.5 text-emerald-700 font-medium mt-1 text-[13px]">
-                          <Phone className="w-3 h-3 text-emerald-600" />
-                          {toBengaliDigits(contact.phone)}
+                          {contact.phone && <><Phone className="w-3 h-3 text-emerald-600" />{toBengaliDigits(contact.phone)}</>}
                         </div>
                       </div>
 
                       <div className="flex flex-row items-center gap-1.5 shrink-0">
                         <div className="flex items-center gap-1.5">
-                          <a href={`tel:${contact.phone}`} className="p-2 sm:p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors" title="কল করুন">
-                            <Phone className="w-4 h-4" />
-                          </a>
-                          <a href={`https://wa.me/${contact.phone.replace(/[^0-9+]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-2 sm:p-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors" title="হোয়াটসঅ্যাপ">
-                            <MessageCircle className="w-4 h-4" />
-                          </a>
+                          {contact.websiteUrl && (
+                            <a href={contact.websiteUrl.startsWith('http') ? contact.websiteUrl : `https://${contact.websiteUrl}`} target="_blank" rel="noopener noreferrer" className="p-2 sm:p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="ভিজিট করুন">
+                              <Globe className="w-4 h-4" />
+                            </a>
+                          )}
+                          {contact.phone && (
+                            <>
+                              <a href={`tel:${contact.phone}`} className="p-2 sm:p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors" title="কল করুন">
+                                <Phone className="w-4 h-4" />
+                              </a>
+                              <a href={`https://wa.me/${contact.phone.replace(/[^0-9+]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-2 sm:p-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors" title="হোয়াটসঅ্যাপ">
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
+                            </>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-1">
@@ -2568,13 +2598,24 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল {newCategory !== 'important_links' && '*'}</label>
                     <input
-                      type="tel" required value={toBengaliDigits(newPhone)} onChange={handlePhoneChange}
+                      type="tel" required={newCategory !== 'important_links'} value={toBengaliDigits(newPhone)} onChange={handlePhoneChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="+8801XXXXXXXXX"
                     />
                   </div>
+                  {(newCategory === 'important_links' || newWebsiteUrl) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ওয়েবসাইট লিংক *</label>
+                      <input
+                        type="url" required={newCategory === 'important_links'} value={newWebsiteUrl} onChange={(e) => setNewWebsiteUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-left"
+                        placeholder="https://example.com"
+                        dir="ltr"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">বিস্তারিত পরিচয়</label>
                     <input
@@ -2641,7 +2682,7 @@ export default function App() {
       </>
     )}
   </div>
-) : (
+) : newCategory !== 'important_links' ? (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">সাব-ক্যাটাগরি *</label>
     <select required value={newSubCategory} onChange={(e) => setNewSubCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
@@ -2660,7 +2701,7 @@ export default function App() {
       ])).includes('অন্যান্য') && <option value="অন্যান্য">অন্যান্য</option>}
     </select>
   </div>
-)}
+) : null}
                   
                   <button
                     type="submit" disabled={requestStatus === 'submitting'}
@@ -3779,6 +3820,81 @@ export default function App() {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guide Modal */}
+      {isGuideOpen && (
+        <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-auto relative">
+            <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-4 border-b border-gray-100 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <HelpCircle className="w-6 h-6 text-emerald-600" /> ব্যবহারবিধি
+              </h2>
+              <button
+                onClick={() => setIsGuideOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 max-h-[70vh] overflow-y-auto space-y-6">
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নাম্বার বা তথ্য খুঁজবেন?</h3>
+                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                  <li>হোম পেজে দেওয়া ক্যাটাগরিগুলোতে ক্লিক করে নির্দিষ্ট সার্ভিসের তথ্য দেখতে পারবেন।</li>
+                  <li>সার্চ বারে নাম, মোবাইল নাম্বার বা পেশা লিখে সহজেই তথ্য খুঁজে পেতে পারেন।</li>
+                  <li>রক্তদাতার প্রয়োজনে "রক্তদাতা" ক্যাটাগরিতে গিয়ে নির্দিষ্ট রক্তের গ্রুপ নির্বাচন করে খুঁজুন।</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নতুন নাম্বার যুক্ত করবেন?</h3>
+                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                  <li>হোম পেজে নিচে ডানদিকের <strong>"প্লাস (+)"</strong> আইকনে ক্লিক করুন।</li>
+                  <li>সঠিক ক্যাটাগরি ও সাব-ক্যাটাগরি নির্বাচন করুন।</li>
+                  <li>নাম, মোবাইল নাম্বার এবং অন্যান্য তথ্য সঠিকভাবে পূরণ করে <strong>"রিকোয়েস্ট পাঠান"</strong> বাটনে ক্লিক করুন।</li>
+                  <li>অ্যাডমিন আপনার তথ্য যাচাই করার পর তা মূল তালিকায় যুক্ত হবে।</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নতুন ক্যাটাগরি বা সাব-ক্যাটাগরি যুক্ত করবেন?</h3>
+                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                  <li>হোম পেজে নিচে ডানদিকের <strong>"+"</strong> আইকনে মাউস রাখলে বা ক্লিক করলে তিনটি অপশন দেখতে পাবেন।</li>
+                  <li>এখান থেকে <strong>"নতুন ক্যাটাগরি"</strong> বা <strong>"নতুন সাব-ক্যাটাগরি"</strong> যুক্ত করার অপশন নির্বাচন করুন।</li>
+                  <li>সঠিক তথ্য দিয়ে রিকোয়েস্ট পাঠান। অ্যাডমিন যাচাই করার পর তা তালিকায় যুক্ত হবে।</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">ইউজার একাউন্ট ও প্রোফাইল তৈরি</h3>
+                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                  <li>উপরে ডানদিকে থাকা <strong>"প্রোফাইল"</strong> আইকনে ক্লিক করুন।</li>
+                  <li>আপনার নাম, মোবাইল নাম্বার এবং অন্যান্য তথ্য দিয়ে প্রোফাইল তৈরি বা আপডেট করুন।</li>
+                  <li>একাউন্ট থাকলে আপনার পাঠানো রিকোয়েস্ট, মেসেজ এবং পয়েন্ট প্রোফাইলে দেখতে পাবেন।</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে তথ্য সংশোধন করবেন?</h3>
+                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                  <li>যে কোনো নাম্বারের পাশে থাকা <strong>"এডিট"</strong> আইকনে ক্লিক করুন।</li>
+                  <li>সঠিক তথ্য লিখে আপডেট রিকোয়েস্ট পাঠান। অ্যাডমিন যাচাই করে তা সংশোধন করে দিবেন।</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">পয়েন্ট ও লিডারবোর্ড</h3>
+                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                  <li>নতুন নাম্বার যুক্ত করলে বা ভুল তথ্য সংশোধন করলে আপনি পয়েন্ট পাবেন।</li>
+                  <li>সবচেয়ে বেশি পয়েন্ট পাওয়া অবদানকারীদের নাম <strong>"লিডারবোর্ড"</strong>-এ (ট্রফি আইকন) দেখা যাবে।</li>
+                  <li>পয়েন্ট অর্জন করতে চাইলে অবশ্যই আপনার প্রোফাইল তৈরি করে লগইন করতে হবে।</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

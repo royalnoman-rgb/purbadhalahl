@@ -1274,6 +1274,7 @@ export default function Admin() {
                       <div className="space-y-2 w-full">
                         <input className="w-full text-sm p-1 border rounded" value={editRequestData.name || ''} onChange={e => setEditRequestData({...editRequestData, name: e.target.value})} placeholder="Name" />
                         <input className="w-full text-sm p-1 border rounded" value={toBengaliDigits(editRequestData.phone) || ''} onChange={e => setEditRequestData({...editRequestData, phone: toEnglishDigits(e.target.value)})} placeholder="Phone" />
+                        <input className="w-full text-sm p-1 border rounded" value={editRequestData.websiteUrl || ''} onChange={e => setEditRequestData({...editRequestData, websiteUrl: e.target.value})} placeholder="Website URL" />
                         <input className="w-full text-sm p-1 border rounded" value={editRequestData.details || ''} onChange={e => setEditRequestData({...editRequestData, details: e.target.value})} placeholder="Details" />
                         <input className="w-full text-sm p-1 border rounded" value={editRequestData.subDetails || ''} onChange={e => setEditRequestData({...editRequestData, subDetails: e.target.value})} placeholder="Sub Details" />
                         <select className="w-full text-sm p-1 border rounded bg-white" value={editRequestData.categoryId || ''} onChange={e => setEditRequestData({...editRequestData, categoryId: e.target.value, subCategory: ''})}>
@@ -1309,7 +1310,7 @@ export default function Admin() {
                                   <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">সংশোধন রিকোয়েস্ট</span>
                                 )}
                               </div>
-                              <p className="text-sm font-medium text-gray-700">{toBengaliDigits(contact.phone)}</p>
+                              <p className="text-sm font-medium text-gray-700">{contact.phone ? toBengaliDigits(contact.phone) : (contact.websiteUrl || '')}</p>
                               <p className="text-sm text-gray-500">{contact.details} - {contact.subDetails}</p>
                               <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
                             </div>

@@ -2,6 +2,13 @@ import { Category, Contact } from './types';
 
 export const categories: Category[] = [
   {
+    "id": "important_links",
+    "title": "জরুরী প্রয়োজনীয় লিংক",
+    "englishTitle": "Important Links",
+    "iconName": "Link",
+    "color": "bg-blue-600 text-blue-50"
+  },
+  {
     "id": "emergency",
     "title": "জরুরি সেবা",
     "englishTitle": "Emergency Services",

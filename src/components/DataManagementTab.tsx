@@ -299,7 +299,7 @@ export default function DataManagementTab() {
                     <input type="checkbox" checked={selectedContacts.has(c.id)} onChange={() => toggleContact(c.id)} />
                   </td>
                   <td className="p-3 font-medium">{c.name}</td>
-                  <td className="p-3">{toBengaliDigits(c.phone)}</td>
+                  <td className="p-3">{c.phone ? toBengaliDigits(c.phone) : (c.websiteUrl || '-')}</td>
                   <td className="p-3">{categories.find(cat => cat.id === c.categoryId)?.title || c.categoryId}</td>
                   <td className="p-3">{c.subCategory || '-'}</td>
                   <td className="p-3">{c.status === 'pending' ? <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs">পেন্ডিং</span> : <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs">অ্যাপ্রুভড</span>}</td>

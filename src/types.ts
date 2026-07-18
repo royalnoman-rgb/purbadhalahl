@@ -29,6 +29,7 @@ export interface Contact {
   id: string;
   name: string;
   phone: string;
+  websiteUrl?: string;
   details?: string;
   subDetails?: string;
   categoryId: string; // Changed to string
