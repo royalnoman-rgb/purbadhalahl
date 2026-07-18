@@ -1,0 +1,34 @@
+--- src/components/VisitorStats.tsx
++++ src/components/VisitorStats.tsx
+@@ -29,20 +29,22 @@
+     
+     const initializeStats = async () => {
+       try {
+         if (!hasVisited) {
+           await setDoc(statsRef, { totalCount: increment(1) }, { merge: true });
+           safeStorage.setItem('has_visited_site', 'true');
+         }
+-        
+-        const docSnap = await getDoc(statsRef);
+-        if (docSnap.exists()) {
+-          setTotalVisitors(docSnap.data().totalCount || 0);
+-        } else {
+-            setTotalVisitors(1);
+-        }
+       } catch (e: any) {
+         if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
+           console.error("Error updating stats", e);
+         }
+       }
+     };
+     
+     initializeStats();
++
++    // Real-time total visitors
++    const unsubscribeStats = onSnapshot(statsRef, (docSnap) => {
++      if (docSnap.exists()) {
++        setTotalVisitors(docSnap.data().totalCount || 0);
++      } else {
++        setTotalVisitors(1);
++      }
++    });
