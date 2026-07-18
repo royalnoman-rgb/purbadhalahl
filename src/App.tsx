@@ -751,6 +751,14 @@ export default function App() {
     setRequestStatus('submitting');
     
     try {
+      const existingPredefined = predefinedSubCategories.find(pc => pc.categoryId === newSubCatParentId)?.subCategories.some(sub => sub.toLowerCase() === newSubCatTitle.trim().toLowerCase());
+      const existingDynamic = dynamicSubCategories.find(s => s.categoryId === newSubCatParentId && s.title.trim().toLowerCase() === newSubCatTitle.trim().toLowerCase());
+      const existing = existingPredefined || existingDynamic;
+      if (existing) {
+        alert('এই সাব-ক্যাটাগরিটি ইতিমধ্যে যুক্ত আছে!');
+        setRequestStatus('idle');
+        return;
+      }
       if (isAdmin) {
         await addDoc(collection(db, 'subcategories'), {
           title: newSubCatTitle,
@@ -797,6 +805,15 @@ export default function App() {
     setRequestStatus('submitting');
     
     try {
+      if (!editingCategoryId) {
+        const existing = allCategories.find(c => c.title.trim().toLowerCase() === newCatTitle.trim().toLowerCase() || (c.englishTitle && newCatEnglish && c.englishTitle.trim().toLowerCase() === newCatEnglish.trim().toLowerCase()));
+        if (existing) {
+          alert('এই ক্যাটাগরিটি ইতিমধ্যে যুক্ত আছে!');
+          setRequestStatus('idle');
+          return;
+        }
+      }
+      
       if (editingCategoryId) {
         await setDoc(doc(db, 'categories', editingCategoryId), {
           title: newCatTitle || '',

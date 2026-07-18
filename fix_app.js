@@ -1,16 +1,17 @@
-const fs = require('fs');
-let code = fs.readFileSync('src/App.tsx', 'utf8');
+import fs from 'fs';
 
-const effectMatch = code.match(/  useEffect\(\(\) => \{\n    if \(contributorPhone && messaging\) \{[\s\S]*?  \}, \[contributorPhone\]\);\n/);
-if (effectMatch) {
-  const effectCode = effectMatch[0];
-  code = code.replace(effectCode, '');
-  
-  // Find a good place to insert it, e.g. after `const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);`
-  const insertTarget = "const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);";
-  code = code.replace(insertTarget, insertTarget + "\n\n" + effectCode);
-  fs.writeFileSync('src/App.tsx', code);
-  console.log("Fixed!");
-} else {
-  console.log("Could not find effect code to move.");
-}
+let content = fs.readFileSync('src/App.tsx', 'utf8');
+
+content = content.replace(
+`      const existing = subCategories.find(s => s.categoryId === newSubCatParentId && s.title.trim().toLowerCase() === newSubCatTitle.trim().toLowerCase());`,
+`      const existingPredefined = predefinedSubCategories.find(pc => pc.categoryId === newSubCatParentId)?.subCategories.some(sub => sub.toLowerCase() === newSubCatTitle.trim().toLowerCase());
+      const existingDynamic = dynamicSubCategories.find(s => s.categoryId === newSubCatParentId && s.title.trim().toLowerCase() === newSubCatTitle.trim().toLowerCase());
+      const existing = existingPredefined || existingDynamic;`
+);
+
+content = content.replace(
+`        const existing = categories.find(c => c.title.trim().toLowerCase() === newCatTitle.trim().toLowerCase() || (c.englishTitle && newCatEnglish && c.englishTitle.trim().toLowerCase() === newCatEnglish.trim().toLowerCase()));`,
+`        const existing = allCategories.find(c => c.title.trim().toLowerCase() === newCatTitle.trim().toLowerCase() || (c.englishTitle && newCatEnglish && c.englishTitle.trim().toLowerCase() === newCatEnglish.trim().toLowerCase()));`
+);
+
+fs.writeFileSync('src/App.tsx', content);
