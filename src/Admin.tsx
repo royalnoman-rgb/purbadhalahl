@@ -208,8 +208,12 @@ export default function Admin() {
 
   const logAdminAction = async (actionDesc: string) => {
     try {
+      const adminName = safeStorage.getItem('contributorName') || (isSuperAdmin ? 'অ্যাডমিন' : 'মডারেটর');
+      const adminPhone = safeStorage.getItem('contributorPhone') || 'admin';
       await addDoc(collection(db, 'admin_history'), {
         action: actionDesc,
+        moderatorName: adminName,
+        moderatorPhone: adminPhone,
         createdAt: new Date().toISOString()
       });
     } catch (err) {
@@ -1602,7 +1606,15 @@ export default function Admin() {
               <div className="max-h-96 overflow-y-auto p-4 space-y-3">
                 {adminHistory.map(item => (
                   <div key={item.id} className="flex justify-between items-start border-b border-gray-100 last:border-0 pb-3 last:pb-0">
-                    <p className="text-sm font-medium text-gray-800">{item.action}</p>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{item.action}</p>
+                      {item.moderatorName && (
+                        <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
+                           <UserCircle className="w-3 h-3"/> দ্বারা সম্পন্ন: {item.moderatorName} 
+                           {item.moderatorPhone !== 'admin' ? ` (${item.moderatorPhone})` : ''}
+                        </p>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 whitespace-nowrap ml-4">{new Date(item.createdAt).toLocaleString('bn-BD')}</p>
                   </div>
                 ))}
