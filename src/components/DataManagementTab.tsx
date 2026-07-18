@@ -21,6 +21,7 @@ export default function DataManagementTab() {
   const [targetCatId, setTargetCatId] = useState('');
   const [targetSubCat, setTargetSubCat] = useState('');
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const qCat = query(collection(db, 'categories'), where('status', '==', 'approved'));
@@ -114,6 +115,17 @@ export default function DataManagementTab() {
   const filteredContacts = contacts.filter(c => {
     if (selectedCatId && c.categoryId !== selectedCatId) return false;
     if (selectedSubCat && c.subCategory !== selectedSubCat) return false;
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      const englishSearch = toEnglishDigits(searchQuery);
+      const bengaliSearch = toBengaliDigits(searchQuery);
+      const hasMatch = 
+        c.name?.toLowerCase().includes(searchLower) ||
+        c.phone?.includes(englishSearch) ||
+        toBengaliDigits(c.phone || '').includes(bengaliSearch) ||
+        c.phone?.includes(searchQuery);
+      if (!hasMatch) return false;
+    }
     return true;
   });
 
@@ -238,7 +250,14 @@ export default function DataManagementTab() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <input 
+            type="text" 
+            placeholder="নাম বা নাম্বার দিয়ে খুঁজুন..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="p-2 border rounded-lg focus:ring-emerald-500"
+          />
           <select 
             value={selectedCatId} 
             onChange={e => { setSelectedCatId(e.target.value); setSelectedSubCat(''); }}
