@@ -37,12 +37,12 @@ const VerifiedBadge = () => {
       </svg>
       {showTooltip && (
         <div 
-          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-gray-800 bg-white border border-gray-100 rounded-lg shadow-xl left-1/2 top-full"
+          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-slate-800 bg-white border border-slate-100 rounded-lg shadow-xl left-1/2 top-full"
           onClick={(e) => e.stopPropagation()}
           style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
         >
           This verified badge indicates that the user's identity has been verified and they are a trusted contributor to our platform.
-          <div className="absolute w-3 h-3 bg-white border-t border-l border-gray-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
+          <div className="absolute w-3 h-3 bg-white border-t border-l border-slate-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
         </div>
       )}
     </div>
@@ -260,18 +260,18 @@ export default function Community({ contributorPhone, contributorName, contribut
 
   if (!effectivePhone) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 text-center mt-4">
+      <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-slate-100 text-center mt-4">
         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-emerald-600">
           <Lock className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">কমিউনিটিতে স্বাগতম</h2>
-        <p className="text-gray-600 mb-6 max-w-sm">
+        <h2 className="text-xl font-bold text-slate-800 mb-2">কমিউনিটিতে স্বাগতম</h2>
+        <p className="text-slate-600 mb-6 max-w-sm">
           কমিউনিটিতে যুক্ত হতে, পোস্ট পড়তে এবং আলোচনা করতে দয়া করে আপনার প্রোফাইলে লগইন করুন অথবা নতুন প্রোফাইল তৈরি করুন।
         </p>
         <div className="flex gap-3">
             <button
             onClick={onBack}
-            className="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
             >
             ফিরে যান
             </button>
@@ -295,7 +295,7 @@ export default function Community({ contributorPhone, contributorName, contribut
         onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
       />
     <div className="mt-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
         <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100 flex items-center justify-between">
           <h2 className="font-bold text-emerald-800 flex items-center gap-2">
             <Users className="w-5 h-5" /> কমিউনিটি আলোচনা
@@ -304,16 +304,16 @@ export default function Community({ contributorPhone, contributorName, contribut
         <div className="p-4">
           <form onSubmit={handlePostSubmit} className="flex gap-3 items-start">
             {effectiveAvatar ? (
-              <img src={effectiveAvatar} alt={effectiveName} className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
+              <img src={effectiveAvatar} alt={effectiveName} className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-200" />
             ) : (
-              <UserCircle className="w-10 h-10 text-gray-400 shrink-0" />
+              <UserCircle className="w-10 h-10 text-slate-400 shrink-0" />
             )}
             <div className="flex-1">
               <textarea
                 value={newPostText}
                 onChange={(e) => setNewPostText(e.target.value)}
                 placeholder="কমিউনিটির সাথে কিছু শেয়ার করুন..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                 rows={3}
                 required
               />
@@ -333,23 +333,23 @@ export default function Community({ contributorPhone, contributorName, contribut
 
       <div className="space-y-4">
         {posts.length === 0 ? (
-          <div className="text-center py-10 bg-white rounded-2xl border border-gray-100">
-            <p className="text-gray-500">এখনও কোনো পোস্ট নেই। আপনিই প্রথম পোস্ট করুন!</p>
+          <div className="text-center py-10 bg-white rounded-2xl border border-slate-100">
+            <p className="text-slate-500">এখনও কোনো পোস্ট নেই। আপনিই প্রথম পোস্ট করুন!</p>
           </div>
         ) : (
           posts.map(post => (
-            <div key={post.id} className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div key={post.id} className="relative bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
               <div 
-                className={`flex items-center gap-3 mb-3 ${post.authorPhone !== 'admin' ? 'cursor-pointer hover:bg-gray-50 p-1 -m-1 rounded-lg transition-colors' : ''}`}
+                className={`flex items-center gap-3 mb-3 ${post.authorPhone !== 'admin' ? 'cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors' : ''}`}
                 onClick={() => post.authorPhone !== 'admin' && onUserClick(post.authorPhone)}
               >
                 <div className="relative shrink-0">
                   {post.authorPhone === 'admin' ? (
-                    <div className="w-10 h-10 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
+                    <div className="w-10 h-10 rounded-full border border-slate-200 overflow-hidden flex items-center justify-center bg-white">
                       <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
                     </div>
                   ) : post.authorAvatar ? (
-                    <img src={post.authorAvatar} alt={post.authorName} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                    <img src={post.authorAvatar} alt={post.authorName} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
                       <UserCircle className="w-6 h-6" />
@@ -358,11 +358,11 @@ export default function Community({ contributorPhone, contributorName, contribut
                   {onlineUsers.includes(post.authorPhone) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 leading-tight flex items-center">
+                  <h3 className="font-semibold text-slate-800 leading-tight flex items-center">
                     {post.authorName}
                     {post.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(post.authorPhone, post.authorName) && <VerifiedBadge />)}
                   </h3>
-                  <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('bn-BD')}</p>
+                  <p className="text-xs text-slate-500">{new Date(post.createdAt).toLocaleString('bn-BD')}</p>
                 </div>
               </div>
               {(isAdmin || post.authorPhone === effectivePhone) && (
@@ -398,7 +398,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                   <textarea
                     value={editPostText}
                     onChange={(e) => setEditPostText(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm md:text-base"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm md:text-base"
                     rows={4}
                   />
                   <div className="flex justify-end mt-2">
@@ -411,7 +411,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-800 whitespace-pre-wrap mb-4 text-sm md:text-base leading-relaxed">
+                <p className="text-slate-800 whitespace-pre-wrap mb-4 text-sm md:text-base leading-relaxed">
                   {post.text}
                 </p>
               )}
@@ -422,7 +422,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                   className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
                     post.likes?.includes(effectivePhone) 
                       ? 'text-blue-600' 
-                      : 'text-gray-500 hover:text-blue-600'
+                      : 'text-slate-500 hover:text-blue-600'
                   }`}
                 >
                   <ThumbsUp className={`w-5 h-5 ${post.likes?.includes(effectivePhone) ? 'fill-blue-600' : ''}`} />
@@ -433,7 +433,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                   className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
                     post.loves?.includes(effectivePhone) 
                       ? 'text-red-500' 
-                      : 'text-gray-500 hover:text-red-500'
+                      : 'text-slate-500 hover:text-red-500'
                   }`}
                 >
                   <Heart className={`w-5 h-5 ${post.loves?.includes(effectivePhone) ? 'fill-red-500 text-red-500' : ''}`} />
@@ -441,16 +441,16 @@ export default function Community({ contributorPhone, contributorName, contribut
                 </button>
               </div>
 
-              <div className="border-t border-gray-100 pt-3">
+              <div className="border-t border-slate-100 pt-3">
                 <div className="flex items-center gap-2 mb-3">
-                  <MessageCircle className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs font-medium text-gray-500">{post.comments?.length || 0} টি মন্তব্য</span>
+                  <MessageCircle className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs font-medium text-slate-500">{post.comments?.length || 0} টি মন্তব্য</span>
                 </div>
                 
                 {post.comments && post.comments.length > 0 && (
                   <div className="space-y-3 mb-3 max-h-48 overflow-y-auto pr-2">
                     {post.comments.filter((c: any) => !c.isDeleted).map((comment: any) => (
-                      <div key={comment.id} className="bg-gray-50 rounded-lg p-3 text-sm">
+                      <div key={comment.id} className="bg-slate-50 rounded-lg p-3 text-sm">
                         <div className="flex items-start gap-2 mb-1">
                           <div 
                             className={`flex items-start gap-2 ${comment.authorPhone !== 'admin' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
@@ -458,11 +458,11 @@ export default function Community({ contributorPhone, contributorName, contribut
                           >
                             <div className="relative shrink-0">
                               {comment.authorPhone === 'admin' ? (
-                                <div className="w-6 h-6 rounded-full border border-gray-200 overflow-hidden flex items-center justify-center bg-white">
+                                <div className="w-6 h-6 rounded-full border border-slate-200 overflow-hidden flex items-center justify-center bg-white">
                                   <img src="/logo.png" alt="Admin" className="w-full h-full object-cover mix-blend-multiply" />
                                 </div>
                               ) : comment.authorAvatar ? (
-                                <img src={comment.authorAvatar} alt={comment.authorName} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                                <img src={comment.authorAvatar} alt={comment.authorName} className="w-6 h-6 rounded-full object-cover border border-slate-200" />
                               ) : (
                                 <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
                                   <UserCircle className="w-4 h-4" />
@@ -470,7 +470,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                               )}
                               {onlineUsers.includes(comment.authorPhone) && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>}
                             </div>
-                            <span className="font-semibold text-gray-900 flex items-center mt-0.5">
+                            <span className="font-semibold text-slate-800 flex items-center mt-0.5">
                               {comment.authorName}
                               {comment.authorPhone === 'admin' ? <AdminBadge /> : (isVerifiedContributor(comment.authorPhone, comment.authorName) && <VerifiedBadge />)}
                             </span>
@@ -478,7 +478,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                           <div className="flex-1">
                             <div className="flex justify-end items-start">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
+                                <span className="text-[10px] text-slate-400">{new Date(comment.createdAt).toLocaleString('bn-BD')}</span>
                                 {(isAdmin || comment.authorPhone === effectivePhone) && (
                                   <div className="flex gap-1">
                                 {comment.authorPhone === effectivePhone && (
@@ -513,7 +513,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                             <textarea
                               value={editPostText}
                               onChange={(e) => setEditPostText(e.target.value)}
-                              className="w-full px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-xs"
+                              className="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-xs"
                               rows={2}
                             />
                             <div className="flex justify-end mt-1">
@@ -537,9 +537,9 @@ export default function Community({ contributorPhone, contributorName, contribut
                             </div>
                           </div>
                         ) : (
-                          <p className="text-gray-700 mb-1.5">{comment.text}</p>
+                          <p className="text-slate-700 mb-1.5">{comment.text}</p>
                         )}
-                        <div className="flex items-center gap-4 text-[11px] font-medium text-gray-500">
+                        <div className="flex items-center gap-4 text-[11px] font-medium text-slate-500">
                           <button
                             onClick={() => handleCommentReaction(post.id, comment.id, 'like')}
                             className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${comment.likes?.includes(effectivePhone) ? 'text-blue-600' : ''}`}
@@ -568,7 +568,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                     value={commentText[post.id] || ''}
                     onChange={(e) => setCommentText({ ...commentText, [post.id]: e.target.value })}
                     placeholder="মন্তব্য লিখুন..."
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-gray-50"
+                    className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-50"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') handleCommentSubmit(post.id);
                     }}
@@ -576,7 +576,7 @@ export default function Community({ contributorPhone, contributorName, contribut
                   <button
                     onClick={() => handleCommentSubmit(post.id)}
                     disabled={!commentText[post.id]?.trim()}
-                    className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                    className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
                   >
                     <Send className="w-4 h-4" />
                   </button>

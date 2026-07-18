@@ -3,7 +3,7 @@ import { toBengaliDigits, toEnglishDigits } from './utils';
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, getDoc, setDoc, increment, addDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell, Smile, Shield } from 'lucide-react';
+import { CheckCircle, XCircle, MessageCircle, Trash2, ArrowLeft, Star, ArrowUp, ArrowDown, UserCircle, Send, Edit3, ThumbsUp, CheckCircle2, X, Key, Bell, Smile, Shield, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { categories as staticCategories, predefinedSubCategories } from './data';
 import { ConfirmDialog } from './components/ConfirmDialog';
@@ -573,6 +573,29 @@ export default function Admin() {
       await deleteDoc(catRef);
       if(catSnap.exists()) await logAdminAction(`Category deleted: ${catSnap.data().title || 'Unknown'}`);
       fetchData();
+    });
+  };
+
+  const handlePublishFeedbackAsReview = (feedback: any) => {
+    confirmAction('এই মতামতটি কি আপনি রেটিংস ও রিভিও এ প্রকাশ করতে চান?', async () => {
+      try {
+        await addDoc(collection(db, 'public_reviews'), {
+          name: feedback.name || 'Anonymous',
+          rating: feedback.rating || 5,
+          message: feedback.message,
+          createdAt: new Date().toISOString(),
+          likes: 0,
+          authorPhone: feedback.contributorPhone || '',
+          authorAvatar: ''
+        });
+        await updateDoc(doc(db, 'feedback', feedback.id), {
+          isPublishedAsReview: true
+        });
+        await logAdminAction(`Feedback from ${feedback.name} published as public review`);
+        fetchData();
+      } catch (err) {
+        console.error(err);
+      }
     });
   };
 
@@ -1419,9 +1442,19 @@ export default function Admin() {
                       <p className="text-xs text-gray-500 mb-2">{new Date(feedback.createdAt).toLocaleString('bn-BD')}</p>
                       <p className="text-sm text-gray-800 whitespace-pre-wrap">{feedback.message}</p>
                     </div>
-                    <button onClick={() => handleDeleteFeedback(feedback.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex-shrink-0" title="Delete">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    <div className="flex flex-col gap-2 items-end flex-shrink-0">
+                      <button onClick={() => handleDeleteFeedback(feedback.id)} className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200" title="Delete">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      {!feedback.isPublishedAsReview && (
+                        <button onClick={() => handlePublishFeedbackAsReview(feedback)} className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Publish as Review">
+                          <Globe className="w-5 h-5" />
+                        </button>
+                      )}
+                      {feedback.isPublishedAsReview && (
+                        <span className="text-xs text-emerald-600 font-medium">Published</span>
+                      )}
+                    </div>
                   </div>
                   {!feedback.rating ? (
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">

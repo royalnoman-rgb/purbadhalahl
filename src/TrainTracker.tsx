@@ -63,14 +63,14 @@ export default function TrainTracker({ contributorName }: { contributorName: str
     const time = timestamp.toMillis ? timestamp.toMillis() : timestamp;
     const diff = Math.floor((Date.now() - time) / 60000); // in minutes
     if (diff < 1) return 'এইমাত্র';
-    if (diff < 60) return `${toBengaliDigits(diff)} মিনিট আগে`;
+    if (diff < 60) return `${toBengaliDigits(diff.toString())} মিনিট আগে`;
     const hours = Math.floor(diff / 60);
-    return `${toBengaliDigits(hours)} ঘণ্টা আগে`;
+    return `${toBengaliDigits(hours.toString())} ঘণ্টা আগে`;
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-4 border-b border-gray-100 flex flex-wrap gap-4 items-center justify-between bg-emerald-50">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="p-4 border-b border-slate-100 flex flex-wrap gap-4 items-center justify-between bg-emerald-50">
         <div>
           <h2 className="text-lg font-bold text-emerald-900 flex items-center gap-2">
             <Train className="w-5 h-5 text-emerald-600" />
@@ -83,14 +83,14 @@ export default function TrainTracker({ contributorName }: { contributorName: str
       <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
         {/* Status Section */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-gray-800 flex items-center gap-2 border-b pb-2">
+          <h3 className="font-semibold text-slate-800 flex items-center gap-2 border-b pb-2">
             <Navigation className="w-4 h-4 text-emerald-600" /> বর্তমান ট্রেনের অবস্থান
           </h3>
           
           {Object.values(trainRoutes).map(train => {
             const data = trainData[train.id];
             return (
-              <div key={train.id} className="bg-gray-50 border border-gray-100 rounded-lg p-4 shadow-sm">
+              <div key={train.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4 shadow-sm">
                 <div className="flex justify-between items-start mb-3">
                   <h4 className="font-bold text-emerald-800">{train.name}</h4>
                   <span className="text-xs font-medium bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full">
@@ -100,12 +100,12 @@ export default function TrainTracker({ contributorName }: { contributorName: str
                 
                 <div className="flex items-center gap-3 mb-2">
                   <MapPin className="w-5 h-5 text-orange-500" />
-                  <span className="text-gray-700 font-medium text-lg">
+                  <span className="text-slate-700 font-medium text-lg">
                     {data?.currentStation || 'এখনো আপডেট করা হয়নি'}
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-4 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-4 text-xs text-slate-500 mt-3 pt-3 border-t border-slate-200">
                   <div className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {getTimeAgo(data?.updatedAt)}

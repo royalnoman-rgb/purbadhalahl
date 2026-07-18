@@ -122,18 +122,18 @@ export function VisitorStats() {
   }, []);
 
   return (
-    <div className="flex flex-wrap justify-center items-center gap-4 text-xs mt-4 text-gray-500">
-      <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-blue-100 shadow-sm relative overflow-hidden group">
+    <div className="flex flex-wrap justify-center items-center gap-4 text-xs mt-4 text-slate-500">
+      <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
         <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-500 ${isLive ? 'opacity-100' : 'opacity-0'}`}></div>
         <div className="relative flex items-center justify-center">
           <Users className="w-4 h-4 text-blue-600 z-10" />
           <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-30 animate-ping"></span>
         </div>
-        <span className="font-medium text-gray-600 ml-1">অনলাইনে আছেন: <strong className="text-blue-700 text-[13px] ml-0.5">{onlineUsers || 1}</strong></span>
+        <span className="font-medium text-slate-600 ml-1">অনলাইনে আছেন: <strong className="text-blue-700 text-[13px] ml-0.5">{onlineUsers || 1}</strong></span>
       </div>
-      <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
+      <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-emerald-100 shadow-sm hover:shadow-md transition-all">
         <Eye className="w-4 h-4 text-emerald-600" />
-        <span className="font-medium text-gray-600">মোট ভিজিটর: <strong className="text-emerald-700 text-[13px] ml-0.5">{totalVisitors || '...'}</strong></span>
+        <span className="font-medium text-slate-600">মোট ভিজিটর: <strong className="text-emerald-700 text-[13px] ml-0.5">{totalVisitors || '...'}</strong></span>
       </div>
     </div>
   );

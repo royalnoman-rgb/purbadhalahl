@@ -7,7 +7,7 @@ import { safeStorage, safeSession } from "./utils/storage";
 import { VisitorStats } from './components/VisitorStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle } from 'lucide-react';
+import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle , ArrowRight, Quote } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
@@ -59,12 +59,12 @@ const VerifiedBadge = () => {
       </svg>
       {showTooltip && (
         <div 
-          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-gray-800 bg-white border border-gray-100 rounded-lg shadow-xl left-1/2 top-full"
+          className="absolute z-50 w-56 p-3 mt-2 -ml-28 text-[11px] font-normal leading-relaxed text-left text-slate-800 bg-white border border-slate-100 rounded-lg shadow-xl left-1/2 top-full"
           onClick={(e) => e.stopPropagation()}
           style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
         >
           This verified badge indicates that the user's identity has been verified and they are a trusted contributor to our platform.
-          <div className="absolute w-3 h-3 bg-white border-t border-l border-gray-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
+          <div className="absolute w-3 h-3 bg-white border-t border-l border-slate-100 rotate-45 -top-[7px] left-1/2 -ml-[6px]"></div>
         </div>
       )}
     </div>
@@ -530,7 +530,7 @@ export default function App() {
     for (let i = 0; i < newCategories.length; i++) {
       const cat = newCategories[i];
       if (cat.order !== i) {
-        if (dynamicCategoryIds.has(cat.id)) {
+        if (dynamicCategories.some(dc => dc.id === cat.id)) {
           updateDoc(doc(db, 'categories', cat.id), { order: i }).catch(console.error);
         } else {
           setDoc(doc(db, 'categories', cat.id), { ...cat, order: i, status: 'approved' }).catch(console.error);
@@ -1936,10 +1936,10 @@ export default function App() {
         onConfirm={() => { confirmConfig.action(); setConfirmConfig({...confirmConfig, isOpen: false}); }} 
         onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
       />
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20">
       
       {/* Header */}
-      <header className="bg-emerald-600 text-white shadow-md sticky top-0 z-10 transition-all">
+      <header className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg sticky top-0 z-40 transition-all border-b border-emerald-500/20">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center">
           {selectedCategory || showMap || showTrainTracker || showCommunity ? (
             <button
@@ -2018,9 +2018,9 @@ export default function App() {
               )}
             </button>
             {showNotifications && (
-              <div className="absolute right-[-60px] sm:right-0 mt-2 w-[90vw] sm:w-80 max-w-[320px] bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                  <h3 className="font-semibold text-gray-900">নোটিফিকেশন</h3>
+              <div className="absolute right-[-60px] sm:right-0 mt-2 w-[90vw] sm:w-80 max-w-[320px] bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50">
+                <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                  <h3 className="font-semibold text-slate-800">নোটিফিকেশন</h3>
                   {notifications.length > 0 && (
                     <button 
                       onClick={() => {
@@ -2037,10 +2037,10 @@ export default function App() {
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-gray-500">কোনো নোটিফিকেশন নেই।</div>
+                    <div className="p-4 text-center text-sm text-slate-500">কোনো নোটিফিকেশন নেই।</div>
                   ) : (
                     notifications.map(notif => (
-                      <div key={notif.id} className={`p-3 border-b border-gray-50 text-sm hover:bg-gray-50 cursor-pointer transition-colors ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                      <div key={notif.id} className={`p-3 border-b border-gray-50 text-sm hover:bg-slate-50 cursor-pointer transition-colors ${!notif.read ? 'bg-blue-50/30' : ''}`}
                         onClick={() => {
                           setShowNotifications(false);
                           if (notif.link === 'community') {
@@ -2060,12 +2060,12 @@ export default function App() {
                           }
                         }}
                       >
-                        <h4 className="font-semibold text-gray-900 text-xs mb-1 relative w-fit">
+                        <h4 className="font-semibold text-slate-800 text-xs mb-1 relative w-fit">
                           {notif.title}
                           {notif.senderPhone && onlineUsers.includes(notif.senderPhone) && <span className="absolute -top-0.5 -right-2.5 w-2 h-2 bg-green-500 rounded-full border border-white"></span>}
                         </h4>
-                        <p className="text-gray-600 text-[11px] line-clamp-2">{notif.body}</p>
-                        <span className="text-[9px] text-gray-400 mt-1 block">{new Date(notif.createdAt).toLocaleString('bn-BD')}</span>
+                        <p className="text-slate-600 text-[11px] line-clamp-2">{notif.body}</p>
+                        <span className="text-[9px] text-slate-400 mt-1 block">{new Date(notif.createdAt).toLocaleString('bn-BD')}</span>
                       </div>
                     ))
                   )}
@@ -2098,12 +2098,12 @@ export default function App() {
         {!selectedCategory && !showMap && !showTrainTracker && !showCommunity && (
           <div className="relative mb-6">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 text-slate-400" />
             </div>
             <input
               type="text"
               placeholder="নাম বা নাম্বার দিয়ে খুঁজুন..."
-              className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-all"
+              className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -2167,45 +2167,83 @@ export default function App() {
 
         {/* Dashboard Grid (Shown when no category is selected and no search typed) */}
         {!selectedCategory && !showMap && !showTrainTracker && !showCommunity && !searchQuery && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-            <button
-              onClick={() => setShowCommunity(true)}
-              className="bg-blue-50 text-blue-700 border border-blue-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              <Users className="w-10 h-10 mb-1" strokeWidth={1.5} />
-              <span className="text-sm sm:text-base font-medium text-center">কমিউনিটি</span>
-            </button>
-            <button
-              onClick={() => setShowMap(true)}
-              className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50"
-            >
-              <Navigation className="w-10 h-10 mb-1" strokeWidth={1.5} />
-              <span className="text-sm sm:text-base font-medium text-center">গাড়ির অবস্থান</span>
-            </button>
-            <button
-              onClick={() => setShowTrainTracker(true)}
-              className="bg-orange-50 text-orange-700 border border-orange-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-orange-500 focus:ring-opacity-50"
-            >
-              <Train className="w-10 h-10 mb-1" strokeWidth={1.5} />
-              <span className="text-sm sm:text-base font-medium text-center">ট্রেন ট্র্যাকিং</span>
-            </button>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => setShowCommunity(true)}
+                className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-5 flex items-center justify-between shadow-[0_4px_14px_rgba(59,130,246,0.3)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.4)] hover:-translate-y-0.5 active:scale-95 transition-all outline-none focus:ring-4 focus:ring-blue-300 overflow-hidden relative group"
+              >
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-lg font-bold block mb-0.5">কমিউনিটি ফোরাম</span>
+                    <span className="text-xs text-blue-100 font-medium">সবার সাথে যুক্ত হোন</span>
+                  </div>
+                </div>
+                <div className="relative z-10 bg-white/20 p-2 rounded-full backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </div>
+                {/* Decorative background shapes */}
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-colors"></div>
+                <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-blue-400/30 rounded-full blur-lg"></div>
+              </button>
+              
+              <button
+                onClick={() => setIsReviewsModalOpen(true)}
+                className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-5 flex items-center justify-between shadow-[0_4px_14px_rgba(168,85,247,0.3)] hover:shadow-[0_8px_24px_rgba(168,85,247,0.4)] hover:-translate-y-0.5 active:scale-95 transition-all outline-none focus:ring-4 focus:ring-purple-300 overflow-hidden relative group"
+              >
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                    <Star className="w-6 h-6 text-white fill-white/20" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-lg font-bold block mb-0.5">রেটিংস ও রিভিও</span>
+                    <span className="text-xs text-purple-100 font-medium">মতামত জানুন ও দিন</span>
+                  </div>
+                </div>
+                <div className="relative z-10 bg-white/20 p-2 rounded-full backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </div>
+                {/* Decorative background shapes */}
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-colors"></div>
+                <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-purple-400/30 rounded-full blur-lg"></div>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+              <button
+                onClick={() => setShowMap(true)}
+                className="bg-emerald-50 text-emerald-700 border border-emerald-100/50 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 group"
+              >
+                <Navigation className="w-10 h-10 mb-1 group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
+                <span className="text-sm sm:text-base font-medium text-center">গাড়ির অবস্থান</span>
+              </button>
+              <button
+                onClick={() => setShowTrainTracker(true)}
+                className="bg-orange-50 text-orange-700 border border-orange-100 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-orange-500 focus:ring-opacity-50"
+              >
+                <Train className="w-10 h-10 mb-1 group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
+                <span className="text-sm sm:text-base font-medium text-center">ট্রেন ট্র্যাকিং</span>
+              </button>
             {allCategories.map((category, index) => {
               const IconComponent = iconMap[category.iconName] || Building2;
               return (
                 <div key={category.id} className="relative group">
                   <button
                     onClick={() => { setSelectedCategory(category); setSelectedSubCategory(null); }}
-                    className={`${category.color} w-full h-full rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50`}
+                    className={`${category.color} w-full h-full rounded-2xl p-5 sm:p-6 flex flex-col items-center justify-center gap-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-transparent hover:border-black/5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300 outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 group`}
                   >
-                    <IconComponent className="w-10 h-10 mb-1" strokeWidth={1.5} />
+                    <IconComponent className="w-10 h-10 mb-1 group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
                     <span className="text-sm sm:text-base font-medium text-center">{category.title}</span>
                   </button>
                   {isAdmin && (
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                      <button onClick={(e) => handleMoveCategory(e, index, 'up')} disabled={index === 0} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
+                      <button onClick={(e) => handleMoveCategory(e, index, 'up')} disabled={index === 0} className="bg-slate-100 text-slate-700 p-1.5 rounded-full disabled:opacity-30">
                         <ArrowUp className="w-4 h-4" />
                       </button>
-                      <button onClick={(e) => handleMoveCategory(e, index, 'down')} disabled={index === allCategories.length - 1} className="bg-gray-100 text-gray-700 p-1.5 rounded-full disabled:opacity-30">
+                      <button onClick={(e) => handleMoveCategory(e, index, 'down')} disabled={index === allCategories.length - 1} className="bg-slate-100 text-slate-700 p-1.5 rounded-full disabled:opacity-30">
                         <ArrowDown className="w-4 h-4" />
                       </button>
                       {!['fire', 'police', 'ambulance', 'hospital', 'blood', 'palli_bidyut', 'desco', 'wasa', 'journalist'].includes(category.id) && (
@@ -2229,9 +2267,10 @@ export default function App() {
                     </div>
                   )}
                 </div>
-  );
-})}
-          </div>
+              );
+            })}
+            </div>
+          </>
         )}
 
         {/* Sub Categories Grid */}
@@ -2247,22 +2286,22 @@ export default function App() {
 
                 return (
                   <>
-                    <div onClick={() => setSelectedSubCategory(subCat1)} className="bg-white hover:bg-gray-50 border border-gray-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer">
+                    <div onClick={() => setSelectedSubCategory(subCat1)} className="bg-white hover:bg-slate-50 border border-slate-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-100">
                          <Users className="w-6 h-6 text-red-600" />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-sm font-medium text-center text-gray-800">{subCat1}</span>
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{toBengaliDigits(count1.toString())} টি নাম্বার</span>
+                        <span className="text-sm font-medium text-center text-slate-800">{subCat1}</span>
+                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{toBengaliDigits(count1.toString())} টি নাম্বার</span>
                       </div>
                     </div>
-                    <div onClick={() => setSelectedSubCategory(subCat2)} className="bg-white hover:bg-gray-50 border border-gray-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer">
+                    <div onClick={() => setSelectedSubCategory(subCat2)} className="bg-white hover:bg-slate-50 border border-slate-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-100">
                          <Droplets className="w-6 h-6 text-red-600" />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-sm font-medium text-center text-gray-800">{subCat2}</span>
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{toBengaliDigits(count2.toString())} টি নাম্বার</span>
+                        <span className="text-sm font-medium text-center text-slate-800">{subCat2}</span>
+                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{toBengaliDigits(count2.toString())} টি নাম্বার</span>
                       </div>
                     </div>
                   </>
@@ -2335,31 +2374,31 @@ export default function App() {
                return (
               <div key={subCat} className="relative group">
               {editingSubCatIdFront === subCat ? (
-                 <div className="bg-white border border-gray-100 w-full rounded-2xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm">
+                 <div className="bg-white border border-slate-100 w-full rounded-2xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm">
                    <input type="text" value={editSubCatTitleFront} onChange={e => setEditSubCatTitleFront(e.target.value)} className="w-full text-center text-sm border p-1 rounded" autoFocus />
                    <div className="flex gap-2 w-full mt-1">
                      <button onClick={(e) => handleRenameSubCategoryFront(subCat, e)} className="flex-1 bg-emerald-600 text-white text-xs py-1.5 rounded">সেভ</button>
-                     <button onClick={() => setEditingSubCatIdFront(null)} className="flex-1 bg-gray-200 text-gray-700 text-xs py-1.5 rounded">বাতিল</button>
+                     <button onClick={() => setEditingSubCatIdFront(null)} className="flex-1 bg-gray-200 text-slate-700 text-xs py-1.5 rounded">বাতিল</button>
                    </div>
                  </div>
               ) : (
                 <div
                   onClick={() => setSelectedSubCategory(subCat)}
-                  className="bg-white hover:bg-gray-50 border border-gray-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer"
+                  className="bg-white hover:bg-slate-50 border border-slate-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer"
                 >
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedCategory.color.split(' ')[0]} bg-opacity-10`}> 
                     <IconComponent className={`w-6 h-6 ${selectedCategory.color.split(' ')[1]}`} />
                   </div>
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-sm font-medium text-center text-gray-800">{subCat}</span>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{toBengaliDigits(subCatContactCount.toString())} টি নাম্বার</span>
+                    <span className="text-sm font-medium text-center text-slate-800">{subCat}</span>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{toBengaliDigits(subCatContactCount.toString())} টি নাম্বার</span>
                   </div>
                   
                   {isAdmin && (
                     <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                        <div className="flex gap-1">
-                         <button onClick={(e) => handleMoveSubCategoryFront(subCat, 'up', sortedSubCats, e)} disabled={index === 0} className="bg-gray-100 p-1 rounded hover:bg-emerald-100 text-gray-500 disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
-                         <button onClick={(e) => handleMoveSubCategoryFront(subCat, 'down', sortedSubCats, e)} disabled={index === sortedSubCats.length - 1} className="bg-gray-100 p-1 rounded hover:bg-emerald-100 text-gray-500 disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
+                         <button onClick={(e) => handleMoveSubCategoryFront(subCat, 'up', sortedSubCats, e)} disabled={index === 0} className="bg-slate-100 p-1 rounded hover:bg-emerald-100 text-slate-500 disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
+                         <button onClick={(e) => handleMoveSubCategoryFront(subCat, 'down', sortedSubCats, e)} disabled={index === sortedSubCats.length - 1} className="bg-slate-100 p-1 rounded hover:bg-emerald-100 text-slate-500 disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
                        </div>
                        <div className="flex gap-1 mt-1 justify-end">
                          <button onClick={(e) => { e.stopPropagation(); setEditingSubCatIdFront(subCat); setEditSubCatTitleFront(subCat); }} className="bg-blue-50 p-1 rounded hover:bg-blue-100 text-blue-600"><Edit3 className="w-3 h-3" /></button>
@@ -2379,13 +2418,13 @@ export default function App() {
             {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'রক্তদাতা (গ্রুপ জানা নেই)', 'ব্লাড ব্যাংক'].map(bg => {
                const count = filteredContacts.filter(c => c.subCategory === bg).length;
                return (
-                 <div key={bg} onClick={() => setSelectedBloodGroup(bg)} className="bg-white hover:bg-red-50 border border-gray-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer">
+                 <div key={bg} onClick={() => setSelectedBloodGroup(bg)} className="bg-white hover:bg-red-50 border border-slate-100 w-full rounded-2xl p-4 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md active:scale-95 transition-all outline-none cursor-pointer">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-100">
                        <Droplets className="w-6 h-6 text-red-600" />
                     </div>
                     <div className="flex flex-col items-center gap-1">
-                      <span className="text-sm font-medium text-center text-gray-800">{bg}</span>
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{toBengaliDigits(count.toString())} টি নাম্বার</span>
+                      <span className="text-sm font-medium text-center text-slate-800">{bg}</span>
+                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{toBengaliDigits(count.toString())} টি নাম্বার</span>
                     </div>
                  </div>
                );
@@ -2406,13 +2445,13 @@ export default function App() {
                 }, {} as Record<string, any[]>)
               ).map(([subCat, contacts]: [string, any[]]) => (
                 <div key={subCat} className="space-y-3">
-                  {subCat !== 'ফলাফল' && <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider ml-1">{subCat}</h3>}
+                  {subCat !== 'ফলাফল' && <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider ml-1">{subCat}</h3>}
                   {contacts.map((contact, index) => (
-                    <div key={`${contact.id || contact.phone}-${index}`} className="bg-white rounded-lg p-2.5 sm:p-3 shadow-sm border border-gray-100 flex items-center justify-between gap-3 hover:shadow-md transition-shadow group">
+                    <div key={`${contact.id || contact.phone}-${index}`} className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center justify-between gap-4 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300 group">
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 text-[14px] sm:text-[15px] truncate">{contact.name}</h3>
+                            <h3 className="font-semibold text-slate-800 text-[14px] sm:text-[15px] truncate">{contact.name}</h3>
                             {contact.categoryId === 'blood_donors' && contact.subCategory !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && contact.subCategory !== 'ব্লাড ব্যাংক' && (
                               <span className="text-[10px] font-semibold bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">
                                 রক্তদাতা
@@ -2444,7 +2483,7 @@ export default function App() {
                                 return (
                                   <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${isEligible ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-red-600 bg-red-50 border-red-100'}`}>
                                     {isEligible ? 'রক্ত দানে প্রস্তুত' : 'রক্ত দানের সময় হয়নি'} 
-                                    <span className="text-gray-500 ml-1 font-normal">
+                                    <span className="text-slate-500 ml-1 font-normal">
                                       ({contact.lastDonationDate.split('-').reverse().join('/')})
                                     </span>
                                   </span>
@@ -2453,11 +2492,11 @@ export default function App() {
                             </div>
                           )}
                           {contact.details && (
-                            <p className="text-[12px] sm:text-[13px] text-gray-600 truncate">{contact.details}</p>
+                            <p className="text-[12px] sm:text-[13px] text-slate-600 truncate">{contact.details}</p>
                           )}
-                          {contact.details && contact.subDetails && <span className="hidden sm:inline text-gray-300">•</span>}
+                          {contact.details && contact.subDetails && <span className="hidden sm:inline text-slate-300">•</span>}
                           {contact.subDetails && (
-                            <p className="text-[11px] sm:text-[12px] text-gray-500 truncate">{contact.subDetails}</p>
+                            <p className="text-[11px] sm:text-[12px] text-slate-500 truncate">{contact.subDetails}</p>
                           )}
                         </div>
                         
@@ -2487,24 +2526,24 @@ export default function App() {
                         
                         <div className="flex items-center gap-1">
                           {!isAdmin && (
-                            <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 rounded-lg transition-colors" title="সংশোধন করুন">
+                            <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors" title="সংশোধন করুন">
                               <Edit3 className="w-4 h-4" />
                             </button>
                           )}
                           
                           {isAdmin && (
                             <>
-                              <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-colors" title="সংশোধন করুন">
+                              <button onClick={() => handleSuggestEdit(contact)} className="p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-colors" title="সংশোধন করুন">
                                 <Edit3 className="w-4 h-4" />
                               </button>
-                              <button onClick={(e) => handleDeleteContactApp(contact, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors" title="ডিলিট করুন">
+                              <button onClick={(e) => handleDeleteContactApp(contact, e)} className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors" title="ডিলিট করুন">
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                              <div className="flex flex-col ml-1 bg-gray-50 rounded border border-gray-100">
-                                <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'up'); }} disabled={index === 0} className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 p-0.5 hover:bg-gray-200 rounded-t">
+                              <div className="flex flex-col ml-1 bg-slate-50 rounded border border-slate-100">
+                                <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'up'); }} disabled={index === 0} className="text-slate-400 hover:text-emerald-600 disabled:opacity-30 p-0.5 hover:bg-gray-200 rounded-t">
                                   <ArrowUp className="w-3 h-3" />
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'down'); }} disabled={index === filteredContacts.length - 1} className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 p-0.5 hover:bg-gray-200 rounded-b border-t border-gray-100">
+                                <button onClick={(e) => { e.stopPropagation(); handleMoveContact(index, 'down'); }} disabled={index === filteredContacts.length - 1} className="text-slate-400 hover:text-emerald-600 disabled:opacity-30 p-0.5 hover:bg-gray-200 rounded-b border-t border-slate-100">
                                   <ArrowDown className="w-3 h-3" />
                                 </button>
                               </div>
@@ -2517,7 +2556,7 @@ export default function App() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-slate-500">
                 <p>কোনো তথ্য পাওয়া যায়নি।</p>
               </div>
             )}
@@ -2526,16 +2565,16 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-gray-400 text-sm">
+      <footer className="text-center py-6 text-slate-400 text-sm">
         <VisitorStats />
         <div className="mt-4 mb-5 flex justify-center items-center gap-3">
-          <a href="https://web.facebook.com/groups/purbadhalahl" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-gray-200">
+          <a href="https://web.facebook.com/groups/purbadhalahl" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-slate-200">
             <Facebook className="w-4 h-4 text-[#1877F2]" />
-            <span className="text-gray-600 font-medium text-xs">আমাদের গ্রুপ</span>
+            <span className="text-slate-600 font-medium text-xs">আমাদের গ্রুপ</span>
           </a>
-          <a href="https://web.facebook.com/purbadhalahelpline/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-gray-200">
+          <a href="https://web.facebook.com/purbadhalahelpline/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-emerald-500 transition-colors bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-slate-200">
             <Facebook className="w-4 h-4 text-[#1877F2]" />
-            <span className="text-gray-600 font-medium text-xs">আমাদের পেইজ</span>
+            <span className="text-slate-600 font-medium text-xs">আমাদের পেইজ</span>
           </a>
         </div>
         <p>
@@ -2544,9 +2583,7 @@ export default function App() {
           <a href="https://pdonline.com.bd" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors font-medium">পূর্বধলার দর্পন আইটি সহায়তায়</a>
         </p>
         <div className="mt-3 flex justify-center items-center gap-4">
-          <button onClick={() => setIsReviewsModalOpen(true)} className="flex items-center gap-1 hover:text-emerald-500 transition-colors">
-            <Star className="w-3 h-3" /> রেটিংস ও রিভিও
-          </button>
+
           <Link to="/admin" className="flex items-center gap-1 hover:text-emerald-500 transition-colors">
             <Lock className="w-3 h-3" /> এডমিন প্যানেল
           </Link>
@@ -2602,13 +2639,13 @@ export default function App() {
       {isRequestModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800">
                 {editingContactId ? 'নাম্বারটি সংশোধন করুন' : 'নতুন নাম্বার যুক্ত করুন'}
               </h2>
               <button
                 onClick={() => setIsRequestModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -2619,59 +2656,59 @@ export default function App() {
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
-                  <p className="text-gray-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'আপনার দেওয়া তথ্যটি যাচাই করে শীঘ্রই ডিরেক্টরিতে যুক্ত করা হবে।'}</p>
+                  <h3 className="text-xl font-medium text-slate-800 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
+                  <p className="text-slate-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'আপনার দেওয়া তথ্যটি যাচাই করে শীঘ্রই ডিরেক্টরিতে যুক্ত করা হবে।'}</p>
                 </div>
               ) : (
                 <form onSubmit={handleRequestSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">যাঁর নাম্বার যুক্ত করবেন তাঁর নাম/পদের নাম *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">যাঁর নাম্বার যুক্ত করবেন তাঁর নাম/পদের নাম *</label>
                     <input
                       type="text" required value={newName} onChange={(e) => setNewName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="যেমন: জামাল উদ্দিন"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল {newCategory !== 'important_links' && '*'}</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নাম্বার বা ইমেইল {newCategory !== 'important_links' && '*'}</label>
                     <input
                       type="tel" required={newCategory !== 'important_links'} value={toBengaliDigits(newPhone)} onChange={handlePhoneChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="+8801XXXXXXXXX"
                     />
                   </div>
                   {(newCategory === 'important_links' || newWebsiteUrl) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ওয়েবসাইট লিংক *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">ওয়েবসাইট লিংক *</label>
                       <input
                         type="url" required={newCategory === 'important_links'} value={newWebsiteUrl} onChange={(e) => setNewWebsiteUrl(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-left"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-left"
                         placeholder="https://example.com"
                         dir="ltr"
                       />
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">বিস্তারিত পরিচয়</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">বিস্তারিত পরিচয়</label>
                     <input
                       type="text" value={newDetails} onChange={(e) => setNewDetails(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="যেমন: মেডিসিন বিশেষজ্ঞ"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ঠিকানা / সাব-ডিটেইলস</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ঠিকানা / সাব-ডিটেইলস</label>
                     <input
                       type="text" value={newSubDetails} onChange={(e) => setNewSubDetails(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="যেমন: পূর্বধলা বাজার"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ক্যাটাগরি *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ক্যাটাগরি *</label>
                     <select
                       required value={newCategory} onChange={(e) => { setNewCategory(e.target.value); setNewSubCategory(''); setNewBloodGroup(''); }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                     >
                       <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
                       {allCategories.map((cat) => (
@@ -2682,8 +2719,8 @@ export default function App() {
 {newCategory === 'blood_donors' ? (
   <div className="space-y-4">
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">রক্তের গ্রুপ ও ধরন *</label>
-      <select required value={newBloodGroup} onChange={(e) => setNewBloodGroup(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+      <label className="block text-sm font-medium text-slate-700 mb-1">রক্তের গ্রুপ ও ধরন *</label>
+      <select required value={newBloodGroup} onChange={(e) => setNewBloodGroup(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
         <option value="" disabled>নির্বাচন করুন</option>
         <option value="A+">A+</option>
         <option value="A-">A-</option>
@@ -2701,16 +2738,16 @@ export default function App() {
     {newBloodGroup && newBloodGroup !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && newBloodGroup !== 'ব্লাড ব্যাংক' && (
       <>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">লিঙ্গ * (রক্তদানের যোগ্যতার জন্য)</label>
-          <select required value={newBloodDonorGender} onChange={(e) => setNewBloodDonorGender(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+          <label className="block text-sm font-medium text-slate-700 mb-1">লিঙ্গ * (রক্তদানের যোগ্যতার জন্য)</label>
+          <select required value={newBloodDonorGender} onChange={(e) => setNewBloodDonorGender(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
             <option value="male">পুরুষ</option>
             <option value="female">নারী</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">সর্বশেষ রক্তদানের তারিখ (যদি দিয়ে থাকেন)</label>
-          <input type="date" value={newLastDonationDate} onChange={(e) => setNewLastDonationDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
-          <p className="text-xs text-gray-500 mt-1">
+          <label className="block text-sm font-medium text-slate-700 mb-1">সর্বশেষ রক্তদানের তারিখ (যদি দিয়ে থাকেন)</label>
+          <input type="date" value={newLastDonationDate} onChange={(e) => setNewLastDonationDate(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
+          <p className="text-xs text-slate-500 mt-1">
             * বিশ্ব স্বাস্থ্য সংস্থার মতে, পুরুষরা ৩ মাস পর পর এবং নারীরা ৪ মাস পর পর রক্ত দিতে পারবেন।
           </p>
         </div>
@@ -2719,8 +2756,8 @@ export default function App() {
   </div>
 ) : newCategory !== 'important_links' ? (
   <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">সাব-ক্যাটাগরি *</label>
-    <select required value={newSubCategory} onChange={(e) => setNewSubCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+    <label className="block text-sm font-medium text-slate-700 mb-1">সাব-ক্যাটাগরি *</label>
+    <select required value={newSubCategory} onChange={(e) => setNewSubCategory(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white">
       <option value="" disabled>সাব-ক্যাটাগরি নির্বাচন করুন</option>
       {Array.from(new Set([
         ...allContacts.filter(c => c.categoryId === newCategory && c.subCategory).map(c => c.subCategory),
@@ -2757,11 +2794,11 @@ export default function App() {
       {isSubCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">নতুন সাব-ক্যাটাগরি যুক্ত করুন</h2>
+            <div className="flex justify-between items-center p-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800">নতুন সাব-ক্যাটাগরি যুক্ত করুন</h2>
               <button
                 onClick={() => setIsSubCategoryModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -2772,16 +2809,16 @@ export default function App() {
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-orange-500 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
-                  <p className="text-gray-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'অ্যাডমিন চেক করে সাব-ক্যাটাগরিটি যুক্ত করবেন।'}</p>
+                  <h3 className="text-xl font-medium text-slate-800 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
+                  <p className="text-slate-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'অ্যাডমিন চেক করে সাব-ক্যাটাগরিটি যুক্ত করবেন।'}</p>
                 </div>
               ) : (
                 <form onSubmit={handleSubCategorySubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">প্যারেন্ট ক্যাটাগরি *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">প্যারেন্ট ক্যাটাগরি *</label>
                     <select
                       required value={newSubCatParentId} onChange={(e) => setNewSubCatParentId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                     >
                       <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
                       {allCategories.map((cat) => (
@@ -2790,10 +2827,10 @@ export default function App() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">সাব-ক্যাটাগরির নাম *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">সাব-ক্যাটাগরির নাম *</label>
                     <input
                       type="text" required value={newSubCatTitle} onChange={(e) => setNewSubCatTitle(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                       placeholder="যেমন: ফায়ার সার্ভিস"
                     />
                   </div>
@@ -2817,11 +2854,11 @@ export default function App() {
       {isCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">{editingCategoryId ? "ক্যাটাগরি আপডেট করুন" : "নতুন ক্যাটাগরি (মেনু) যুক্ত করুন"}</h2>
+            <div className="flex justify-between items-center p-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800">{editingCategoryId ? "ক্যাটাগরি আপডেট করুন" : "নতুন ক্যাটাগরি (মেনু) যুক্ত করুন"}</h2>
               <button
                 onClick={() => { setIsCategoryModalOpen(false); setEditingCategoryId(null); }}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -2832,32 +2869,32 @@ export default function App() {
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-indigo-500 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
-                  <p className="text-gray-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'অ্যাডমিন চেক করে ক্যাটাগরিটি যুক্ত করবেন।'}</p>
+                  <h3 className="text-xl font-medium text-slate-800 mb-2">{isAdmin ? 'সফলভাবে সম্পন্ন হয়েছে!' : 'রিকোয়েস্ট সফল হয়েছে!'}</h3>
+                  <p className="text-slate-500">{isAdmin ? 'আপনার দেওয়া তথ্যটি সাথে সাথে আপডেট হয়ে গেছে।' : 'অ্যাডমিন চেক করে ক্যাটাগরিটি যুক্ত করবেন।'}</p>
                 </div>
               ) : (
                 <form onSubmit={handleCategorySubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ক্যাটাগরির নাম (বাংলায়) *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ক্যাটাগরির নাম (বাংলায়) *</label>
                     <input
                       type="text" required value={newCatTitle} onChange={(e) => setNewCatTitle(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="যেমন: ব্লাড ডোনার"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category Name (English) *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Category Name (English) *</label>
                     <input
                       type="text" required value={newCatEnglish} onChange={(e) => setNewCatEnglish(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="e.g. Blood Donors"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">আইকন (অপশনাল)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">আইকন (অপশনাল)</label>
                     <select
                       value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 bg-white"
                     >
                       <option value="Building2">Building</option>
                       <option value="Users">Users</option>
@@ -2886,11 +2923,11 @@ export default function App() {
       {isFeedbackModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">মতামত ও আইডিয়া</h2>
+            <div className="flex justify-between items-center p-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800">মতামত ও আইডিয়া</h2>
               <button
                 onClick={() => setIsFeedbackModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -2901,27 +2938,27 @@ export default function App() {
               {requestStatus === 'success' ? (
                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">ধন্যবাদ!</h3>
-                  <p className="text-gray-500">আপনার মতামত সফলভাবে আমাদের কাছে পৌঁছেছে।</p>
+                  <h3 className="text-xl font-medium text-slate-800 mb-2">ধন্যবাদ!</h3>
+                  <p className="text-slate-500">আপনার মতামত সফলভাবে আমাদের কাছে পৌঁছেছে।</p>
                 </div>
               ) : (
                 <form onSubmit={handleFeedbackSubmit} className="space-y-4">
                   {!contributorName && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">আপনার নাম *</label>
                       <input
                         type="text" required value={newFeedbackName} onChange={(e) => setNewFeedbackName(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="আপনার নাম"
                       />
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">আপনার মতামত বা আইডিয়া *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">আপনার মতামত বা আইডিয়া *</label>
                     <textarea
                       required value={newFeedbackMessage} onChange={(e) => setNewFeedbackMessage(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                       placeholder="অ্যাপটি কীভাবে আরও ভালো করা যায়? আপনার নতুন কোনো আইডিয়া থাকলে এখানে লিখুন..."
                     />
                   </div>
@@ -2946,8 +2983,8 @@ export default function App() {
       {isContributorProfileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                 <UserCircle className="w-5 h-5 text-emerald-600" /> 
                 <span className="flex items-center gap-1.5 flex-wrap">
                   {isLoginMode ? 'লগইন' : !contributorName ? 'একাউন্ট তৈরি করুন' : 'আমার প্রোফাইল'}
@@ -2961,7 +2998,7 @@ export default function App() {
               </h2>
               <button
                 onClick={() => { setIsContributorProfileOpen(false); setIsLoginMode(false); setIsForgotPassword(false); setIsOtpMode(false); setIsResetPasswordMode(false); }}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -2970,15 +3007,15 @@ export default function App() {
               
               {isResetPasswordMode ? (
                 <>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-slate-600 mb-4">
                     আপনার নতুন পাসওয়ার্ড সেট করুন।
                   </p>
                   <form onSubmit={handleSaveNewPassword} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">নতুন পাসওয়ার্ড *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">নতুন পাসওয়ার্ড *</label>
                       <input
                         type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="নতুন পাসওয়ার্ড"
                       />
                     </div>
@@ -2992,15 +3029,15 @@ export default function App() {
                 </>
               ) : isOtpMode ? (
                 <>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-slate-600 mb-4">
                     আপনার ইমেইলে পাঠানো ৪-ডিজিটের কোডটি এখানে লিখুন। (ডেমো হিসেবে পপআপে দেখানো কোডটি ব্যবহার করুন)
                   </p>
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ভেরিফিকেশন কোড *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">ভেরিফিকেশন কোড *</label>
                       <input
                         type="text" required value={enteredOtp} onChange={(e) => setEnteredOtp(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-center tracking-widest text-lg font-bold"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-center tracking-widest text-lg font-bold"
                         placeholder="----"
                         maxLength={4}
                       />
@@ -3013,22 +3050,22 @@ export default function App() {
                     </button>
                   </form>
                   <div className="mt-4 text-center">
-                    <button onClick={() => { setIsOtpMode(false); setIsForgotPassword(true); }} className="text-sm text-gray-600 hover:underline">
+                    <button onClick={() => { setIsOtpMode(false); setIsForgotPassword(true); }} className="text-sm text-slate-600 hover:underline">
                       ফিরে যান
                     </button>
                   </div>
                 </>
               ) : isForgotPassword ? (
                 <>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-slate-600 mb-4">
                     আপনার মোবাইল নাম্বার বা ইমেইল দিন। আমরা আপনার যুক্ত করা ইমেইলে একটি ভেরিফিকেশন কোড পাঠাবো।
                   </p>
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
                       <input
                         type="text" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="মোবাইল বা ইমেইল"
                       />
                     </div>
@@ -3057,7 +3094,7 @@ export default function App() {
                     </button>
                   </form>
                   <div className="mt-4 text-center">
-                    <button onClick={() => setIsForgotPassword(false)} className="text-sm text-gray-600 hover:underline">
+                    <button onClick={() => setIsForgotPassword(false)} className="text-sm text-slate-600 hover:underline">
                       ফিরে যান
                     </button>
                   </div>
@@ -3068,29 +3105,29 @@ export default function App() {
                     <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <UserCircle className="w-8 h-8 text-emerald-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">ফিরে আসার জন্য ধন্যবাদ!</h2>
-                    <p className="text-gray-500 text-sm mb-4">আপনার মোবাইল নাম্বার বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন।</p>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">ফিরে আসার জন্য ধন্যবাদ!</h2>
+                    <p className="text-slate-500 text-sm mb-4">আপনার মোবাইল নাম্বার বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন।</p>
                     <p className="text-xs text-emerald-600 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
                       আপনি যদি আগে থেকে একাউন্ট করে থাকেন কিন্তু পাসওয়ার্ড সেট না করে থাকেন, তবে শুধু নাম্বার দিয়ে লগইন করে ড্যাশবোর্ড থেকে পাসওয়ার্ড সেট করুন।
                     </p>
                   </div>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নাম্বার বা ইমেইল *</label>
                       <input
                         type="text" required value={toBengaliDigits(loginPhone)} onChange={(e) => setLoginPhone(toEnglishDigits(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="মোবাইল বা ইমেইল"
                       />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <label className="block text-sm font-medium text-gray-700">পাসওয়ার্ড</label>
+                        <label className="block text-sm font-medium text-slate-700">পাসওয়ার্ড</label>
                         <button type="button" onClick={() => setIsForgotPassword(true)} className="text-xs text-emerald-600 hover:underline">পাসওয়ার্ড ভুলে গেছেন?</button>
                       </div>
                       <input
                         type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="আপনার পাসওয়ার্ড দিন (যদি থাকে)"
                       />
                     </div>
@@ -3104,13 +3141,13 @@ export default function App() {
                   <div className="mt-6 flex flex-col gap-3">
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
+                        <div className="w-full border-t border-slate-300"></div>
                       </div>
                       <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">অথবা</span>
+                        <span className="px-2 bg-white text-slate-500">অথবা</span>
                       </div>
                     </div>
-                    <button type="button" onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3 px-4 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl text-gray-700 font-medium flex justify-center items-center gap-2 transition-colors">
+                    <button type="button" onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3 px-4 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl text-slate-700 font-medium flex justify-center items-center gap-2 transition-colors">
                       <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                       Google দিয়ে লগইন করুন
                     </button>
@@ -3141,16 +3178,16 @@ export default function App() {
                   
                   {/* User Dashboard Tabs */}
                   <div className="flex overflow-x-auto gap-2 mb-4 pb-1 scrollbar-hide border-b">
-                    <button onClick={() => setActiveUserTab('stats')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'stats' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                    <button onClick={() => setActiveUserTab('stats')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'stats' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                       ড্যাশবোর্ড
                     </button>
-                    <button onClick={() => setActiveUserTab('contacts')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'contacts' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                    <button onClick={() => setActiveUserTab('contacts')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'contacts' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                       নাম্বার ({contributorContacts.length})
                     </button>
-                    <button onClick={() => setActiveUserTab('feedbacks')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                    <button onClick={() => setActiveUserTab('feedbacks')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'feedbacks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                       মতামত ({contributorFeedbacks.length})
                     </button>
-                    <button onClick={() => setActiveUserTab('messages')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'messages' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                    <button onClick={() => setActiveUserTab('messages')} className={`px-3 py-1.5 font-medium text-xs whitespace-nowrap border-b-2 transition-colors ${activeUserTab === 'messages' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                       ইনবক্স {hasUnreadMessages || hasUnreadReply ? <span className="inline-block w-2 h-2 bg-red-500 rounded-full ml-1"></span> : ''}
                     </button>
                   </div>
@@ -3160,11 +3197,11 @@ export default function App() {
                     <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                        <p className="text-sm text-gray-500 mb-1">এপ্রুভড নাম্বার</p>
+                        <p className="text-sm text-slate-500 mb-1">এপ্রুভড নাম্বার</p>
                         <p className="text-2xl font-bold text-emerald-600">{contributorApprovedCount}</p>
                       </div>
                       <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                        <p className="text-sm text-gray-500 mb-1">মোট পয়েন্ট</p>
+                        <p className="text-sm text-slate-500 mb-1">মোট পয়েন্ট</p>
                         <p className="text-2xl font-bold text-emerald-600">{contributorPoints}</p>
                       </div>
                     </div>
@@ -3173,15 +3210,15 @@ export default function App() {
 
                   {activeUserTab === 'feedbacks' && (
                   <div className="mb-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">আমার মতামত ও আইডিয়া</h3>
+                    <h3 className="font-semibold text-slate-800 mb-3">আমার মতামত ও আইডিয়া</h3>
                     {contributorFeedbacks.length === 0 ? (
-                      <p className="text-sm text-gray-500">আপনি এখনও কোনো মতামত দেননি।</p>
+                      <p className="text-sm text-slate-500">আপনি এখনও কোনো মতামত দেননি।</p>
                     ) : (
                       <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
                         {contributorFeedbacks.map(fb => (
-                          <div key={fb.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                          <div key={fb.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                             <div className="flex justify-between items-start mb-1">
-                              <p className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleDateString('bn-BD')}</p>
+                              <p className="text-xs text-slate-500">{new Date(fb.createdAt).toLocaleDateString('bn-BD')}</p>
                               {fb.status === 'approved' && (
                                 <div className="flex gap-0.5">
                                   {[...Array(fb.rating || 1)].map((_, i) => (
@@ -3190,10 +3227,10 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{fb.message}</p>
+                            <p className="text-sm text-slate-800 whitespace-pre-wrap">{fb.message}</p>
                             
                             {/* Replies Section Toggle */}
-                            <div className="mt-2 pt-2 border-t border-gray-200">
+                            <div className="mt-2 pt-2 border-t border-slate-200">
                               <button 
                                 onClick={() => {
                                   if (expandedFeedbackId === fb.id) {
@@ -3220,19 +3257,19 @@ export default function App() {
 
                             {/* Replies Thread */}
                             {expandedFeedbackId === fb.id && (
-                              <div className="mt-3 bg-white p-2 rounded border border-gray-100">
+                              <div className="mt-3 bg-white p-2 rounded border border-slate-100">
                                 {fb.replies && fb.replies.length > 0 ? (
                                   <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
                                     {fb.replies.map((reply: any) => {
                                       const userIdentifier = contributorPhone || 'anonymous';
                                       const isLiked = reply.likes?.includes(userIdentifier);
                                       return (
-                                      <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'user' ? 'bg-emerald-50 ml-4' : 'bg-gray-50 mr-4'}`}>
+                                      <div key={reply.id} className={`p-2 rounded-lg text-sm ${reply.sender === 'user' ? 'bg-emerald-50 ml-4' : 'bg-slate-50 mr-4'}`}>
                                         <div className="flex justify-between items-center mb-1">
-                                          <span className="font-semibold text-[11px] text-gray-700 flex items-center">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'} {reply.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] shrink-0 inline-block align-middle ml-1" title="Admin"><path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/><path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/></svg>}</span>
+                                          <span className="font-semibold text-[11px] text-slate-700 flex items-center">{reply.sender === 'user' ? 'আপনি' : 'অ্যাডমিন'} {reply.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] shrink-0 inline-block align-middle ml-1" title="Admin"><path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/><path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/></svg>}</span>
                                           <div className="flex items-center gap-2">
-                                            {reply.edited && <span className="text-[9px] text-gray-400 italic">edited</span>}
-                                            <span className="text-[10px] text-gray-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
+                                            {reply.edited && <span className="text-[9px] text-slate-400 italic">edited</span>}
+                                            <span className="text-[10px] text-slate-400">{new Date(reply.createdAt).toLocaleDateString('bn-BD')}</span>
                                           </div>
                                         </div>
                                         {editingReplyId === reply.id ? (
@@ -3241,7 +3278,7 @@ export default function App() {
                                               type="text"
                                               value={editReplyText}
                                               onChange={(e) => setEditReplyText(e.target.value)}
-                                              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none"
+                                              className="flex-1 px-2 py-1 text-xs border border-slate-300 rounded focus:outline-none"
                                               onKeyPress={(e) => {
                                                 if (e.key === 'Enter') handleEditReplyUser(fb.id, reply.id);
                                               }}
@@ -3249,17 +3286,17 @@ export default function App() {
                                             <button onClick={() => handleEditReplyUser(fb.id, reply.id)} className="text-emerald-600 hover:text-emerald-700">
                                               <CheckCircle2 className="w-4 h-4" />
                                             </button>
-                                            <button onClick={() => setEditingReplyId(null)} className="text-gray-400 hover:text-red-500">
+                                            <button onClick={() => setEditingReplyId(null)} className="text-slate-400 hover:text-red-500">
                                               <X className="w-4 h-4" />
                                             </button>
                                           </div>
                                         ) : (
                                           <>
-                                            <p className="text-gray-800 text-xs">{reply.message}</p>
+                                            <p className="text-slate-800 text-xs">{reply.message}</p>
                                             <div className="flex justify-end gap-2 mt-1">
                                               <button 
                                                 onClick={() => handleLikeReplyUser(fb.id, reply.id)}
-                                                className={`flex items-center gap-1 text-[10px] ${isLiked ? 'text-emerald-600' : 'text-gray-400 hover:text-emerald-500'}`}
+                                                className={`flex items-center gap-1 text-[10px] ${isLiked ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-500'}`}
                                               >
                                                 <ThumbsUp className={`w-3 h-3 ${isLiked ? 'fill-emerald-600' : ''}`} />
                                                 {reply.likes?.length > 0 && <span>{reply.likes.length}</span>}
@@ -3270,7 +3307,7 @@ export default function App() {
                                                     setEditingReplyId(reply.id);
                                                     setEditReplyText(reply.message);
                                                   }}
-                                                  className="text-gray-400 hover:text-blue-500"
+                                                  className="text-slate-400 hover:text-blue-500"
                                                 >
                                                   <Edit3 className="w-3 h-3" />
                                                 </button>
@@ -3282,7 +3319,7 @@ export default function App() {
                                     )})}
                                   </div>
                                 ) : (
-                                  <p className="text-xs text-gray-400 mb-2">এখনও কোনো রিপ্লাই নেই।</p>
+                                  <p className="text-xs text-slate-400 mb-2">এখনও কোনো রিপ্লাই নেই।</p>
                                 )}
                                 
                                 <div className="flex gap-2">
@@ -3291,7 +3328,7 @@ export default function App() {
                                     value={feedbackReplyText[fb.id] || ''}
                                     onChange={(e) => setFeedbackReplyText({ ...feedbackReplyText, [fb.id]: e.target.value })}
                                     placeholder="আপনার রিপ্লাই..."
-                                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    className="flex-1 px-2 py-1 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                     onKeyPress={(e) => {
                                       if (e.key === 'Enter') {
                                         handleFeedbackReplyUser(fb.id);
@@ -3319,7 +3356,7 @@ export default function App() {
  {activeUserTab === 'messages' && ( 
  <div className="mb-4">
                     <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold text-gray-900">অ্যাডমিনের সাথে ম্যাসেজ</h3>
+                      <h3 className="font-semibold text-slate-800">অ্যাডমিনের সাথে ম্যাসেজ</h3>
                       {hasUnreadMessages && (
                         <button onClick={handleMarkMessagesAsRead} className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium hover:bg-red-200">
                           মার্ক এজ রিড
@@ -3327,9 +3364,9 @@ export default function App() {
                       )}
                     </div>
                     {contributorMessages.length === 0 ? (
-                      <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
+                      <p className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
                     ) : (
-                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
                         {contributorMessages.filter(msg => !msg.deletedForEveryone && !msg.deletedFor?.includes('user')).map(msg => (
                           <div key={msg.id} className="bg-white p-3 rounded shadow-sm">
                             <div className="flex justify-between items-center mb-1 border-b border-gray-50 pb-1">
@@ -3341,27 +3378,27 @@ export default function App() {
                                 </span>
                                 {msg.sender === 'admin' && <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[12px] h-[12px] shrink-0 inline-block align-middle ml-3" title="Admin"><path d="M22.5 12.536V11.464L20.892 9.114L21.214 6.273L18.441 5.437L16.51 3.239L13.8 4.029L12 2.25L10.2 4.029L7.49 3.239L5.559 5.437L2.786 6.273L3.108 9.114L1.5 11.464V12.536L3.108 14.886L2.786 17.727L5.559 18.563L7.49 20.761L10.2 19.971L12 21.75L13.8 19.971L16.51 20.761L18.441 18.563L21.214 17.727L20.892 14.886L22.5 12.536Z" fill="#0866FF"/><path fillRule="evenodd" clipRule="evenodd" d="M16.53 8.47a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.97 1.97 4.97-4.97a.75.75 0 0 1 1.06 0z" fill="white"/></svg>}
                               </span>
-                              <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
+                              <span className="text-[10px] text-slate-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                             </div>
-                            <p className="text-gray-800 text-xs whitespace-pre-wrap">{msg.message}</p>
+                            <p className="text-slate-800 text-xs whitespace-pre-wrap">{msg.message}</p>
                             {msg.reaction && (
-                              <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-xs z-10">{msg.reaction}</div>
+                              <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-slate-100 px-1.5 py-0.5 text-xs z-10">{msg.reaction}</div>
                             )}
                             <div className="flex flex-col items-end mt-2 gap-1">
-                              <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
+                              <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-slate-400 hover:text-slate-600 px-1" title="React">
                                 <Smile className="w-3 h-3" />
                               </button>
                               {activeReactionMsgId === msg.id && (
-                                <div className="mt-2 bg-gray-50 border border-gray-200 rounded-full flex gap-1 p-1">
+                                <div className="mt-2 bg-slate-50 border border-slate-200 rounded-full flex gap-1 p-1">
                                   {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
-                                    <button key={e} onClick={() => handleReactToMessage(msg.id, e, false)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
+                                    <button key={e} onClick={() => handleReactToMessage(msg.id, e, false)} className="hover:bg-slate-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
                                       {e}
                                     </button>
                                   ))}
                                 </div>
                               )}
                               {msg.sender === 'user' && (
-                                <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-gray-400'}`}>
+                                <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-slate-400'}`}>
                                   {msg.read ? 'Seen' : 'Delivered'}
                                 </span>
                               )}
@@ -3382,7 +3419,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setShowUserMessageEmoji(!showUserMessageEmoji)}
-                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                       >
                         <Smile className="w-5 h-5" />
                       </button>
@@ -3403,7 +3440,7 @@ export default function App() {
                         value={userMessageText}
                         onChange={(e) => setUserMessageText(e.target.value)}
                         placeholder="রিপ্লাই লিখুন..."
-                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') handleSendUserMessage();
                         }}
@@ -3417,17 +3454,17 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-gray-200">
-                      <h3 className="font-semibold text-gray-900 mb-3">ইউজারদের সাথে কথোপকথন</h3>
+                    <div className="mt-6 pt-4 border-t border-slate-200">
+                      <h3 className="font-semibold text-slate-800 mb-3">ইউজারদের সাথে কথোপকথন</h3>
                       {userMessages.length === 0 ? (
-                        <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
+                        <p className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg text-center">কোনো ম্যাসেজ নেই।</p>
                       ) : (
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
                           {userMessages.map(msg => {
                             const isSentByMe = msg.senderPhone === contributorPhone;
                             return (
-                            <div key={msg.id} className="bg-white p-3 rounded shadow-sm border border-gray-100 relative">
-                              <div className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-1 rounded" onClick={() => setSelectedUserProfile(isSentByMe ? msg.receiverPhone : msg.senderPhone)}>
+                            <div key={msg.id} className="bg-white p-3 rounded shadow-sm border border-slate-100 relative">
+                              <div className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onClick={() => setSelectedUserProfile(isSentByMe ? msg.receiverPhone : msg.senderPhone)}>
                                 <div className="relative shrink-0">
                                   {isSentByMe ? (
                                     <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -3436,37 +3473,37 @@ export default function App() {
                                   ) : msg.senderAvatar ? (
                                     <img src={msg.senderAvatar} alt={msg.senderName} className="w-6 h-6 rounded-full object-cover" />
                                   ) : (
-                                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
                                       <UserCircle className="w-4 h-4" />
                                     </div>
                                   )}
                                   {!isSentByMe && onlineUsers.includes(msg.senderPhone) && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>}
                                 </div>
                                 <div className="flex-1 flex justify-between items-center">
-                                  <span className="font-semibold text-[11px] text-gray-900">{isSentByMe ? `To: ${msg.receiverName}` : msg.senderName}</span>
-                                  <span className="text-[10px] text-gray-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
+                                  <span className="font-semibold text-[11px] text-slate-800">{isSentByMe ? `To: ${msg.receiverName}` : msg.senderName}</span>
+                                  <span className="text-[10px] text-slate-400">{new Date(msg.createdAt).toLocaleString('bn-BD')}</span>
                                 </div>
                               </div>
-                              <p className="text-gray-800 text-xs whitespace-pre-wrap pl-8">{msg.message}</p>
+                              <p className="text-slate-800 text-xs whitespace-pre-wrap pl-8">{msg.message}</p>
                               {msg.reaction && (
-                                <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-gray-100 px-1.5 py-0.5 text-xs z-10">{msg.reaction}</div>
+                                <div className="absolute -bottom-2 right-2 bg-white rounded-full shadow border border-slate-100 px-1.5 py-0.5 text-xs z-10">{msg.reaction}</div>
                               )}
                               <div className="flex justify-between items-center mt-2 pl-8 relative">
                                 <div className="flex flex-col items-start gap-1">
-                                  <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1" title="React">
+                                  <button onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)} className="text-[10px] text-slate-400 hover:text-slate-600 px-1" title="React">
                                     <Smile className="w-3 h-3" />
                                   </button>
                                   {activeReactionMsgId === msg.id && (
-                                    <div className="mt-2 bg-gray-50 border border-gray-200 rounded-full flex gap-1 p-1">
+                                    <div className="mt-2 bg-slate-50 border border-slate-200 rounded-full flex gap-1 p-1">
                                       {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(e => (
-                                        <button key={e} onClick={() => handleReactToMessage(msg.id, e, true)} className="hover:bg-gray-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
+                                        <button key={e} onClick={() => handleReactToMessage(msg.id, e, true)} className="hover:bg-slate-100 p-1 rounded-full text-sm transition-transform hover:scale-110">
                                           {e}
                                         </button>
                                       ))}
                                     </div>
                                   )}
                                   {isSentByMe ? (
-                                    <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-gray-400'}`}>
+                                    <span className={`text-[10px] font-medium ${msg.read ? 'text-blue-500' : 'text-slate-400'}`}>
                                       {msg.read ? 'Seen' : 'Delivered'}
                                     </span>
                                   ) : null}
@@ -3491,26 +3528,25 @@ export default function App() {
                                 </div>
                               </div>
                             </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-
-                  )} 
- {activeUserTab === 'contacts' && ( 
- <div className="mb-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
+                </div>
+              )}
+              {activeUserTab === 'contacts' && (
+                <div className="mb-4">
+                    <h3 className="font-semibold text-slate-800 mb-3">আমার যোগ করা নাম্বারসমূহ</h3>
                     {contributorContacts.length === 0 ? (
-                      <p className="text-sm text-gray-500">আপনি এখনও কোনো নাম্বার যোগ করেননি।</p>
+                      <p className="text-sm text-slate-500">আপনি এখনও কোনো নাম্বার যোগ করেননি।</p>
                     ) : (
                       <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
                         {contributorContacts.map(contact => (
-                          <div key={contact.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100 flex justify-between items-center">
+                          <div key={contact.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex justify-between items-center">
                             <div>
-                              <p className="font-medium text-gray-900">{contact.name}</p>
-                              <p className="text-sm text-gray-500">{toBengaliDigits(contact.phone)}</p>
+                              <p className="font-medium text-slate-800">{contact.name}</p>
+                              <p className="text-sm text-slate-500">{toBengaliDigits(contact.phone)}</p>
                             </div>
                             <div>
                               {contact.status === 'approved' ? (
@@ -3540,7 +3576,7 @@ export default function App() {
                         </button>
                       </div>
                     )}
- <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+ <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
                     <button type="button" onClick={() => setIsEditProfileMode(true)} className="text-sm text-emerald-600 hover:underline font-medium">
                       প্রোফাইল আপডেট করুন
                     </button>
@@ -3575,11 +3611,11 @@ export default function App() {
                       <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <UserPlus className="w-8 h-8 text-emerald-600" />
                       </div>
-                      <h2 className="text-2xl font-bold text-gray-800 mb-2">স্বাগতম!</h2>
-                      <p className="text-gray-500 text-sm">পূর্বধলা হেল্পলাইনে যুক্ত হতে একাউন্ট তৈরি করুন</p>
+                      <h2 className="text-2xl font-bold text-slate-800 mb-2">স্বাগতম!</h2>
+                      <p className="text-slate-500 text-sm">পূর্বধলা হেল্পলাইনে যুক্ত হতে একাউন্ট তৈরি করুন</p>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-600 mb-4">
+                    <p className="text-sm text-slate-600 mb-4">
                       এখানে আপনার তথ্য আপডেট করতে পারবেন। আপনার যুক্ত করা নাম্বার অ্যাপ্রুভ হলে আপনার পয়েন্ট বৃদ্ধি পাবে।
                     </p>
                   )}
@@ -3595,15 +3631,15 @@ export default function App() {
                     )}
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">আপনার নাম *</label>
                       <input
                         type="text" required value={contributorName} onChange={(e) => setContributorName(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="আপনার নাম"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? "একাউন্ট আইডি (Social Login)" : "আপনার মোবাইল নাম্বার *"}</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">{(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? "একাউন্ট আইডি (Social Login)" : "আপনার মোবাইল নাম্বার *"}</label>
                       <input
                         type={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? "text" : "tel"} required 
                         value={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? contributorPhone : toBengaliDigits(contributorPhone)} 
@@ -3613,50 +3649,50 @@ export default function App() {
                           }
                         }}
                         readOnly={(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone))}
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 ${(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                        className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 ${(contributorPhone && contributorPhone.length > 15 && /[a-zA-Z]/.test(contributorPhone)) ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                         placeholder="01XXXXXXXXX"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ইমেইল *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">ইমেইল *</label>
                       <input
                         type="email" required value={contributorEmail} onChange={(e) => setContributorEmail(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="example@email.com"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ফেসবুক প্রোফাইল লিংক (ঐচ্ছিক)</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">ফেসবুক প্রোফাইল লিংক (ঐচ্ছিক)</label>
                       <input
                         type="url" value={contributorFacebook} onChange={(e) => setContributorFacebook(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="https://facebook.com/..."
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">পাসওয়ার্ড {contributorName ? '(পরিবর্তন করতে চাইলে লিখুন)' : '*'}</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">পাসওয়ার্ড {contributorName ? '(পরিবর্তন করতে চাইলে লিখুন)' : '*'}</label>
                       <input
                         type="password" value={contributorPassword} onChange={(e) => setContributorPassword(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder={contributorName ? "নতুন পাসওয়ার্ড" : "আপনার পাসওয়ার্ড সেট করুন"}
                         required={!contributorName} // Required for new users
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">প্রোফাইল ছবি (ঐচ্ছিক)</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">প্রোফাইল ছবি (ঐচ্ছিক)</label>
                       <div className="flex items-center gap-3">
                         {contributorAvatar ? (
-                          <img src={contributorAvatar} alt="Profile" className="w-12 h-12 rounded-full object-cover border border-gray-200" />
+                          <img src={contributorAvatar} alt="Profile" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
-                            <UserCircle className="w-6 h-6 text-gray-400" />
+                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                            <UserCircle className="w-6 h-6 text-slate-400" />
                           </div>
                         )}
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handleImageUpload}
-                          className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                          className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                         />
                       </div>
                     </div>
@@ -3671,13 +3707,13 @@ export default function App() {
                   <div className="mt-6 flex flex-col gap-3">
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
+                        <div className="w-full border-t border-slate-300"></div>
                       </div>
                       <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">অথবা</span>
+                        <span className="px-2 bg-white text-slate-500">অথবা</span>
                       </div>
                     </div>
-                    <button type="button" onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3 px-4 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl text-gray-700 font-medium flex justify-center items-center gap-2 transition-colors">
+                    <button type="button" onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3 px-4 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl text-slate-700 font-medium flex justify-center items-center gap-2 transition-colors">
                       <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                       Google দিয়ে একাউন্ট তৈরি করুন
                     </button>
@@ -3694,7 +3730,7 @@ export default function App() {
                       </button>
                     )}
                     {contributorName && (
-                      <button type="button" onClick={() => setIsEditProfileMode(false)} className="text-sm text-gray-600 hover:underline">
+                      <button type="button" onClick={() => setIsEditProfileMode(false)} className="text-sm text-slate-600 hover:underline">
                         বাতিল করুন
                       </button>
                     )}
@@ -3710,11 +3746,11 @@ export default function App() {
       {isReviewsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100 flex-shrink-0">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> রেটিংস ও রিভিও</h2>
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 flex-shrink-0">
+              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> রেটিংস ও রিভিও</h2>
               <button
                 onClick={() => { setIsReviewsModalOpen(false); setIsWritingReview(false); }}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -3723,23 +3759,23 @@ export default function App() {
               {reviewSubmitStatus === 'success' ? (
                 <div className="text-center py-8">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">ধন্যবাদ!</h3>
-                  <p className="text-gray-500">আপনার রিভিও সফলভাবে প্রকাশিত হয়েছে।</p>
+                  <h3 className="text-xl font-medium text-slate-800 mb-2">ধন্যবাদ!</h3>
+                  <p className="text-slate-500">আপনার রিভিও সফলভাবে প্রকাশিত হয়েছে।</p>
                 </div>
               ) : isWritingReview ? (
                 <form onSubmit={handleReviewSubmit} className="space-y-4">
                   {!contributorName && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">আপনার নাম *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">আপনার নাম *</label>
                       <input
                         type="text" required value={newReviewName} onChange={(e) => setNewReviewName(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="আপনার নাম"
                       />
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">রেটিং *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">রেটিং *</label>
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -3748,17 +3784,17 @@ export default function App() {
                           onClick={() => setNewReviewRating(star)}
                           className="focus:outline-none transition-transform hover:scale-110"
                         >
-                          <Star className={`w-8 h-8 ${star <= newReviewRating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} />
+                          <Star className={`w-8 h-8 ${star <= newReviewRating ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}`} />
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">আপনার রিভিও *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">আপনার রিভিও *</label>
                     <textarea
                       required value={newReviewMessage} onChange={(e) => setNewReviewMessage(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                       placeholder="অ্যাপটি সম্পর্কে আপনার মতামত লিখুন..."
                     />
                   </div>
@@ -3766,7 +3802,7 @@ export default function App() {
                   <div className="flex gap-3 mt-6">
                     <button
                       type="button" onClick={() => setIsWritingReview(false)}
-                      className="flex-1 py-3 px-4 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                      className="flex-1 py-3 px-4 border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
                     >
                       বাতিল
                     </button>
@@ -3792,47 +3828,50 @@ export default function App() {
                   </div>
                   
                   {publicReviews.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-slate-500">
                       <p>এখনও কোনো রিভিও নেই। প্রথম রিভিওটি আপনিই দিন!</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {publicReviews.map((review) => (
-                        <div key={review.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex items-start gap-3 mb-2">
+                        <div key={review.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                          <div className="flex items-center justify-between mb-4">
                             <div 
-                              className={`flex items-start gap-3 ${review.authorPhone ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                              className={`flex items-center gap-3 ${review.authorPhone ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                               onClick={() => review.authorPhone && setSelectedUserProfile(review.authorPhone)}
                             >
                               <div className="relative shrink-0">
                                 {review.authorAvatar ? (
-                                  <img src={review.authorAvatar} alt={review.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                                  <img src={review.authorAvatar} alt={review.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
                                 ) : (
-                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
                                     <UserCircle className="w-6 h-6" />
                                   </div>
                                 )}
                                 {review.authorPhone && onlineUsers.includes(review.authorPhone) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
                               </div>
-                              <h3 className="font-semibold text-gray-900 flex items-center mt-2">
-                                {review.name}
-                                {isVerifiedContributor(review.name) && <VerifiedBadge />}
-                              </h3>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-end">
-                                <div className="flex gap-0.5">
-                                  {[...Array(review.rating || 5)].map((_, i) => (
-                                    <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                  ))}
-                                </div>
+                              <div>
+                                <h3 className="font-semibold text-slate-800 flex items-center text-sm">
+                                  {review.name}
+                                  {isVerifiedContributor(review.name) && <VerifiedBadge />}
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
                               </div>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{review.message}</p>
+                            </div>
+                            <div className="flex gap-0.5 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100">
+                              {[...Array(review.rating || 5)].map((_, i) => (
+                                <Star key={i} className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                              ))}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/60">
-                            <p className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString('bn-BD')}</p>
-                            <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+                          
+                          <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 mb-4 relative">
+                            <Quote className="w-6 h-6 text-gray-200 absolute top-3 right-3" />
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed relative z-10">{review.message}</p>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100">
+                            <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
                               <button
                                 onClick={() => handleReviewReaction(review, 'like')}
                                 className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${review.likesArray?.includes(getUserId()) || JSON.parse(safeStorage.getItem('likedReviews') || '[]').includes(review.id) ? 'text-blue-600' : ''}`}
@@ -3855,22 +3894,25 @@ export default function App() {
                   )}
                 </>
               )}
+
+
+        </div>
             </div>
           </div>
-        </div>
+
       )}
 
       {/* Guide Modal */}
       {isGuideOpen && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-auto relative">
-            <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-4 border-b border-gray-100 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-4 border-b border-slate-100 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <HelpCircle className="w-6 h-6 text-emerald-600" /> ব্যবহারবিধি
               </h2>
               <button
                 onClick={() => setIsGuideOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3879,7 +3921,7 @@ export default function App() {
             <div className="p-5 max-h-[70vh] overflow-y-auto space-y-6">
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নাম্বার বা তথ্য খুঁজবেন?</h3>
-                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
                   <li>হোম পেজে দেওয়া ক্যাটাগরিগুলোতে ক্লিক করে নির্দিষ্ট সার্ভিসের তথ্য দেখতে পারবেন।</li>
                   <li>সার্চ বারে নাম, মোবাইল নাম্বার বা পেশা লিখে সহজেই তথ্য খুঁজে পেতে পারেন।</li>
                   <li>রক্তদাতার প্রয়োজনে "রক্তদাতা" ক্যাটাগরিতে গিয়ে নির্দিষ্ট রক্তের গ্রুপ নির্বাচন করে খুঁজুন।</li>
@@ -3888,7 +3930,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নতুন নাম্বার যুক্ত করবেন?</h3>
-                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
                   <li>হোম পেজে নিচে ডানদিকের <strong>"প্লাস (+)"</strong> আইকনে ক্লিক করুন।</li>
                   <li>সঠিক ক্যাটাগরি ও সাব-ক্যাটাগরি নির্বাচন করুন।</li>
                   <li>নাম, মোবাইল নাম্বার এবং অন্যান্য তথ্য সঠিকভাবে পূরণ করে <strong>"রিকোয়েস্ট পাঠান"</strong> বাটনে ক্লিক করুন।</li>
@@ -3898,7 +3940,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নতুন ক্যাটাগরি বা সাব-ক্যাটাগরি যুক্ত করবেন?</h3>
-                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
                   <li>হোম পেজে নিচে ডানদিকের <strong>"+"</strong> আইকনে মাউস রাখলে বা ক্লিক করলে তিনটি অপশন দেখতে পাবেন।</li>
                   <li>এখান থেকে <strong>"নতুন ক্যাটাগরি"</strong> বা <strong>"নতুন সাব-ক্যাটাগরি"</strong> যুক্ত করার অপশন নির্বাচন করুন।</li>
                   <li>সঠিক তথ্য দিয়ে রিকোয়েস্ট পাঠান। অ্যাডমিন যাচাই করার পর তা তালিকায় যুক্ত হবে।</li>
@@ -3907,7 +3949,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">ইউজার একাউন্ট ও প্রোফাইল তৈরি</h3>
-                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
                   <li>উপরে ডানদিকে থাকা <strong>"প্রোফাইল"</strong> আইকনে ক্লিক করুন।</li>
                   <li>আপনার নাম, মোবাইল নাম্বার এবং অন্যান্য তথ্য দিয়ে প্রোফাইল তৈরি বা আপডেট করুন।</li>
                   <li>একাউন্ট থাকলে আপনার পাঠানো রিকোয়েস্ট, মেসেজ এবং পয়েন্ট প্রোফাইলে দেখতে পাবেন।</li>
@@ -3916,7 +3958,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে তথ্য সংশোধন করবেন?</h3>
-                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
                   <li>যে কোনো নাম্বারের পাশে থাকা <strong>"এডিট"</strong> আইকনে ক্লিক করুন।</li>
                   <li>সঠিক তথ্য লিখে আপডেট রিকোয়েস্ট পাঠান। অ্যাডমিন যাচাই করে তা সংশোধন করে দিবেন।</li>
                 </ul>
@@ -3924,7 +3966,7 @@ export default function App() {
 
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">পয়েন্ট ও লিডারবোর্ড</h3>
-                <ul className="list-disc ml-5 space-y-1 text-gray-600 text-sm">
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
                   <li>নতুন নাম্বার যুক্ত করলে বা ভুল তথ্য সংশোধন করলে আপনি পয়েন্ট পাবেন।</li>
                   <li>সবচেয়ে বেশি পয়েন্ট পাওয়া অবদানকারীদের নাম <strong>"লিডারবোর্ড"</strong>-এ (ট্রফি আইকন) দেখা যাবে।</li>
                   <li>পয়েন্ট অর্জন করতে চাইলে অবশ্যই আপনার প্রোফাইল তৈরি করে লগইন করতে হবে।</li>
@@ -3939,40 +3981,40 @@ export default function App() {
       {isLeaderboardOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> শীর্ষ অবদানকারীগণ</h2>
+            <div className="flex justify-between items-center p-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> শীর্ষ অবদানকারীগণ</h2>
               <button
                 onClick={() => setIsLeaderboardOpen(false)}
-                className="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="text-slate-400 hover:text-slate-500 p-1 rounded-full hover:bg-slate-100 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
             <div className="p-5 max-h-[60vh] overflow-y-auto">
               {topContributors.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-slate-500">
                   <p>এখনও কোনো অবদানকারী নেই।</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {topContributors.map((user, idx) => (
-                    <div key={user.id} onClick={() => user.phone !== "admin" && setSelectedUserProfile(user.phone)} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                    <div key={user.id} onClick={() => user.phone !== "admin" && setSelectedUserProfile(user.phone)} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
                           {idx + 1}
                         </div>
                         <div className="relative shrink-0">
                           {user.avatar ? (
-                            <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                            <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-slate-500">
                               <UserCircle className="w-6 h-6" />
                             </div>
                           )}
                           {onlineUsers.includes(user.phone) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 leading-tight flex items-center gap-1">
+                          <h3 className="font-semibold text-slate-800 leading-tight flex items-center gap-1">
                             {user.facebookUrl ? (
                               <a href={user.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
                                 {user.name}
@@ -3984,16 +4026,16 @@ export default function App() {
                               <VerifiedBadge />
                             )}
                           </h3>
-                          <p className="text-xs text-gray-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.points || 0}</span></p>
+                          <p className="text-xs text-slate-500">পয়েন্ট: <span className="font-semibold text-emerald-600">{user.points || 0}</span></p>
                         </div>
                       </div>
                       {idx < 3 && (
-                        <Trophy className={`w-5 h-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
+                        <Trophy className={`w-5 h-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-slate-400' : 'text-amber-700'}`} />
                       )}
                     </div>
                   ))}
                 </div>
-              )}
+                )}
             </div>
           </div>
         </div>
