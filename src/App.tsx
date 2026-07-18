@@ -2649,14 +2649,14 @@ export default function App() {
       {Array.from(new Set([
         ...allContacts.filter(c => c.categoryId === newCategory && c.subCategory).map(c => c.subCategory),
         ...(predefinedSubCategories.find(pc => pc.categoryId === newCategory)?.subCategories || []),
-        ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory).map(sc => sc.title)
+        ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory && sc.status === 'approved').map(sc => sc.title)
       ])).sort((a, b) => a.localeCompare(b, 'bn')).map(sub => (
          <option key={sub} value={sub}>{sub}</option>
       ))}
       {!Array.from(new Set([
         ...allContacts.filter(c => c.categoryId === newCategory && c.subCategory).map(c => c.subCategory),
         ...(predefinedSubCategories.find(pc => pc.categoryId === newCategory)?.subCategories || []),
-        ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory).map(sc => sc.title)
+        ...dynamicSubCategories.filter(sc => sc.categoryId === newCategory && sc.status === 'approved').map(sc => sc.title)
       ])).includes('অন্যান্য') && <option value="অন্যান্য">অন্যান্য</option>}
     </select>
   </div>

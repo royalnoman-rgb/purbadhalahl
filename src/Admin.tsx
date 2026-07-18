@@ -246,6 +246,10 @@ export default function Admin() {
       const categoriesSnapshot = await getDocs(categoriesQuery);
       setPendingCategories(categoriesSnapshot.docs.map(d => ({ ...d.data(), id: d.id })));
 
+      const subCategoriesQuery = query(collection(db, 'subcategories'), where('status', '==', 'pending'));
+      const subCategoriesSnapshot = await getDocs(subCategoriesQuery);
+      setPendingSubCategories(subCategoriesSnapshot.docs.map(d => ({ ...d.data(), id: d.id })));
+
       const deletedPostsQuery = query(collection(db, 'community_posts'), where('isDeleted', '==', true));
       const deletedPostsSnapshot = await getDocs(deletedPostsQuery);
       const now = new Date();
@@ -524,11 +528,13 @@ export default function Admin() {
     try {
       await updateDoc(doc(db, 'subcategories', id), { status: 'approved' });
       alert('Approved successfully!');
+      fetchData();
     } catch(e) { console.error(e); }
   };
   const handleDeleteSubCategory = async (id: string) => {
     if(window.confirm('Delete this subcategory request?')) {
       await deleteDoc(doc(db, 'subcategories', id));
+      fetchData();
     }
   };
   const handleApproveCategory = async (id: string) => {
