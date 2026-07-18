@@ -1420,7 +1420,7 @@ export default function App() {
       fetchContributorStats();
       
       const docRef = doc(db, 'contributors', contributorPhone);
-      unsubContributor = onSnapshot(docRef, (docSnap) => {
+      unsubContributor = onSnapshot(docRef, async (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setContributorPoints(data.points || (data.approvedCount || 0) * 10);
@@ -1433,12 +1433,26 @@ export default function App() {
           setContributorRole(data.role || 'user');
           safeStorage.setItem('contributorRole', data.role || 'user');
         } else {
-          // Account was deleted
+          // Double check with a direct getDoc to prevent local cache race conditions / transient states
+          try {
+            const freshSnap = await getDoc(docRef);
+            if (freshSnap.exists()) {
+              // The document actually exists! Ignore the false deletion event.
+              return;
+            }
+          } catch (err) {
+            console.error("Error double checking user existence", err);
+            // If we can't verify (e.g. offline), don't delete yet
+            return;
+          }
+
+          // Account was indeed deleted
           safeStorage.removeItem('contributorName');
           safeStorage.removeItem('contributorPhone');
           safeStorage.removeItem('contributorFacebook');
           safeStorage.removeItem('contributorAvatar');
           safeStorage.removeItem('hasPassword');
+          safeStorage.removeItem('contributorRole');
           setContributorName('');
           setContributorPhone('');
           setContributorFacebook('');
@@ -1498,7 +1512,7 @@ export default function App() {
       if (unsubUserMessages) unsubUserMessages();
       if ((window as any)._unsubSent) (window as any)._unsubSent();
     };
-  }, [contributorPhone]);
+  }, [contributorPhone, isEditProfileMode]);
 
   const handleDeleteUserMessage = async (msgId: string, deleteForEveryone: boolean) => {
     try {
