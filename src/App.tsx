@@ -76,7 +76,13 @@ export default function App() {
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      Notification.requestPermission();
+      try {
+        Notification.requestPermission().catch((err) => {
+          console.warn('Notification permission request promise rejected:', err);
+        });
+      } catch (err) {
+        console.warn('Notification permission request failed synchronously:', err);
+      }
     }
   }, []);
   const [isAdmin, setIsAdmin] = useState(safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'admin');
@@ -261,32 +267,37 @@ export default function App() {
 
   useEffect(() => {
     if (contributorPhone && messaging) {
-      // request permission
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          // You need to replace 'YOUR_VAPID_KEY' with your actual VAPID key from Firebase console
-          // For now, we will just try to get the token, if vapidKey is missing it might throw, but let's try
-          getToken(messaging, { vapidKey: 'BM2dG7YkFm0zH_vJ4Y7xGj6Y_i3i3XzJ_g8k5_xT0K7u4y9D7D-k2T_L0j0i8Xw0' })
-            .then((currentToken) => {
-              if (currentToken) {
-                console.log('FCM Token:', currentToken);
-                updateDoc(doc(db, 'contributors', contributorPhone), {
-                  fcmToken: currentToken
-                }).catch(console.error);
+      try {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            // You need to replace 'YOUR_VAPID_KEY' with your actual VAPID key from Firebase console
+            // For now, we will just try to get the token, if vapidKey is missing it might throw, but let's try
+            getToken(messaging, { vapidKey: 'BM2dG7YkFm0zH_vJ4Y7xGj6Y_i3i3XzJ_g8k5_xT0K7u4y9D7D-k2T_L0j0i8Xw0' })
+              .then((currentToken) => {
+                if (currentToken) {
+                  console.log('FCM Token:', currentToken);
+                  updateDoc(doc(db, 'contributors', contributorPhone), {
+                    fcmToken: currentToken
+                  }).catch(console.error);
+                }
+              }).catch(console.error);
+              
+            onMessage(messaging, (payload) => {
+              console.log('Foreground message:', payload);
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(payload.notification?.title || 'নতুন ম্যাসেজ', {
+                  body: payload.notification?.body,
+                  icon: '/icon.png'
+                });
               }
-            }).catch(console.error);
-            
-          onMessage(messaging, (payload) => {
-            console.log('Foreground message:', payload);
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(payload.notification?.title || 'নতুন ম্যাসেজ', {
-                body: payload.notification?.body,
-                icon: '/icon.png'
-              });
-            }
-          });
-        }
-      });
+            });
+          }
+        }).catch((err) => {
+          console.warn('FCM Notification permission request promise rejected:', err);
+        });
+      } catch (err) {
+        console.warn('FCM Notification permission request failed synchronously:', err);
+      }
     }
   }, [contributorPhone]);
 
@@ -369,7 +380,13 @@ export default function App() {
   useEffect(() => {
     // Request notification permission on load
     if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
-      Notification.requestPermission();
+      try {
+        Notification.requestPermission().catch((err) => {
+          console.warn('Initial Notification permission request promise rejected:', err);
+        });
+      } catch (err) {
+        console.warn('Initial Notification permission request failed synchronously:', err);
+      }
     }
   }, []);
 
