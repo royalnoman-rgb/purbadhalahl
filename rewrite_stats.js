@@ -1,4 +1,5 @@
-import { safeStorage, safeSession } from "../utils/storage";
+const fs = require('fs');
+const content = `import { safeStorage, safeSession } from "../utils/storage";
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, deleteDoc, updateDoc, increment, collection, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore';
@@ -56,7 +57,7 @@ export function VisitorStats() {
     };
 
     updatePresence();
-    const intervalId = setInterval(updatePresence, 60000); // 1 min
+    const intervalId = setInterval(updatePresence, 60000);
 
     const cleanupOnlineStatus = () => {
       try {
@@ -75,7 +76,7 @@ export function VisitorStats() {
     const fetchOnlineCount = async () => {
       try {
         setIsLive(true);
-        const threshold = Date.now() - 2 * 60000; // 2 min timeout
+        const threshold = Date.now() - 2 * 60000;
         import('firebase/firestore').then(({ getCountFromServer, query, collection, where }) => {
              const q = query(collection(db, 'online_users'), where('lastActive', '>=', threshold));
              getCountFromServer(q).then(snapshot => {
@@ -94,7 +95,7 @@ export function VisitorStats() {
     };
     
     fetchOnlineCount();
-    const countIntervalId = setInterval(fetchOnlineCount, 30000); // 30s
+    const countIntervalId = setInterval(fetchOnlineCount, 30000);
 
     return () => {
       cleanup();
@@ -105,7 +106,7 @@ export function VisitorStats() {
   return (
     <div className="flex flex-wrap justify-center items-center gap-4 text-xs mt-4 text-gray-500">
       <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-blue-100 shadow-sm relative overflow-hidden group">
-        <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-500 ${isLive ? 'opacity-100' : 'opacity-0'}`}></div>
+        <div className={\`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-500 \${isLive ? 'opacity-100' : 'opacity-0'}\`}></div>
         <div className="relative flex items-center justify-center">
           <Users className="w-4 h-4 text-blue-600 z-10" />
           <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-30 animate-ping"></span>
@@ -119,3 +120,5 @@ export function VisitorStats() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/components/VisitorStats.tsx', content);
