@@ -111,6 +111,12 @@ export default function App() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const [showMap, setShowMap] = useState(false);
   const [showTrainTracker, setShowTrainTracker] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
@@ -560,36 +566,39 @@ export default function App() {
     return () => {};
   }, []);
 
-  const mergedCategories = staticCategories.map(sc => {
-    const dynamicCategory = dynamicCategories.find(dc => dc.id === sc.id);
-    if (dynamicCategory) {
-      return {
-        ...sc,
-        ...dynamicCategory,
-        subCategoriesOrder: dynamicCategory.subCategoriesOrder?.length ? dynamicCategory.subCategoriesOrder : sc.subCategoriesOrder
-      };
-    }
-    return sc;
-  });
-  const allCategories = [
-    ...mergedCategories,
-    ...dynamicCategories.filter(dc => !staticCategories.some(sc => sc.id === dc.id))
-  ].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  const allCategories = React.useMemo(() => {
+    const mergedCategories = staticCategories.map(sc => {
+      const dynamicCategory = dynamicCategories.find(dc => dc.id === sc.id);
+      if (dynamicCategory) {
+        return {
+          ...sc,
+          ...dynamicCategory,
+          subCategoriesOrder: dynamicCategory.subCategoriesOrder?.length ? dynamicCategory.subCategoriesOrder : sc.subCategoriesOrder
+        };
+      }
+      return sc;
+    });
+    return [
+      ...mergedCategories,
+      ...dynamicCategories.filter(dc => !staticCategories.some(sc => sc.id === dc.id))
+    ].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  }, [dynamicCategories]);
   
-  // Handle replaced contacts (edits)
-  const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
-  const dynamicContactIds = new Set(dynamicContacts.map(c => c.id));
-  
-  const deletedContactIds = new Set();
-  dynamicCategories.forEach(cat => {
-    if (cat.deletedContacts) {
-      cat.deletedContacts.forEach((id: string) => deletedContactIds.add(id));
-    }
-  });
+  const allContacts = React.useMemo(() => {
+    const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
+    const dynamicContactIds = new Set(dynamicContacts.map(c => c.id));
+    
+    const deletedContactIds = new Set();
+    dynamicCategories.forEach(cat => {
+      if (cat.deletedContacts) {
+        cat.deletedContacts.forEach((id: string) => deletedContactIds.add(id));
+      }
+    });
 
-  const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id) && !dynamicContactIds.has(c.id) && !deletedContactIds.has(c.id));
-  const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id) && !deletedContactIds.has(c.id));
-  const allContacts = [...activeStaticContacts, ...activeDynamicContacts].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+    const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id) && !dynamicContactIds.has(c.id) && !deletedContactIds.has(c.id));
+    const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id) && !deletedContactIds.has(c.id));
+    return [...activeStaticContacts, ...activeDynamicContacts].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  }, [dynamicContacts, dynamicCategories]);
 
 
   const handleMoveCategory = async (e: React.MouseEvent, index: number, direction: 'up' | 'down') => {
@@ -639,11 +648,14 @@ export default function App() {
     }
   };
 
-  const filteredContacts = allContacts.filter((c) => {
-    const matchesCategory = selectedCategory ? c.categoryId === selectedCategory.id : true;
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery) || c.phone.includes(toEnglishDigits(searchQuery));
-    return matchesCategory && matchesSearch;
-  }).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
+  const filteredContacts = React.useMemo(() => {
+    return allContacts.filter((c) => {
+      const matchesCategory = selectedCategory ? c.categoryId === selectedCategory.id : true;
+      const lowerSearch = debouncedSearchQuery.toLowerCase();
+      const matchesSearch = c.name.toLowerCase().includes(lowerSearch) || c.phone.includes(debouncedSearchQuery) || c.phone.includes(toEnglishDigits(debouncedSearchQuery));
+      return matchesCategory && matchesSearch;
+    }).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
+  }, [allContacts, selectedCategory, debouncedSearchQuery]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPhone(toEnglishDigits(e.target.value));
