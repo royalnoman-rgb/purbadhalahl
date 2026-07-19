@@ -434,8 +434,7 @@ export default function App() {
 
   useEffect(() => {
     const savedPhone = safeStorage.getItem('contributorPhone');
-    const isSavedSession = !!safeStorage.getItem('contributorName') && !!savedPhone;
-    const activeContributorPhone = (contributorPhone && isSavedSession && contributorPhone === savedPhone) ? contributorPhone : null;
+    const activeContributorPhone = (contributorPhone && contributorPhone === savedPhone) ? contributorPhone : null;
 
     if (!activeContributorPhone && !isAdmin) {
       setNotifications([]);
@@ -475,7 +474,7 @@ export default function App() {
         const cacheTime = safeStorage.getItem(cacheKey + '_time');
         const now = Date.now();
         
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 1 * 60 * 1000) { // 30 mins TTL
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000) { // 15 mins TTL
           setter(JSON.parse(cached));
           return;
         }
@@ -533,11 +532,11 @@ export default function App() {
         const cached = safeStorage.getItem('totalUsersCount');
         const cacheTime = safeStorage.getItem('totalUsersCount_time');
         const now = Date.now();
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 1 * 60 * 1000) {
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000) {
           setTotalUsersCount(parseInt(cached));
         } else {
-          const snapshot = await getDocs(collection(db, 'contributors'));
-          const count = snapshot.size;
+          const snapshot = await getCountFromServer(collection(db, 'contributors'));
+          const count = snapshot.data().count;
           setTotalUsersCount(count);
           safeStorage.setItem('totalUsersCount', count.toString());
           safeStorage.setItem('totalUsersCount_time', now.toString());
@@ -1602,9 +1601,8 @@ export default function App() {
     let unsubUserMessages: any = null;
     
     const savedPhone = safeStorage.getItem('contributorPhone');
-    const isSavedSession = !!safeStorage.getItem('contributorName') && !!savedPhone;
 
-    if (contributorPhone && isSavedSession && contributorPhone === savedPhone) {
+    if (contributorPhone && contributorPhone === savedPhone) {
       fetchContributorStats();
       
       const docRef = doc(db, 'contributors', contributorPhone);
@@ -1625,6 +1623,11 @@ export default function App() {
             safeStorage.setItem('contributorDob', data.dob);
           }
         } else {
+          if (docSnap.metadata.fromCache) {
+             console.log("Ignoring cache miss for user");
+             return;
+          }
+          console.log("onSnapshot says doc does not exist for:", contributorPhone);
           // Double check with a direct getDoc to prevent local cache race conditions / transient states
           try {
             const freshSnap = await getDoc(docRef);
@@ -1639,22 +1642,9 @@ export default function App() {
           }
 
           // Account was indeed deleted
-          safeStorage.removeItem('contributorName');
-          safeStorage.removeItem('contributorPhone');
-          safeStorage.removeItem('contributorFacebook');
-          safeStorage.removeItem('contributorAvatar');
-          safeStorage.removeItem('contributorDob');
-          safeStorage.removeItem('hasPassword');
-          safeStorage.removeItem('contributorRole');
-          setContributorName('');
-          setContributorPhone('');
-          setContributorFacebook('');
-          setContributorAvatar('');
-          setContributorDob('');
-          setContributorPassword('');
-          setHasPassword(false);
-          setIsContributorProfileOpen(false);
-          alert('আপনার একাউন্টটি মুছে ফেলা হয়েছে।');
+          // DO NOTHING automatically to prevent false positive logouts due to cache or transient network issues.
+          // If the account was really deleted, their writes will fail.
+          console.warn('Account appears deleted, but preventing auto-logout to avoid false positives.');
         }
       });
 
