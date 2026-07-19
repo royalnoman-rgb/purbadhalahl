@@ -298,6 +298,7 @@ export default function App() {
     else if (selectedBloodGroup) setSelectedBloodGroup(null);
     else if (selectedSubCategory) setSelectedSubCategory(null);
     else if (selectedCategory) setSelectedCategory(null);
+    else if (searchQuery) setSearchQuery('');
     else if (isContributorProfileOpen) setIsContributorProfileOpen(false);
     else if (showCommunity) setShowCommunity(false);
     else if (showMap) setShowMap(false);
@@ -644,7 +645,7 @@ export default function App() {
 
   const filteredContacts = allContacts.filter((c) => {
     const matchesCategory = selectedCategory ? c.categoryId === selectedCategory.id : true;
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery);
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery) || c.phone.includes(toEnglishDigits(searchQuery));
     return matchesCategory && matchesSearch;
   }).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
 
@@ -2176,10 +2177,12 @@ export default function App() {
       {/* Header */}
       <header className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg sticky top-0 z-40 transition-all border-b border-emerald-500/20">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center">
-          {selectedCategory || showMap || showTrainTracker || showCommunity ? (
+          {selectedCategory || showMap || showTrainTracker || showCommunity || searchQuery ? (
             <button
               onClick={() => {
-                if (selectedBloodGroup) {
+                if (searchQuery) {
+                  setSearchQuery('');
+                } else if (selectedBloodGroup) {
                   setSelectedBloodGroup(null);
                 } else if (selectedSubCategory) {
                   setSelectedSubCategory(null);
