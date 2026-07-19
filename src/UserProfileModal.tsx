@@ -56,6 +56,31 @@ export default function UserProfileModal({ isOpen, onClose, userPhone, currentUs
         createdAt: new Date().toISOString(),
         read: false
       });
+
+      await addDoc(collection(db, 'notifications'), {
+        receiverPhone: userPhone,
+        senderPhone: currentUserId,
+        type: 'new_message',
+        title: 'নতুন ম্যাসেজ',
+        body: `${currentUserName} আপনাকে একটি ম্যাসেজ পাঠিয়েছেন: "${message.trim().substring(0, 30)}${message.trim().length > 30 ? '...' : ''}"`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: 'messages'
+      });
+      
+      // Notify Admin too
+      if (userPhone !== 'admin') {
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: 'admin',
+          senderPhone: currentUserId,
+          type: 'new_message_alert',
+          title: 'নতুন ম্যাসেজ এলার্ট',
+          body: `${currentUserName} ম্যাসেজ পাঠিয়েছেন ${userData?.name || 'Unknown'}-কে`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'community'
+        });
+      }
       setMessage('');
       alert('ম্যাসেজ পাঠানো হয়েছে!');
       onClose();

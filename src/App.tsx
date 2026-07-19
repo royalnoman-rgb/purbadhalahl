@@ -157,6 +157,7 @@ export default function App() {
 
   // Form states - Contact
   const [newName, setNewName] = useState('');
+  const [editReason, setEditReason] = useState('');
   const [newPhone, setNewPhone] = useState('+88');
   const [newWebsiteUrl, setNewWebsiteUrl] = useState('');
   const [newDetails, setNewDetails] = useState('');
@@ -705,7 +706,16 @@ export default function App() {
         contributorName: contributorName || null,
         contributorPhone: contributorPhone || null,
         contributorFacebook: contributorFacebook || null,
+        createdAt: new Date().toISOString(),
       };
+      
+      if (editingContactId) {
+        payload.editReason = editReason;
+        const originalContact = allContacts.find((c: any) => c.id === editingContactId);
+        if (originalContact) {
+          payload.originalData = originalContact;
+        }
+      }
       
       if (newCategory === 'blood_donors' && newBloodGroup !== 'স্থানীয় ব্লাড ডোনার ক্লাব বা সংগঠন' && newBloodGroup !== 'ব্লাড ব্যাংক') {
         payload.gender = newBloodDonorGender;
@@ -1380,12 +1390,42 @@ export default function App() {
         }
       }
 
+      let isNewAction = false;
+      if (reactionType === 'like' && !hasLiked) isNewAction = true;
+      if (reactionType === 'love' && !hasLoved) isNewAction = true;
+
       await updateDoc(reviewRef, {
         likesArray,
         lovesArray,
         likes: likesArray.length,
         loves: lovesArray.length
       });
+
+      if (isNewAction && review.authorPhone && review.authorPhone !== contributorPhone) {
+        // notify author
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: review.authorPhone,
+          senderPhone: contributorPhone || 'anonymous',
+          type: 'review_reaction',
+          title: reactionType === 'like' ? 'আপনার রিভিওতে লাইক এসেছে' : 'আপনার রিভিওতে লাভ রিঅ্যাক্ট এসেছে',
+          body: `আপনার "${review.message.substring(0, 20)}..." রিভিওতে একটি নতুন রিঅ্যাক্ট।`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'reviews'
+        });
+        
+        // Notify admin
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: 'admin',
+          senderPhone: contributorPhone || 'anonymous',
+          type: 'review_reaction_alert',
+          title: 'রিভিও রিঅ্যাক্ট',
+          body: `${contributorPhone || 'Anonymous'} রিঅ্যাক্ট করেছেন ${review.name || 'User'}-এর রিভিওতে`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'reviews'
+        });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -2823,7 +2863,19 @@ export default function App() {
     </select>
   </div>
 ) : null}
-                  
+                  {editingContactId && !isAdmin && (
+                    <div className="mb-4 mt-4 text-left w-full">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">সংশোধনীর কারণ *</label>
+                      <textarea 
+                        required 
+                        value={editReason} 
+                        onChange={(e) => setEditReason(e.target.value)} 
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" 
+                        placeholder="যেমন: নামের বানান ভুল, নাম্বার পরিবর্তন হয়েছে ইত্যাদি"
+                        rows={2}
+                      />
+                    </div>
+                  )}
                   <button
                     type="submit" disabled={requestStatus === 'submitting'}
                     className={`w-full py-3 px-4 rounded-xl text-white font-medium flex justify-center items-center transition-colors ${

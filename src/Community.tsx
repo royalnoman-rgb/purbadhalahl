@@ -98,10 +98,23 @@ export default function Community({ contributorPhone, contributorName, contribut
 
   const handleDeletePost = (postId: string) => {
     confirmAction('পোস্টটি মুছে ফেলতে চান?', async () => {
+      const postDoc = await getDoc(doc(db, 'community_posts', postId));
       await updateDoc(doc(db, 'community_posts', postId), { 
         isDeleted: true, 
         deletedAt: new Date().toISOString() 
       });
+      if (postDoc.exists() && postDoc.data().authorPhone && postDoc.data().authorPhone !== effectivePhone && effectivePhone === 'admin') {
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: postDoc.data().authorPhone,
+          senderPhone: 'admin',
+          type: 'post_deleted',
+          title: 'আপনার পোস্ট রিমুভ করা হয়েছে',
+          body: `আপনার একটি পোস্ট অ্যাডমিন দ্বারা রিমুভ করা হয়েছে।`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'community'
+        });
+      }
     });
   };
   const handleDeleteComment = (postId: string, commentId: string) => {
@@ -110,7 +123,21 @@ export default function Community({ contributorPhone, contributorName, contribut
       const postDoc = await getDoc(postRef);
       if(postDoc.exists()) {
         const comments = postDoc.data().comments || [];
+        const commentToDel = comments.find((c: any) => c.id === commentId);
         await updateDoc(postRef, { comments: comments.map((c: any) => c.id === commentId ? { ...c, isDeleted: true, deletedAt: new Date().toISOString() } : c) });
+        
+        if (commentToDel && commentToDel.authorPhone && commentToDel.authorPhone !== effectivePhone && effectivePhone === 'admin') {
+          await addDoc(collection(db, 'notifications'), {
+            receiverPhone: commentToDel.authorPhone,
+            senderPhone: 'admin',
+            type: 'comment_deleted',
+            title: 'আপনার কমেন্ট রিমুভ করা হয়েছে',
+            body: `আপনার একটি কমেন্ট অ্যাডমিন দ্বারা রিমুভ করা হয়েছে।`,
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: 'community'
+          });
+        }
       }
     });
   };

@@ -1286,6 +1286,11 @@ export default function Admin() {
                         <div>
                           <h3 className="font-bold text-gray-900">{cat.title} ({cat.englishTitle})</h3>
                           <p className="text-sm text-gray-600">Icon: {cat.iconName} | Color: {cat.color}</p>
+                          {cat.createdAt && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              সময়: {new Date(cat.createdAt).toLocaleString('bn-BD')}
+                            </p>
+                          )}
                         </div>
                         <div className="flex gap-1 h-fit">
                           <button onClick={() => { setEditingRequestId(cat.id); setEditRequestData(cat); }} className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Edit">
@@ -1360,6 +1365,25 @@ export default function Admin() {
                               <p className="text-sm font-medium text-gray-700">{contact.phone ? toBengaliDigits(contact.phone) : (contact.websiteUrl || '')}</p>
                               <p className="text-sm text-gray-500">{contact.details} - {contact.subDetails}</p>
                               <p className="text-xs text-emerald-600 mt-1">Category: {contact.categoryId}</p>
+                              {contact.createdAt && (
+                                <p className="text-xs text-slate-500 mt-1">
+                                  সময়: {new Date(contact.createdAt).toLocaleString('bn-BD')}
+                                </p>
+                              )}
+                              {contact.replacesId && contact.originalData && (
+                                <div className="mt-2 p-2 bg-amber-50 border border-amber-100 rounded text-sm">
+                                  <p className="font-semibold text-amber-800 mb-1">পূর্বের তথ্য:</p>
+                                  <p className="text-slate-700">নাম: {contact.originalData.name}</p>
+                                  <p className="text-slate-700">নাম্বার: {toBengaliDigits(contact.originalData.phone || '')}</p>
+                                  <p className="text-slate-700">বিস্তারিত: {contact.originalData.details}</p>
+                                  {contact.editReason && (
+                                    <div className="mt-2 pt-2 border-t border-amber-200">
+                                      <p className="font-semibold text-amber-800">সংশোধনীর কারণ:</p>
+                                      <p className="text-slate-700">{contact.editReason}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div className="flex gap-1 h-fit">
                               <button onClick={() => { setEditingRequestId(contact.id); setEditRequestData(contact); }} className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Edit">
