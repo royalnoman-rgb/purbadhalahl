@@ -5,13 +5,14 @@ import { safeStorage, safeSession } from "./utils/storage";
  */
 
 import { VisitorStats } from './components/VisitorStats';
+import { SiteStats } from './components/SiteStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle , ArrowRight, Quote } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
-import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, getCountFromServer } from 'firebase/firestore';
 import { db, auth, googleProvider, facebookProvider, messaging, getToken, onMessage } from './firebase';
 import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
@@ -147,7 +148,8 @@ export default function App() {
   const prevNotifCount = useRef(0);
   const isInitialLoad = useRef(true);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
-  const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
+    const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
+  const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
 
@@ -526,6 +528,16 @@ export default function App() {
       items => items.filter(c => (c.points > 0 || c.approvedCount > 0)).slice(0, 10)
     );
 
+        const fetchUserCount = async () => {
+      try {
+        const snapshot = await getCountFromServer(collection(db, 'contributors'));
+        setTotalUsersCount(snapshot.data().count);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchUserCount();
+    
     return () => {};
   }, []);
 
@@ -2654,6 +2666,14 @@ export default function App() {
       </main>
 
       {/* Footer */}
+      {(!selectedCategory && !showMap && !showTrainTracker && !showCommunity) && (
+        <SiteStats 
+          totalUsers={totalUsersCount} 
+          totalContacts={allContacts.filter(c => c.status === 'approved').length} 
+          totalCategories={allCategories.length} 
+          totalBloodDonors={allContacts.filter(c => c.categoryId === 'blood_donors' && c.status === 'approved').length} 
+        />
+      )}
       <footer className="text-center py-6 text-slate-400 text-sm">
         <VisitorStats />
         <div className="mt-4 mb-5 flex justify-center items-center gap-3">
