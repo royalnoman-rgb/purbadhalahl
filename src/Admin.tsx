@@ -251,7 +251,7 @@ export default function Admin() {
 
       const subSnap = await getDocs(query(collection(db, 'subcategories'), where('status', '==', 'approved')));
       const dSubCats = subSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
-      const combinedSubCats = [...predefinedSubCategories];
+      const combinedSubCats = predefinedSubCategories.map(c => ({...c, subCategories: [...c.subCategories]}));
       dSubCats.forEach(ds => {
         let pc = combinedSubCats.find(c => c.categoryId === ds.categoryId);
         if (pc) {

@@ -163,8 +163,19 @@ export default function App() {
     }
   }, []);
 
-  const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
-    const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
+  const getCachedData = (key: string) => {
+    try {
+      const cached = safeStorage.getItem(key);
+      const cacheTime = safeStorage.getItem(key + '_time');
+      if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 7 * 24 * 60 * 60 * 1000) {
+        return JSON.parse(cached);
+      }
+    } catch(e) {}
+    return [];
+  };
+
+  const [dynamicCategories, setDynamicCategories] = useState<Category[]>(() => getCachedData('cats_cache'));
+  const [dynamicContacts, setDynamicContacts] = useState<any[]>(() => getCachedData('contacts_cache'));
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [reviewCommentTexts, setReviewCommentTexts] = useState<Record<string, string>>({});
@@ -192,7 +203,7 @@ export default function App() {
   // Form states - Category
   const [newSubCatTitle, setNewSubCatTitle] = useState('');
   const [newSubCatParentId, setNewSubCatParentId] = useState('');
-  const [dynamicSubCategories, setDynamicSubCategories] = useState<any[]>([]);
+  const [dynamicSubCategories, setDynamicSubCategories] = useState<any[]>(() => getCachedData('subCats_cache'));
   const [newCatTitle, setNewCatTitle] = useState('');
   const [newCatEnglish, setNewCatEnglish] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -597,7 +608,7 @@ export default function App() {
 
     const activeStaticContacts = staticContacts.filter(c => !replacedIds.has(c.id) && !dynamicContactIds.has(c.id) && !deletedContactIds.has(c.id));
     const activeDynamicContacts = dynamicContacts.filter(c => !replacedIds.has(c.id) && !deletedContactIds.has(c.id));
-    return [...activeStaticContacts, ...activeDynamicContacts].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+    return [...activeStaticContacts, ...activeDynamicContacts].map(c => c.subCategory === 'প্রাইভেট টিউটর' ? { ...c, subCategory: 'প্রাইভেট টিউটর ও কোচিং সেন্টার' } : c).sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   }, [dynamicContacts, dynamicCategories]);
 
 
@@ -2587,7 +2598,7 @@ export default function App() {
                else if (subCat === 'ইউনিয়ন পরিষদ') IconComponent = Home;
                else if (subCat === 'স্কুল' || subCat === 'কলেজ' || subCat === 'মাদ্রাসা') IconComponent = School;
                else if (subCat === 'কিন্ডারগার্টেন') IconComponent = Baby;
-               else if (subCat === 'প্রাইভেট টিউটর') IconComponent = BookOpen;
+               else if (subCat === 'প্রাইভেট টিউটর' || subCat === 'প্রাইভেট টিউটর ও কোচিং সেন্টার') IconComponent = BookOpen;
                else if (subCat === 'বাস') IconComponent = Bus;
                else if (subCat === 'ট্রেন') IconComponent = Train;
                else if (subCat === 'রেন্ট-এ-কার') IconComponent = Car;
