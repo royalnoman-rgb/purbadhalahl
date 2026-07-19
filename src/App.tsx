@@ -206,7 +206,7 @@ export default function App() {
   const isVerifiedContributor = (name: string) => {
     return topContributors.slice(0, 5).some((u: any) => u.name === name);
   };
-  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isOtpMode, setIsOtpMode] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
@@ -530,8 +530,18 @@ export default function App() {
 
         const fetchUserCount = async () => {
       try {
-        const snapshot = await getCountFromServer(collection(db, 'contributors'));
-        setTotalUsersCount(snapshot.data().count);
+        const cached = safeStorage.getItem('totalUsersCount');
+        const cacheTime = safeStorage.getItem('totalUsersCount_time');
+        const now = Date.now();
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 1 * 60 * 1000) {
+          setTotalUsersCount(parseInt(cached));
+        } else {
+          const snapshot = await getDocs(collection(db, 'contributors'));
+          const count = snapshot.size;
+          setTotalUsersCount(count);
+          safeStorage.setItem('totalUsersCount', count.toString());
+          safeStorage.setItem('totalUsersCount_time', now.toString());
+        }
       } catch (e) {
         console.error(e);
       }
@@ -2668,7 +2678,7 @@ export default function App() {
       {/* Footer */}
       {(!selectedCategory && !showMap && !showTrainTracker && !showCommunity) && (
         <SiteStats 
-          totalUsers={totalUsersCount} 
+          totalUsers={totalUsersCount}
           totalContacts={allContacts.filter(c => c.status === 'approved').length} 
           totalCategories={allCategories.length} 
           totalBloodDonors={allContacts.filter(c => c.categoryId === 'blood_donors' && c.status === 'approved').length} 
@@ -4172,6 +4182,7 @@ export default function App() {
       )}
 
     </div>
+
     </>
   );
 }

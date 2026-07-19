@@ -25,7 +25,10 @@ export function SiteStats({ totalUsers, totalContacts, totalCategories, totalBlo
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center transform transition-transform hover:scale-105">
+          <div 
+            key={idx} 
+            className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center transform transition-transform hover:scale-105"
+          >
             <div className="bg-slate-50 p-3 rounded-full mb-3">
               {stat.icon}
             </div>
