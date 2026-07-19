@@ -66,7 +66,7 @@ export default function Admin() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           const localSessionId = safeStorage.getItem('adminSessionId');
-          if (data.sessionId && localSessionId && data.sessionId !== localSessionId) {
+          if (data.sessionId && data.sessionId !== localSessionId) {
             alert('অন্য কোনো ডিভাইসে অ্যাডমিন লগইন করা হয়েছে। আপনাকে লগআউট করা হচ্ছে।');
             setIsAuthenticated(false);
             safeStorage.removeItem('adminAuth');

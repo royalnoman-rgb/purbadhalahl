@@ -86,6 +86,26 @@ export default function App() {
     }
   }, []);
   const [isAdmin, setIsAdmin] = useState(safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'admin');
+
+  useEffect(() => {
+    if (isAdmin) {
+      const unsub = onSnapshot(doc(db, 'admin_sessions', 'current'), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const localSessionId = safeStorage.getItem('adminSessionId');
+          if (data.sessionId && data.sessionId !== localSessionId) {
+            setIsAdmin(false);
+            safeStorage.removeItem('adminAuth');
+            safeStorage.removeItem('adminSessionId');
+            if (safeStorage.getItem('contributorRole') === 'admin') {
+               safeStorage.removeItem('contributorRole');
+            }
+          }
+        }
+      });
+      return () => unsub();
+    }
+  }, [isAdmin]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(null);
