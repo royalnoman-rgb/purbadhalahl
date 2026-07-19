@@ -379,7 +379,7 @@ export default function App() {
     };
     if (contributorPhone || isAdmin) {
       updatePresence();
-      const interval = setInterval(updatePresence, 3 * 60 * 1000);
+      const interval = setInterval(updatePresence, 15 * 60 * 1000); // 15 mins
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') updatePresence();
       };
@@ -401,7 +401,7 @@ export default function App() {
       } catch(e) {}
     };
     fetchOnlineUsers();
-    const interval = setInterval(fetchOnlineUsers, 60000);
+    const interval = setInterval(fetchOnlineUsers, 15 * 60 * 1000); // 15 mins
     return () => clearInterval(interval);
   }, []);
 
@@ -474,12 +474,21 @@ export default function App() {
         const cacheTime = safeStorage.getItem(cacheKey + '_time');
         const now = Date.now();
         
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000) { // 15 mins TTL
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 7 * 24 * 60 * 60 * 1000) { // 7 days TTL
           setter(JSON.parse(cached));
           return;
         }
 
-        const snapshot = await getDocs(q);
+        let snapshot;
+        try {
+          snapshot = await getDocs(q);
+        } catch (err) {
+          console.error("Firebase read failed, using fallback cache", err);
+          if (cached) {
+            setter(JSON.parse(cached));
+          }
+          return;
+        }
         let items = snapshot.docs.map(mapFn);
         if (filterFn) items = filterFn(items);
         
@@ -533,7 +542,7 @@ export default function App() {
         const cacheTime = safeStorage.getItem('totalUsersCount_time');
         const now = Date.now();
         const parsedCached = parseInt(cached);
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000 && !isNaN(parsedCached)) {
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 7 * 24 * 60 * 60 * 1000 && !isNaN(parsedCached)) {
           setTotalUsersCount(parsedCached);
         } else {
           const snapshot = await getCountFromServer(collection(db, 'contributors'));

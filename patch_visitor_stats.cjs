@@ -1,4 +1,7 @@
-import { safeStorage, safeSession } from "../utils/storage";
+const fs = require('fs');
+let code = fs.readFileSync('src/components/VisitorStats.tsx', 'utf8');
+
+const newCode = `import { safeStorage, safeSession } from "../utils/storage";
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
@@ -44,3 +47,6 @@ export function VisitorStats() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/components/VisitorStats.tsx', newCode);
+console.log('VisitorStats optimized.');

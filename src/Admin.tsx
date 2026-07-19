@@ -378,7 +378,7 @@ export default function Admin() {
       } catch(e) {}
     };
     fetchOnlineUsers();
-    const interval = setInterval(fetchOnlineUsers, 60000);
+    const interval = setInterval(fetchOnlineUsers, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -401,7 +401,7 @@ export default function Admin() {
     
     if (isAuthenticated) {
       updatePresence();
-      const presenceInterval = setInterval(updatePresence, 3 * 60 * 1000);
+      const presenceInterval = setInterval(updatePresence, 15 * 60 * 1000);
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') updatePresence();
       };
