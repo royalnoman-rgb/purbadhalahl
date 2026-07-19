@@ -8,7 +8,7 @@ import { VisitorStats } from './components/VisitorStats';
 import { SiteStats } from './components/SiteStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle , ArrowRight, Quote } from 'lucide-react';
+import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle , ArrowRight, Quote , Share2 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
@@ -147,6 +147,16 @@ export default function App() {
   }, [showNotifications]);
   const prevNotifCount = useRef(0);
   const isInitialLoad = useRef(true);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      safeStorage.setItem('referredBy', ref);
+      // Optional: remove ref from url to keep it clean
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
     const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
@@ -1381,6 +1391,57 @@ export default function App() {
     return did;
   };
 
+    const processReferral = async (newUserId: string, newUserName: string) => {
+    const referredBy = safeStorage.getItem('referredBy');
+    if (referredBy && referredBy !== newUserId) {
+      try {
+        const referrerRef = doc(db, 'contributors', referredBy);
+        const referrerSnap = await getDoc(referrerRef);
+        if (referrerSnap.exists()) {
+          const referrerData = referrerSnap.data();
+          const currentPoints = referrerData.points || 0;
+          await updateDoc(referrerRef, {
+            points: currentPoints + 10
+          });
+          
+          await addDoc(collection(db, 'notifications'), {
+            receiverPhone: referredBy,
+            senderPhone: newUserId,
+            type: 'referral_bonus',
+            title: 'রেফারেল বোনাস!',
+            body: `আপনার ইনভাইট লিংক থেকে ${newUserName} জয়েন করেছেন। আপনি পেয়েছেন ১০ পয়েন্ট!`,
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: 'profile'
+          });
+          
+          safeStorage.removeItem('referredBy');
+        }
+      } catch (e) {
+        console.error('Referral error:', e);
+      }
+    }
+  };
+
+  const handleShareApp = async () => {
+    const shareUrl = contributorPhone ? `${window.location.origin}?ref=${contributorPhone}` : window.location.origin;
+    const shareData = {
+      title: 'পূর্বধলা হেল্পলাইন',
+      text: 'পূর্বধলা হেল্পলাইন - জরুরি প্রয়োজনে সকল নাম্বার এবং তথ্য এখন আপনার হাতের মুঠোয়!',
+      url: shareUrl
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        alert('লিংকটি কপি করা হয়েছে! এখন আপনি যেকোনো জায়গায় শেয়ার করতে পারবেন।');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
   const handleReviewComment = async (reviewId: string) => {
     if (!contributorPhone) {
       alert('কমেন্ট করতে হলে আপনাকে লগইন করতে হবে।');
@@ -1826,6 +1887,8 @@ export default function App() {
           createdAt: new Date().toISOString()
         });
         
+        await processReferral(phoneId, user.displayName || 'Unnamed User');
+        
         setContributorName(user.displayName || 'Unnamed User');
         setContributorPhone(phoneId);
         setContributorEmail(user.email || '');
@@ -2037,6 +2100,7 @@ export default function App() {
           points: 0,
           createdAt: new Date().toISOString()
         });
+        await processReferral(contributorPhone, contributorName || 'User');
       } else {
         await updateDoc(docRef, updateData);
       }
@@ -2153,6 +2217,13 @@ export default function App() {
               অ্যাডমিন প্যানেল
             </a>
           )}
+          <button 
+            onClick={handleShareApp}
+            className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
+            title="শেয়ার করুন"
+          >
+            <Share2 className="w-6 h-6" />
+          </button>
           <button 
             onClick={() => setIsGuideOpen(true)}
             className="ml-2 p-2 hover:bg-emerald-700 rounded-full transition-colors flex items-center justify-center text-white"
@@ -3384,6 +3455,7 @@ export default function App() {
                   </div>
 
                   {activeUserTab === 'stats' && (
+                    <>
                   <div className="bg-emerald-50 rounded-xl p-4 mb-4 border border-emerald-100">
                     <h3 className="font-semibold text-emerald-800 text-lg mb-3">আপনার ড্যাশবোর্ড</h3>
                     <div className="grid grid-cols-2 gap-4">
@@ -3397,6 +3469,22 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Share2 className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-semibold text-blue-800">ইনভাইট করুন ও পয়েন্ট জিতুন</h3>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-3">আপনার বন্ধুদের সাথে অ্যাপটি শেয়ার করুন। আপনার লিংকে ক্লিক করে কেউ নতুন একাউন্ট খুললেই আপনি পাবেন <span className="font-bold">১০ পয়েন্ট</span>!</p>
+                    <button 
+                      onClick={handleShareApp}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors flex justify-center items-center gap-2"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      লিংক শেয়ার করুন
+                    </button>
+                  </div>
+                  </>
                   )}
 
                   {activeUserTab === 'feedbacks' && (
@@ -4201,6 +4289,14 @@ export default function App() {
                 </ul>
               </div>
 
+              <div>
+                <h3 className="font-semibold text-lg text-emerald-700 mb-2">পয়েন্ট ও ইনভাইট সিস্টেম (Invite & Earn)</h3>
+                <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
+                  <li>আপনার প্রোফাইল থেকে বা উপরের শেয়ার আইকনে ক্লিক করে বন্ধুদের অ্যাপটি শেয়ার করতে পারবেন।</li>
+                  <li>আপনার লিংক দিয়ে কেউ নতুন একাউন্ট খুললে আপনি সাথে সাথে <strong>১০ পয়েন্ট</strong> বোনাস পাবেন।</li>
+                  <li>এছাড়াও সঠিক নাম্বার বা তথ্য যুক্ত করলেও পয়েন্ট বৃদ্ধি পাবে, যা আপনাকে "শীর্ষ অবদানকারী" (Leaderboard) হতে সাহায্য করবে।</li>
+                </ul>
+              </div>
               <div>
                 <h3 className="font-semibold text-lg text-emerald-700 mb-2">কীভাবে নতুন নাম্বার যুক্ত করবেন?</h3>
                 <ul className="list-disc ml-5 space-y-1 text-slate-600 text-sm">
