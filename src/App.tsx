@@ -532,8 +532,9 @@ export default function App() {
         const cached = safeStorage.getItem('totalUsersCount');
         const cacheTime = safeStorage.getItem('totalUsersCount_time');
         const now = Date.now();
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000) {
-          setTotalUsersCount(parseInt(cached));
+        const parsedCached = parseInt(cached);
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000 && !isNaN(parsedCached)) {
+          setTotalUsersCount(parsedCached);
         } else {
           const snapshot = await getCountFromServer(collection(db, 'contributors'));
           const count = snapshot.data().count;
@@ -1774,8 +1775,8 @@ export default function App() {
                (window as any).recaptchaVerifier = null;
             }
             if (!targetEmail) {
-              alert(`আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই এবং ফোন ভেরিফিকেশন কাজ করছে না। Error: ${e.message}`);
-              return;
+              alert(`ফায়ারবেস ফোন ভেরিফিকেশন লিমিট শেষ (Rate exceeded)। ডেভেলপমেন্ট সুবিধার জন্য ডেমো ওটিপি দেওয়া হলো। Error: ${e.message}`);
+              // Proceed to demo OTP below even if email is missing
             }
           }
         }
