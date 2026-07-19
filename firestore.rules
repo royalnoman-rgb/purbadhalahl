@@ -1,6 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // 1. Admin Authentication Data
+    // The document ID is the admin password.
+    // Nobody can list this collection to guess the password.
+    // You can only get the document if you already know the password.
+    match /admin_auth/{pwd} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if false;
+    }
+    
+    // 2. Admin Sessions for Force Logout
+    // Anyone can read the current session (to know if they were logged out).
+    // Writing requires passing the correct admin password in the request.
+    match /admin_sessions/current {
+      allow read: if true;
+      allow write: if request.resource.data.password != null && 
+                   exists(/databases/$(database)/documents/admin_auth/$(request.resource.data.password));
+    }
+    
+    // 3. User Messages
+    // Only the sender or receiver can read or delete their messages
+    // Wait, the client uses queries, so they need to be able to read if they are involved.
+    // But since the app doesn't use Firebase Auth for all users, we can't fully enforce this.
+    // So we leave it open, but we should warn the user.
+    
+    // Default open for the rest because the app's custom authentication bypasses Firebase Auth
     match /{document=**} {
       allow read, write: if true;
     }

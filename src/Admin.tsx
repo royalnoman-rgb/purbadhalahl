@@ -59,6 +59,26 @@ export default function Admin() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'moderator' || safeStorage.getItem('contributorRole') === 'admin');
   const isSuperAdmin = safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'admin';
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const unsub = onSnapshot(doc(db, 'admin_sessions', 'current'), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const localSessionId = safeStorage.getItem('adminSessionId');
+          if (data.sessionId && localSessionId && data.sessionId !== localSessionId) {
+            alert('অন্য কোনো ডিভাইসে অ্যাডমিন লগইন করা হয়েছে। আপনাকে লগআউট করা হচ্ছে।');
+            setIsAuthenticated(false);
+            safeStorage.removeItem('adminAuth');
+            safeStorage.removeItem('adminSessionId');
+            safeStorage.removeItem('contributorRole');
+            window.location.href = '/';
+          }
+        }
+      });
+      return () => unsub();
+    }
+  }, [isAuthenticated]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const adminNotifRef = useRef<HTMLDivElement>(null);
@@ -420,9 +440,9 @@ export default function Admin() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin123') { // Simple secret for now
+    const docSnap = await getDoc(doc(db, 'admin_auth', password)); if (docSnap.exists()) { const sessionId = Math.random().toString(36).substring(2); await setDoc(doc(db, 'admin_sessions', 'current'), { sessionId, password }); safeStorage.setItem('adminSessionId', sessionId);
       setIsAuthenticated(true);
       safeStorage.setItem('adminAuth', 'true');
     } else {

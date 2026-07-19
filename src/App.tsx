@@ -178,7 +178,11 @@ export default function App() {
   const [contributorEmail, setContributorEmail] = useState('');
   const [contributorFacebook, setContributorFacebook] = useState('');
   const [contributorAvatar, setContributorAvatar] = useState('');
+  const [contributorDob, setContributorDob] = useState('');
   const [topContributors, setTopContributors] = useState<any[]>([]);
+  const isVerifiedContributor = (name: string) => {
+    return topContributors.slice(0, 5).some((u: any) => u.name === name);
+  };
   const [isLoginMode, setIsLoginMode] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isOtpMode, setIsOtpMode] = useState(false);
@@ -189,6 +193,7 @@ export default function App() {
   const [newPassword, setNewPassword] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [forgotPasswordDob, setForgotPasswordDob] = useState('');
   const [contributorPassword, setContributorPassword] = useState('');
   const [hasPassword, setHasPassword] = useState(safeStorage.getItem('hasPassword') === 'true');
   const [logoError, setLogoError] = useState(false);
@@ -370,11 +375,13 @@ export default function App() {
     const savedEmail = safeStorage.getItem('contributorEmail');
     const savedFb = safeStorage.getItem('contributorFacebook');
     const savedAvatar = safeStorage.getItem('contributorAvatar');
+    const savedDob = safeStorage.getItem('contributorDob');
     if (savedName) setContributorName(savedName);
     if (savedPhone) setContributorPhone(savedPhone);
     if (savedEmail) setContributorEmail(savedEmail);
     if (savedFb) setContributorFacebook(savedFb);
     if (savedAvatar) setContributorAvatar(savedAvatar);
+    if (savedDob) setContributorDob(savedDob);
   }, []);
 
   useEffect(() => {
@@ -1352,47 +1359,16 @@ export default function App() {
           likesArray = likesArray.filter((id) => id !== userId);
         }
       }
-      await updateDoc(reviewRef, { likesArray, lovesArray, likes: likesArray.length + lovesArray.length });
-      
-      const newReviewData = { ...review, likesArray, lovesArray, likes: likesArray.length + lovesArray.length };
-      setPublicReviews(prev => {
-        const newReviews = prev.map(r => r.id === review.id ? newReviewData : r);
-        safeStorage.setItem('reviews_cache', JSON.stringify(newReviews));
-        return newReviews;
+
+      await updateDoc(reviewRef, {
+        likesArray,
+        lovesArray,
+        likes: likesArray.length,
+        loves: lovesArray.length
       });
-      
-      const likedReviews = JSON.parse(safeStorage.getItem('likedReviews') || '[]');
-      if (reactionType === 'like' && !hasLiked) {
-        safeStorage.setItem('likedReviews', JSON.stringify([...likedReviews, review.id]));
-      } else if (reactionType === 'like' && hasLiked) {
-        safeStorage.setItem('likedReviews', JSON.stringify(likedReviews.filter(id => id !== review.id)));
-      }
     } catch (err) {
-      console.error("Error reacting to review", err);
+      console.error(err);
     }
-  };
-
-  const fetchLeaderboard = async () => {
-    try {
-      const q = query(collection(db, 'contributors'), orderBy('points', 'desc'), limit(20));
-      const snapshot = await getDocs(q);
-      const contributors = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
-      // Filter out those with 0 points and 0 approved count
-      const activeContributors = contributors.filter(c => c.points > 0 || c.approvedCount > 0);
-      setTopContributors(activeContributors.slice(0, 10));
-    } catch (err) {
-      console.error("Error fetching leaderboard", err);
-    }
-  };
-
-  useEffect(() => {
-    if (isLeaderboardOpen) {
-      fetchLeaderboard();
-    }
-  }, [isLeaderboardOpen]);
-
-  const isVerifiedContributor = (name: string) => {
-    return topContributors.slice(0, 5).some(c => c.name === name);
   };
 
   const fetchContributorStats = async () => {
@@ -1411,6 +1387,10 @@ export default function App() {
           else safeStorage.removeItem('hasPassword');
           setContributorRole(data.role || 'user');
           safeStorage.setItem('contributorRole', data.role || 'user');
+          if (data.dob) {
+            setContributorDob(data.dob);
+            safeStorage.setItem('contributorDob', data.dob);
+          }
         }
 
         const feedbackQuery = query(collection(db, 'feedback'), where('contributorPhone', '==', contributorPhone));
@@ -1449,6 +1429,10 @@ export default function App() {
           else safeStorage.removeItem('hasPassword');
           setContributorRole(data.role || 'user');
           safeStorage.setItem('contributorRole', data.role || 'user');
+          if (data.dob) {
+            setContributorDob(data.dob);
+            safeStorage.setItem('contributorDob', data.dob);
+          }
         } else {
           // Double check with a direct getDoc to prevent local cache race conditions / transient states
           try {
@@ -1468,12 +1452,14 @@ export default function App() {
           safeStorage.removeItem('contributorPhone');
           safeStorage.removeItem('contributorFacebook');
           safeStorage.removeItem('contributorAvatar');
+          safeStorage.removeItem('contributorDob');
           safeStorage.removeItem('hasPassword');
           safeStorage.removeItem('contributorRole');
           setContributorName('');
           setContributorPhone('');
           setContributorFacebook('');
           setContributorAvatar('');
+          setContributorDob('');
           setContributorPassword('');
           setHasPassword(false);
           setIsContributorProfileOpen(false);
@@ -1516,6 +1502,7 @@ export default function App() {
         receivedMsgs = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
         updateUnifiedMessages();
       });
+
       const unsubSent = onSnapshot(sentMessagesQuery, (snapshot) => {
         sentMsgs = snapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
         updateUnifiedMessages();
@@ -1556,28 +1543,31 @@ export default function App() {
       return;
     }
     try {
+      const isEmail = loginPhone.includes('@');
       let exists = false;
-      let actualPhoneId = loginPhone;
-      let isEmail = loginPhone.includes('@');
+      let actualPhoneId = '';
       let targetEmail = '';
 
-      const docSnap = await getDoc(doc(db, 'contributors', loginPhone));
-      if (docSnap.exists()) {
-        exists = true;
-        targetEmail = docSnap.data().email;
-      } else if (isEmail) {
-        const q = query(collection(db, 'contributors'), where('email', '==', loginPhone));
-        const querySnapshot = await getDocs(q);
+      if (isEmail) {
+        const emailQuery = query(collection(db, 'contributors'), where('email', '==', loginPhone));
+        const querySnapshot = await getDocs(emailQuery);
         if (!querySnapshot.empty) {
           exists = true;
           actualPhoneId = querySnapshot.docs[0].id;
           targetEmail = loginPhone;
         }
+      } else {
+        const phoneQuery = query(collection(db, 'contributors'), where('phone', '==', loginPhone));
+        const querySnapshot = await getDocs(phoneQuery);
+        if (!querySnapshot.empty) {
+          exists = true;
+          actualPhoneId = querySnapshot.docs[0].id;
+          targetEmail = querySnapshot.docs[0].data().email || '';
+        }
       }
 
       if (exists) {
-        if (isEmail && !targetEmail) {
-            alert('আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই। অনুগ্রহ করে নতুন করে একাউন্ট তৈরি করুন বা অ্যাডমিনের সাথে যোগাযোগ করুন।');
+        if (isEmail && !targetEmail) {            alert('আপনার একাউন্টে কোনো ইমেইল যুক্ত নেই। অনুগ্রহ করে নতুন করে একাউন্ট তৈরি করুন বা অ্যাডমিনের সাথে যোগাযোগ করুন।');
             return;
         }
 
@@ -1714,6 +1704,7 @@ export default function App() {
         setContributorFacebook(data.facebookUrl || '');
         setContributorAvatar(data.avatar || avatar); // update avatar if existing doesn't have one
         setContributorPassword(data.password || '');
+        setContributorDob(data.dob || '');
         setHasPassword(!!data.password);
         if (data.password) safeStorage.setItem('hasPassword', 'true');
         else safeStorage.removeItem('hasPassword');
@@ -1723,6 +1714,8 @@ export default function App() {
         safeStorage.setItem('contributorPhone', phoneId);
         if(data.email) safeStorage.setItem('contributorEmail', data.email);
         if(data.avatar || avatar) safeStorage.setItem('contributorAvatar', data.avatar || avatar);
+        if (data.dob) safeStorage.setItem('contributorDob', data.dob);
+        else safeStorage.removeItem('contributorDob');
         
         alert(`স্বাগতম ${data.name || ''}! আপনার প্রোফাইল সফলভাবে লগইন হয়েছে।`);
       }
@@ -1778,6 +1771,7 @@ export default function App() {
         setContributorFacebook(data.facebookUrl || '');
         setContributorAvatar(data.avatar || '');
         setContributorPassword(data.password || '');
+        setContributorDob(data.dob || '');
         setHasPassword(!!data.password);
           if (data.password) safeStorage.setItem('hasPassword', 'true');
           else safeStorage.removeItem('hasPassword');
@@ -1793,6 +1787,8 @@ export default function App() {
         } else {
           safeStorage.removeItem('contributorAvatar');
         }
+        if (data.dob) safeStorage.setItem('contributorDob', data.dob);
+        else safeStorage.removeItem('contributorDob');
         
         setIsEditProfileMode(false);
         setIsContributorProfileOpen(false);
@@ -1871,6 +1867,7 @@ export default function App() {
         name: contributorName,
         email: contributorEmail,
         facebookUrl: contributorFacebook,
+        dob: contributorDob,
       };
       if (contributorAvatar) {
         updateData.avatar = contributorAvatar;
@@ -1887,8 +1884,8 @@ export default function App() {
             alert("নতুন প্রোফাইল তৈরি করার জন্য পাসওয়ার্ড দেওয়া বাধ্যতামূলক।");
             return;
         }
-        if (!contributorEmail) {
-            alert("একাউন্ট খোলার জন্য ইমেইল দেওয়া বাধ্যতামূলক।");
+        if (!contributorDob) {
+            alert("নতুন প্রোফাইল তৈরি করার জন্য জন্মতারিখ দেওয়া বাধ্যতামূলক।");
             return;
         }
         await setDoc(docRef, {
@@ -1905,6 +1902,7 @@ export default function App() {
       safeStorage.setItem('contributorPhone', contributorPhone);
       safeStorage.setItem('contributorEmail', contributorEmail);
       safeStorage.setItem('contributorFacebook', contributorFacebook);
+      safeStorage.setItem('contributorDob', contributorDob);
       if (contributorAvatar) {
         safeStorage.setItem('contributorAvatar', contributorAvatar);
       }
@@ -3618,10 +3616,12 @@ export default function App() {
                         safeStorage.removeItem('contributorPhone');
                         safeStorage.removeItem('contributorFacebook');
                         safeStorage.removeItem('contributorRole');
+                        safeStorage.removeItem('contributorDob');
                         setContributorRole('user');
                         setContributorName('');
                         setContributorPhone('');
                         setContributorFacebook('');
+                        setContributorDob('');
                         setContributorPassword('');
                         setContributorPoints(0);
                         setContributorApprovedCount(0);
@@ -3685,9 +3685,16 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">ইমেইল *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">জন্মতারিখ *</label>
                       <input
-                        type="email" required value={contributorEmail} onChange={(e) => setContributorEmail(e.target.value)}
+                        type="date" required value={contributorDob} onChange={(e) => setContributorDob(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">ইমেইল (ঐচ্ছিক)</label>
+                      <input
+                        type="email" value={contributorEmail} onChange={(e) => setContributorEmail(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="example@email.com"
                       />
