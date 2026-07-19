@@ -151,6 +151,8 @@ export default function App() {
     const [dynamicContacts, setDynamicContacts] = useState<any[]>([]);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
+  const [reviewCommentTexts, setReviewCommentTexts] = useState<Record<string, string>>({});
+  const [expandedReviewComments, setExpandedReviewComments] = useState<string[]>([]);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, message: string, action: () => void}>({isOpen: false, message: '', action: () => {}});
 
   const confirmAction = (message: string, action: () => void) => {
@@ -1379,6 +1381,57 @@ export default function App() {
     return did;
   };
 
+  const handleReviewComment = async (reviewId: string) => {
+    if (!contributorPhone) {
+      alert('কমেন্ট করতে হলে আপনাকে লগইন করতে হবে।');
+      return;
+    }
+    const text = reviewCommentTexts[reviewId]?.trim();
+    if (!text) return;
+
+    try {
+      const reviewRef = doc(db, 'public_reviews', reviewId);
+      const reviewDoc = await getDoc(reviewRef);
+      if (!reviewDoc.exists()) return;
+      
+      const data = reviewDoc.data();
+      const currentComments = data.comments || [];
+      const newComment = {
+        id: Math.random().toString(36).substring(2, 9),
+        authorPhone: contributorPhone,
+        authorName: contributorName || 'User',
+        authorAvatar: safeStorage.getItem('contributorAvatar') || '',
+        text,
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedComments = [...currentComments, newComment];
+      await updateDoc(reviewRef, { comments: updatedComments });
+
+      setPublicReviews(prev => prev.map(r => 
+        r.id === reviewId ? { ...r, comments: updatedComments } : r
+      ));
+      
+      setReviewCommentTexts(prev => ({ ...prev, [reviewId]: '' }));
+      
+      // Notify author
+      if (data.authorPhone && data.authorPhone !== contributorPhone) {
+        await addDoc(collection(db, 'notifications'), {
+          receiverPhone: data.authorPhone,
+          senderPhone: contributorPhone,
+          type: 'review_comment',
+          title: 'আপনার রিভিওতে নতুন কমেন্ট',
+          body: `${contributorName || 'User'} আপনার রিভিওতে কমেন্ট করেছেন।`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: 'reviews'
+        });
+      }
+    } catch (e) {
+      console.error('Error adding comment:', e);
+    }
+  };
+
   const handleReviewReaction = async (review: any, reactionType: 'like' | 'love') => {
     if (contributorPhone && review.authorPhone === contributorPhone) {
       alert('আপনি নিজের রিভিওটিতে রিয়েক্ট দিতে পারবেন না।');
@@ -1422,6 +1475,13 @@ export default function App() {
         likes: likesArray.length,
         loves: lovesArray.length
       });
+
+      // Update local state immediately
+      setPublicReviews(prev => prev.map(r => 
+        r.id === review.id 
+          ? { ...r, likesArray, lovesArray, likes: likesArray.length, loves: lovesArray.length }
+          : r
+      ));
 
       if (isNewAction && review.authorPhone && review.authorPhone !== contributorPhone) {
         // notify author
@@ -4026,8 +4086,81 @@ export default function App() {
                                 <Heart className={`w-4 h-4 ${review.lovesArray?.includes(getUserId()) ? 'fill-red-500 text-red-500' : ''}`} />
                                 <span>{review.lovesArray?.length > 0 ? review.lovesArray.length : 'লাভ'}</span>
                               </button>
+                              
+                              <button
+                                onClick={() => setExpandedReviewComments(prev => 
+                                  prev.includes(review.id) ? prev.filter(id => id !== review.id) : [...prev, review.id]
+                                )}
+                                className="flex items-center gap-1 hover:text-emerald-600 transition-colors"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                <span>{review.comments?.length || 'কমেন্ট'}</span>
+                              </button>
                             </div>
                           </div>
+                          
+                          {/* Comments Section */}
+                          {expandedReviewComments.includes(review.id) && (
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                              <div className="space-y-3 mb-3">
+                                {review.comments?.map((comment: any) => (
+                                  <div key={comment.id} className="flex gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                      {comment.authorAvatar ? (
+                                        <img src={comment.authorAvatar} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <UserCircle className="w-4 h-4 text-slate-400" />
+                                      )}
+                                    </div>
+                                    <div className="bg-slate-50 px-3 py-2 rounded-xl rounded-tl-none flex-1">
+                                      <div className="flex items-center justify-between gap-2 mb-1">
+                                        <span className="text-xs font-semibold text-slate-800">{comment.authorName}</span>
+                                        <span className="text-[10px] text-slate-400">
+                                          {new Date(comment.createdAt).toLocaleDateString('bn-BD')}
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-slate-600 whitespace-pre-wrap">{comment.text}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                                {(!review.comments || review.comments.length === 0) && (
+                                  <div className="text-xs text-slate-500 text-center py-2">
+                                    কোনো কমেন্ট নেই। প্রথম কমেন্ট করুন!
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {contributorPhone ? (
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={reviewCommentTexts[review.id] || ''}
+                                    onChange={(e) => setReviewCommentTexts(prev => ({...prev, [review.id]: e.target.value}))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleReviewComment(review.id);
+                                      }
+                                    }}
+                                    placeholder="আপনার কমেন্ট লিখুন..."
+                                    className="flex-1 px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                  />
+                                  <button
+                                    onClick={() => handleReviewComment(review.id)}
+                                    disabled={!reviewCommentTexts[review.id]?.trim()}
+                                    className="p-1.5 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-slate-500 text-center py-2 bg-slate-50 rounded-lg">
+                                  কমেন্ট করতে হলে লগইন করুন
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
                         </div>
                       ))}
                     </div>
