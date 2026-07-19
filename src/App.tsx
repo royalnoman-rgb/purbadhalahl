@@ -208,12 +208,12 @@ export default function App() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isContributorProfileOpen, setIsContributorProfileOpen] = useState(false);
-  const [contributorName, setContributorName] = useState('');
-  const [contributorPhone, setContributorPhone] = useState('');
-  const [contributorEmail, setContributorEmail] = useState('');
-  const [contributorFacebook, setContributorFacebook] = useState('');
-  const [contributorAvatar, setContributorAvatar] = useState('');
-  const [contributorDob, setContributorDob] = useState('');
+  const [contributorName, setContributorName] = useState(safeStorage.getItem('contributorName') || '');
+  const [contributorPhone, setContributorPhone] = useState(safeStorage.getItem('contributorPhone') || '');
+  const [contributorEmail, setContributorEmail] = useState(safeStorage.getItem('contributorEmail') || '');
+  const [contributorFacebook, setContributorFacebook] = useState(safeStorage.getItem('contributorFacebook') || '');
+  const [contributorAvatar, setContributorAvatar] = useState(safeStorage.getItem('contributorAvatar') || '');
+  const [contributorDob, setContributorDob] = useState(safeStorage.getItem('contributorDob') || '');
   const [topContributors, setTopContributors] = useState<any[]>([]);
   const isVerifiedContributor = (name: string) => {
     return topContributors.slice(0, 5).some((u: any) => u.name === name);
@@ -405,20 +405,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const savedName = safeStorage.getItem('contributorName');
-    const savedPhone = safeStorage.getItem('contributorPhone');
-    const savedEmail = safeStorage.getItem('contributorEmail');
-    const savedFb = safeStorage.getItem('contributorFacebook');
-    const savedAvatar = safeStorage.getItem('contributorAvatar');
-    const savedDob = safeStorage.getItem('contributorDob');
-    if (savedName) setContributorName(savedName);
-    if (savedPhone) setContributorPhone(savedPhone);
-    if (savedEmail) setContributorEmail(savedEmail);
-    if (savedFb) setContributorFacebook(savedFb);
-    if (savedAvatar) setContributorAvatar(savedAvatar);
-    if (savedDob) setContributorDob(savedDob);
-  }, []);
+
 
   useEffect(() => {
     // Request notification permission on load
