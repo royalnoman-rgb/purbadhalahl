@@ -1,4 +1,6 @@
-import { safeStorage, safeSession } from "../utils/storage";
+const fs = require('fs');
+
+const newCode = `import { safeStorage, safeSession } from "../utils/storage";
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, deleteDoc, increment, collection, query, where, getCountFromServer } from 'firebase/firestore';
@@ -32,7 +34,7 @@ export function VisitorStats() {
           setTotalVisitors(1);
         }
       } catch (e: any) {
-        if (e.code !== 'unavailable' && e.code !== 'resource-exhausted' && !e.message?.toLowerCase().includes('quota') && !e.message?.includes('offline')) {
+        if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
           console.error("Error updating stats", e);
         }
       }
@@ -48,7 +50,7 @@ export function VisitorStats() {
           lastActive: Date.now() 
         }, { merge: true });
       } catch (e: any) {
-        if (e.code !== 'unavailable' && e.code !== 'resource-exhausted' && !e.message?.toLowerCase().includes('quota') && !e.message?.includes('offline')) {
+        if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
           console.error("Error updating presence", e);
         }
       }
@@ -64,7 +66,8 @@ export function VisitorStats() {
         const snapshot = await getCountFromServer(q);
         const active = snapshot.data().count;
         
-        const displayCount = active + 7;
+        const randomOffset = Math.floor(Math.random() * 3);
+        const displayCount = active > 1 ? active + randomOffset : (Math.random() > 0.5 ? 2 : 1);
         
         setOnlineUsers(displayCount);
         setIsLive(true);
@@ -79,7 +82,7 @@ export function VisitorStats() {
           });
         }
       } catch (e: any) {
-         if (e.code !== 'unavailable' && e.code !== 'resource-exhausted' && !e.message?.toLowerCase().includes('quota') && !e.message?.includes('offline')) {
+         if (e.code !== 'unavailable' && !e.message?.includes('offline')) {
              console.error("Error fetching online users", e);
          }
       }
@@ -107,7 +110,7 @@ export function VisitorStats() {
   return (
     <div className="flex flex-wrap justify-center items-center gap-4 text-xs mt-4 text-slate-500">
       <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-        <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-500 ${isLive ? 'opacity-100' : 'opacity-0'}`}></div>
+        <div className={\`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-500 \${isLive ? 'opacity-100' : 'opacity-0'}\`}></div>
         <div className="relative flex items-center justify-center">
           <Users className="w-4 h-4 text-blue-600 z-10" />
           <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-30 animate-ping"></span>
@@ -121,3 +124,6 @@ export function VisitorStats() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/components/VisitorStats.tsx', newCode);
+console.log('VisitorStats updated.');
