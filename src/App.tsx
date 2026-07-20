@@ -2599,6 +2599,7 @@ export default function App() {
                else if (subCat === 'স্কুল' || subCat === 'কলেজ' || subCat === 'মাদ্রাসা') IconComponent = School;
                else if (subCat === 'কিন্ডারগার্টেন') IconComponent = Baby;
                else if (subCat === 'প্রাইভেট টিউটর' || subCat === 'প্রাইভেট টিউটর ও কোচিং সেন্টার') IconComponent = BookOpen;
+               else if (subCat === 'শিক্ষক') IconComponent = GraduationCap;
                else if (subCat === 'বাস') IconComponent = Bus;
                else if (subCat === 'ট্রেন') IconComponent = Train;
                else if (subCat === 'রেন্ট-এ-কার') IconComponent = Car;
