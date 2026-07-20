@@ -167,7 +167,7 @@ export default function App() {
     try {
       const cached = safeStorage.getItem(key);
       const cacheTime = safeStorage.getItem(key + '_time');
-      if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 7 * 24 * 60 * 60 * 1000) {
+      if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 15 * 60 * 1000) {
         return JSON.parse(cached);
       }
     } catch(e) {}
@@ -277,8 +277,10 @@ export default function App() {
   const prevActiveViewsCount = useRef(activeViewsCount);
 
   useEffect(() => {
-    if (activeViewsCount === 1 && prevActiveViewsCount.current === 0) {
-      if (window.history.state?.dummy !== true) {
+    // When activeViewsCount increases (a new view/modal is opened), push a state for each step
+    if (activeViewsCount > prevActiveViewsCount.current) {
+      const diff = activeViewsCount - prevActiveViewsCount.current;
+      for (let i = 0; i < diff; i++) {
         window.history.pushState({ dummy: true }, '');
       }
     }
@@ -287,20 +289,21 @@ export default function App() {
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
+      // Whenever back button is pressed, we decrement prevActiveViewsCount to prevent pushing state again
+      // and close the top-most view.
       if (activeViewsCount > 0) {
+        prevActiveViewsCount.current = activeViewsCount - 1;
         handleBack();
-        if (activeViewsCount > 1) {
-          window.history.pushState({ dummy: true }, '');
-        }
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [
+    activeViewsCount,
     isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
     isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
     selectedUserProfile, isContributorProfileOpen, selectedBloodGroup,
-    selectedSubCategory, selectedCategory, showCommunity, showMap, showTrainTracker
+    selectedSubCategory, selectedCategory, showCommunity, showMap, showTrainTracker, searchQuery
   ]);
 
 
@@ -491,7 +494,7 @@ export default function App() {
         const cacheTime = safeStorage.getItem(cacheKey + '_time');
         const now = Date.now();
         
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 7 * 24 * 60 * 60 * 1000) { // 7 days TTL
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000) { // 15 minutes TTL
           setter(JSON.parse(cached));
           return;
         }
@@ -559,7 +562,7 @@ export default function App() {
         const cacheTime = safeStorage.getItem('totalUsersCount_time');
         const now = Date.now();
         const parsedCached = parseInt(cached);
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 7 * 24 * 60 * 60 * 1000 && !isNaN(parsedCached)) {
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000 && !isNaN(parsedCached)) {
           setTotalUsersCount(parsedCached);
         } else {
           const snapshot = await getCountFromServer(collection(db, 'contributors'));
@@ -2824,7 +2827,7 @@ export default function App() {
       {(!selectedCategory && !showMap && !showTrainTracker && !showCommunity) && (
         <SiteStats 
           totalUsers={totalUsersCount}
-          totalContacts={allContacts.filter(c => c.status === 'approved').length} 
+          totalContacts={allContacts.length} 
           totalCategories={allCategories.length} 
           totalBloodDonors={allContacts.filter(c => c.categoryId === 'blood_donors' && c.status === 'approved').length} 
         />
