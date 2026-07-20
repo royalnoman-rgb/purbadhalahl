@@ -8,7 +8,7 @@ import { VisitorStats } from './components/VisitorStats';
 import { SiteStats } from './components/SiteStats';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle , ArrowRight, Quote , Share2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle, Gift , ArrowRight, Quote , Share2 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
 import { Category } from './types';
@@ -492,11 +492,11 @@ export default function App() {
   useEffect(() => {
     // Check if they are already logged in
     if (!contributorPhone) {
-      const hasSeen = safeStorage.getItem('hasSeenWelcomeNotice_v2');
+      const hasSeen = safeStorage.getItem('hasSeenWelcomeNotice_v3');
       if (!hasSeen) {
         const timer = setTimeout(() => {
           setShowWelcomeNotice(true);
-          safeStorage.setItem('hasSeenWelcomeNotice_v2', 'true');
+          safeStorage.setItem('hasSeenWelcomeNotice_v3', 'true');
         }, 1500); // show after 1.5 seconds
         return () => clearTimeout(timer);
       }
