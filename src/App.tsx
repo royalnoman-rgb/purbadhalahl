@@ -131,6 +131,7 @@ export default function App() {
   const [isSubCategoryModalOpen, setIsSubCategoryModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+  const [showWelcomeNotice, setShowWelcomeNotice] = useState(false);
   
   const [requestStatus, setRequestStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
@@ -270,7 +271,7 @@ export default function App() {
 
   const activeViewsCount = [
     isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
-    isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
+    isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen, showWelcomeNotice,
     !!selectedUserProfile, isContributorProfileOpen, !!selectedBloodGroup,
     !!selectedSubCategory, !!selectedCategory, showCommunity, showMap, showTrainTracker
   ].filter(Boolean).length;
@@ -302,7 +303,7 @@ export default function App() {
   }, [
     activeViewsCount,
     isRequestModalOpen, isCategoryModalOpen, isSubCategoryModalOpen,
-    isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen,
+    isFeedbackModalOpen, isReviewsModalOpen, isLeaderboardOpen, showWelcomeNotice,
     selectedUserProfile, isContributorProfileOpen, selectedBloodGroup,
     selectedSubCategory, selectedCategory, showCommunity, showMap, showTrainTracker, searchQuery
   ]);
@@ -313,6 +314,7 @@ export default function App() {
     else if (isCategoryModalOpen) setIsCategoryModalOpen(false);
     else if (isSubCategoryModalOpen) setIsSubCategoryModalOpen(false);
     else if (isFeedbackModalOpen) setIsFeedbackModalOpen(false);
+    else if (showWelcomeNotice) setShowWelcomeNotice(false);
     else if (isReviewsModalOpen) setIsReviewsModalOpen(false);
     else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
     else if (selectedUserProfile) setSelectedUserProfile(null);
@@ -486,6 +488,20 @@ export default function App() {
     });
     return () => unsubNotif();
   }, [contributorPhone, isAdmin]);
+
+  useEffect(() => {
+    // Check if they are already logged in
+    if (!contributorPhone) {
+      const hasSeen = safeStorage.getItem('hasSeenWelcomeNotice_v2');
+      if (!hasSeen) {
+        const timer = setTimeout(() => {
+          setShowWelcomeNotice(true);
+          safeStorage.setItem('hasSeenWelcomeNotice_v2', 'true');
+        }, 1500); // show after 1.5 seconds
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [contributorPhone]);
 
   useEffect(() => {
     // Fetch subcategories
@@ -4043,6 +4059,50 @@ export default function App() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Welcome Notice Modal */}
+      {showWelcomeNotice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowWelcomeNotice(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-6 text-center relative overflow-hidden">
+              <div className="absolute -top-4 -right-4 p-3 opacity-20 pointer-events-none">
+                <Star className="w-24 h-24 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2 relative z-10">স্বাগতম!</h2>
+              <p className="text-emerald-50 text-sm relative z-10">পূর্বধলা স্মার্ট হেল্পলাইন-এ আপনাকে স্বাগতম</p>
+            </div>
+            <div className="p-6 text-center relative">
+              <div className="flex justify-center mb-4">
+                 <div className="bg-emerald-100 p-3 rounded-full text-emerald-600">
+                   <Gift className="w-8 h-8" />
+                 </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">একাউন্ট তৈরি করুন</h3>
+              <p className="text-gray-500 text-sm mb-5 leading-relaxed">
+                সাইটে একটি একাউন্ট তৈরি করে রিওয়ার্ড পয়েন্ট অর্জন করুন! 
+                ফেসবুক দিয়ে খুব সহজেই লগইন করতে পারবেন।
+              </p>
+              <div className="space-y-3">
+                 <button 
+                   onClick={() => {
+                     setShowWelcomeNotice(false);
+                     setIsContributorProfileOpen(true);
+                   }} 
+                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl transition-colors shadow-sm text-sm"
+                 >
+                   একাউন্ট তৈরি করুন
+                 </button>
+                 <button 
+                   onClick={() => setShowWelcomeNotice(false)}
+                   className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl transition-colors text-sm"
+                 >
+                   পরে দেখবো
+                 </button>
+              </div>
             </div>
           </div>
         </div>
