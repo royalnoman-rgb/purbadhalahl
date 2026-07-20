@@ -61,7 +61,8 @@ export default function Admin() {
   const isSuperAdmin = safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'admin';
 
   useEffect(() => {
-    if (isAuthenticated) {
+    const isGlobalAdmin = safeStorage.getItem('adminAuth') === 'true' && !safeStorage.getItem('contributorRole');
+    if (isAuthenticated && isGlobalAdmin) {
       const unsub = onSnapshot(doc(db, 'admin_sessions', 'current'), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -334,6 +335,53 @@ export default function Admin() {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    let interval: any;
+    const adminName = safeStorage.getItem('contributorName') || (isSuperAdmin ? 'অ্যাডমিন' : 'মডারেটর');
+    const adminPhone = safeStorage.getItem('contributorPhone') || 'admin';
+    const isGlobalAdmin = safeStorage.getItem('adminAuth') === 'true' && !safeStorage.getItem('contributorRole');
+    
+    if (isAuthenticated && !isGlobalAdmin) {
+      let docId = safeStorage.getItem('modSessionDocId');
+      
+      const updateSession = async () => {
+         if (!docId) return;
+         try {
+           await updateDoc(doc(db, 'admin_history', docId), {
+             lastActive: new Date().toISOString()
+           });
+         } catch(e) {}
+      };
+
+      const startSession = async () => {
+         try {
+           const docRef = await addDoc(collection(db, 'admin_history'), {
+             type: 'session',
+             action: 'লগইন সেশন',
+             moderatorName: adminName,
+             moderatorPhone: adminPhone,
+             createdAt: new Date().toISOString(),
+             lastActive: new Date().toISOString()
+           });
+           docId = docRef.id;
+           safeStorage.setItem('modSessionDocId', docId);
+         } catch(e) {}
+      };
+
+      if (!docId) {
+         startSession();
+      } else {
+         updateSession();
+      }
+      
+      interval = setInterval(updateSession, 60000);
+    }
+    
+    return () => {
+       if (interval) clearInterval(interval);
+    };
+  }, [isAuthenticated, isSuperAdmin]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1056,7 +1104,20 @@ export default function Admin() {
               </div>
             )}
           </div>)}
-          <button onClick={() => { setIsAuthenticated(false); safeStorage.removeItem('adminAuth'); }} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
+          <button onClick={async () => { 
+    setIsAuthenticated(false); 
+    safeStorage.removeItem('adminAuth'); 
+    const docId = safeStorage.getItem('modSessionDocId');
+    if (docId) {
+       try {
+           await updateDoc(doc(db, 'admin_history', docId), {
+               isLoggedOut: true,
+               lastActive: new Date().toISOString()
+           });
+       } catch(e) {}
+       safeStorage.removeItem('modSessionDocId');
+    }
+}} className="text-sm bg-emerald-700 px-3 py-1 rounded hover:bg-emerald-600">লগআউট</button>
         </div>
       </header>
 
@@ -1684,7 +1745,26 @@ export default function Admin() {
                 {adminHistory.map(item => (
                   <div key={item.id} className="flex justify-between items-start border-b border-gray-100 last:border-0 pb-3 last:pb-0">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{item.action}</p>
+                      {item.type === 'session' ? (
+                        <p className="text-sm font-medium text-gray-800 flex flex-col sm:flex-row sm:items-center gap-1">
+                             অ্যাডমিন প্যানেলে লগইন সেশন 
+                             <span className="text-xs font-normal text-gray-500">
+                                {(() => {
+                                  const start = new Date(item.createdAt).getTime();
+                                  const end = new Date(item.lastActive || item.createdAt).getTime();
+                                  const durationMins = Math.round((end - start) / 60000);
+                                  const isInactive = (Date.now() - end) > 2 * 60 * 1000;
+                                  if (item.isLoggedOut || isInactive) {
+                                     return `(লগআউট করেছেন/বের হয়েছেন - সময়কাল: ${durationMins} মিনিট)`;
+                                  } else {
+                                     return `(বর্তমানে অ্যাক্টিভ আছেন - সময়কাল: ${durationMins} মিনিট)`;
+                                  }
+                                })()}
+                             </span>
+                        </p>
+                      ) : (
+                        <p className="text-sm font-medium text-gray-800">{item.action}</p>
+                      )}
                       {item.moderatorName && (
                         <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
                            <UserCircle className="w-3 h-3"/> দ্বারা সম্পন্ন: {item.moderatorName} 

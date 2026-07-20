@@ -89,7 +89,8 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(safeStorage.getItem('adminAuth') === 'true' || safeStorage.getItem('contributorRole') === 'admin');
 
   useEffect(() => {
-    if (isAdmin) {
+    const isGlobalAdmin = safeStorage.getItem('adminAuth') === 'true' && !safeStorage.getItem('contributorRole');
+    if (isAdmin && isGlobalAdmin) {
       const unsub = onSnapshot(doc(db, 'admin_sessions', 'current'), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
