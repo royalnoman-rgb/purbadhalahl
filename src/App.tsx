@@ -314,7 +314,7 @@ export default function App() {
     else if (isCategoryModalOpen) setIsCategoryModalOpen(false);
     else if (isSubCategoryModalOpen) setIsSubCategoryModalOpen(false);
     else if (isFeedbackModalOpen) setIsFeedbackModalOpen(false);
-    else if (showWelcomeNotice) setShowWelcomeNotice(false);
+    else if (showWelcomeNotice) { safeStorage.setItem('hasSeenWelcomeNotice_v4', 'true'); setShowWelcomeNotice(false); }
     else if (isReviewsModalOpen) setIsReviewsModalOpen(false);
     else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
     else if (selectedUserProfile) setSelectedUserProfile(null);
@@ -492,11 +492,10 @@ export default function App() {
   useEffect(() => {
     // Check if they are already logged in
     if (!contributorPhone) {
-      const hasSeen = safeStorage.getItem('hasSeenWelcomeNotice_v3');
+      const hasSeen = safeStorage.getItem('hasSeenWelcomeNotice_v4');
       if (!hasSeen) {
         const timer = setTimeout(() => {
           setShowWelcomeNotice(true);
-          safeStorage.setItem('hasSeenWelcomeNotice_v3', 'true');
         }, 1500); // show after 1.5 seconds
         return () => clearTimeout(timer);
       }
@@ -4066,7 +4065,7 @@ export default function App() {
 
       {/* Welcome Notice Modal */}
       {showWelcomeNotice && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowWelcomeNotice(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => { safeStorage.setItem('hasSeenWelcomeNotice_v4', 'true'); setShowWelcomeNotice(false); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-6 text-center relative overflow-hidden">
               <div className="absolute -top-4 -right-4 p-3 opacity-20 pointer-events-none">
@@ -4089,6 +4088,7 @@ export default function App() {
               <div className="space-y-3">
                  <button 
                    onClick={() => {
+                     safeStorage.setItem('hasSeenWelcomeNotice_v4', 'true');
                      setShowWelcomeNotice(false);
                      setIsContributorProfileOpen(true);
                    }} 
@@ -4097,7 +4097,7 @@ export default function App() {
                    একাউন্ট তৈরি করুন
                  </button>
                  <button 
-                   onClick={() => setShowWelcomeNotice(false)}
+                   onClick={() => { safeStorage.setItem('hasSeenWelcomeNotice_v4', 'true'); setShowWelcomeNotice(false); }}
                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl transition-colors text-sm"
                  >
                    পরে দেখবো

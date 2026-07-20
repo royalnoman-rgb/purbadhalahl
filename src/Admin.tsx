@@ -1836,9 +1836,10 @@ export default function Admin() {
                         </span>
                       </h3>
                       <p className="text-sm text-gray-600">{toBengaliDigits(cont.phone)}</p>
-                      <div className="flex gap-4 mt-1 text-sm font-medium text-gray-700">
+                      <div className="flex flex-wrap gap-4 mt-1 text-sm font-medium text-gray-700">
                         <span>Points: <span className="text-emerald-600">{cont.points || 0}</span></span>
                         <span>Approved: <span className="text-blue-600">{cont.approvedCount || 0}</span></span>
+                        {cont.createdAt && <span className="text-gray-500 text-xs mt-0.5">Joined: {new Date(cont.createdAt).toLocaleDateString('bn-BD')}</span>}
                       </div>
                       <div className="mt-2">
                         {cont.role === 'moderator' && <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full font-semibold border border-purple-200">মডারেটর</span>}
