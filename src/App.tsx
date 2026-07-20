@@ -510,7 +510,7 @@ export default function App() {
         const cacheTime = safeStorage.getItem(cacheKey + '_time');
         const now = Date.now();
         
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000) { // 15 minutes TTL
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 24 * 60 * 60 * 1000) { // 24 hours TTL
           setter(JSON.parse(cached));
           return;
         }
@@ -578,7 +578,7 @@ export default function App() {
         const cacheTime = safeStorage.getItem('totalUsersCount_time');
         const now = Date.now();
         const parsedCached = parseInt(cached);
-        if (cached && cacheTime && (now - parseInt(cacheTime)) < 15 * 60 * 1000 && !isNaN(parsedCached)) {
+        if (cached && cacheTime && (now - parseInt(cacheTime)) < 24 * 60 * 60 * 1000 && !isNaN(parsedCached)) {
           setTotalUsersCount(parsedCached);
         } else {
           const snapshot = await getCountFromServer(collection(db, 'contributors'));
