@@ -28,6 +28,7 @@ window.addEventListener('unhandledrejection', (e) => {
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import Admin from './Admin.tsx';
 import './index.css';
@@ -43,11 +44,17 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/admin" element={<Admin />} />
-      </Routes>
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/category/:categoryId" element={<App />} />
+          <Route path="/category/:categoryId/:subCategory" element={<App />} />
+          <Route path="/community" element={<App />} />
+          <Route path="/map" element={<App />} />
+          <Route path="/admin" element={<Admin />} />
+        </Routes>
+      </BrowserRouter>
+    </HelmetProvider>
   </StrictMode>,
 );

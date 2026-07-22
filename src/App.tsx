@@ -7,7 +7,8 @@ import { safeStorage, safeSession } from "./utils/storage";
 import { VisitorStats } from './components/VisitorStats';
 import { SiteStats } from './components/SiteStats';
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { ArrowUp, ArrowDown, Shield, Flame, Ambulance, Zap, Droplets, Users, Building2, Phone, ArrowLeft, Search, UserPlus, X, CheckCircle2, Bus, Stethoscope, Wrench, GraduationCap, Store, Landmark, Newspaper, Plus, Edit3, Navigation, Lock, Facebook, MessageCircle, Award, Trophy, UserCircle, Star, ThumbsUp, Send, Bell, BadgeCheck, Heart, Trash2, Smile, Activity, Pill, UserCheck, Home, School, Baby, BookOpen, Train, Car, CarTaxiFront, Truck, Tv, Hammer, Scale, Utensils, Wifi, ShoppingCart, Smartphone, HeartHandshake, MoonStar, Microscope, Monitor, Globe, HelpCircle, Gift , ArrowRight, Quote , Share2 } from 'lucide-react';
 import { categories as staticCategories, contacts as staticContacts, predefinedSubCategories } from './data';
 import { toBengaliDigits, toEnglishDigits } from './utils';
@@ -108,8 +109,27 @@ export default function App() {
       return () => unsub();
     }
   }, [isAdmin]);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { categoryId, subCategory } = useParams();
+
+  const [_selectedCategory, _setSelectedCategory] = useState<Category | null>(null);
+  const [_selectedSubCategory, _setSelectedSubCategory] = useState<string | null>(null);
+
+  const selectedCategory = _selectedCategory;
+  const setSelectedCategory = (cat: Category | null) => {
+    _setSelectedCategory(cat);
+    if (cat) navigate('/category/' + cat.id);
+    else navigate('/');
+  };
+
+  const selectedSubCategory = _selectedSubCategory;
+  const setSelectedSubCategory = (sub: string | null) => {
+    _setSelectedSubCategory(sub);
+    if (sub && selectedCategory) navigate('/category/' + selectedCategory.id + '/' + encodeURIComponent(sub));
+    else if (selectedCategory) navigate('/category/' + selectedCategory.id);
+    else navigate('/');
+  };
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -118,9 +138,23 @@ export default function App() {
     const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  const [showMap, setShowMap] = useState(false);
+  const [_showMap, _setShowMap] = useState(false);
   const [showTrainTracker, setShowTrainTracker] = useState(false);
-  const [showCommunity, setShowCommunity] = useState(false);
+  const [_showCommunity, _setShowCommunity] = useState(false);
+
+  const showMap = _showMap;
+  const setShowMap = (val: boolean) => {
+    _setShowMap(val);
+    if (val) navigate('/map');
+    else navigate('/');
+  };
+
+  const showCommunity = _showCommunity;
+  const setShowCommunity = (val: boolean) => {
+    _setShowCommunity(val);
+    if (val) navigate('/community');
+    else navigate('/');
+  };
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [selectedUserProfile, setSelectedUserProfile] = useState<string | null>(null);
   
@@ -613,6 +647,35 @@ export default function App() {
       ...dynamicCategories.filter(dc => !staticCategories.some(sc => sc.id === dc.id))
     ].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   }, [dynamicCategories]);
+
+  useEffect(() => {
+    if (location.pathname === '/community') {
+      if(!_showCommunity) _setShowCommunity(true);
+      if(_selectedCategory) _setSelectedCategory(null);
+      if(_selectedSubCategory) _setSelectedSubCategory(null);
+      if(_showMap) _setShowMap(false);
+    } else if (location.pathname === '/map') {
+      if(!_showMap) _setShowMap(true);
+      if(_selectedCategory) _setSelectedCategory(null);
+      if(_selectedSubCategory) _setSelectedSubCategory(null);
+      if(_showCommunity) _setShowCommunity(false);
+    } else if (categoryId) {
+      const cat = allCategories.find(c => c.id === categoryId);
+      if (cat) {
+        if(_selectedCategory?.id !== cat.id) _setSelectedCategory(cat);
+        const sub = subCategory ? decodeURIComponent(subCategory) : null;
+        if(_selectedSubCategory !== sub) _setSelectedSubCategory(sub);
+        if(_showCommunity) _setShowCommunity(false);
+        if(_showMap) _setShowMap(false);
+      }
+    } else {
+      if(_selectedCategory) _setSelectedCategory(null);
+      if(_selectedSubCategory) _setSelectedSubCategory(null);
+      if(_showCommunity) _setShowCommunity(false);
+      if(_showMap) _setShowMap(false);
+    }
+  }, [categoryId, subCategory, location.pathname, allCategories]);
+
   
   const allContacts = React.useMemo(() => {
     const replacedIds = new Set(dynamicContacts.map(c => c.replacesId).filter(Boolean));
@@ -1658,7 +1721,7 @@ export default function App() {
       fetchContributorStats();
       
       const docRef = doc(db, 'contributors', contributorPhone);
-      unsubContributor = onSnapshot(docRef, async (docSnap) => {
+      unsubContributor = onSnapshot(docRef, async (docSnap: any) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setContributorPoints(data.points || (data.approvedCount || 0) * 10);
@@ -2202,6 +2265,14 @@ export default function App() {
         onCancel={() => setConfirmConfig({...confirmConfig, isOpen: false})} 
       />
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20">
+      <Helmet>
+        <title>
+          {selectedCategory ? `${selectedSubCategory ? selectedSubCategory + ' - ' : ''}${selectedCategory.title} | পূর্বধলা স্মার্ট হেল্পলাইন` : 'পূর্বধলা স্মার্ট হেল্পলাইন'}
+        </title>
+        <meta name="description" content={selectedCategory ? `${selectedCategory.title} এর প্রয়োজনীয় সকল নাম্বার ও তথ্য খুঁজুন।` : 'পূর্বধলার সকল জরুরি ও প্রয়োজনীয় নাম্বার, ডাক্তার, হাসপাতাল, রক্তদাতা এবং আরও অনেক কিছু একসাথে।'} />
+        <meta property="og:title" content={selectedCategory ? `${selectedSubCategory ? selectedSubCategory + ' - ' : ''}${selectedCategory.title} | পূর্বধলা স্মার্ট হেল্পলাইন` : 'পূর্বধলা স্মার্ট হেল্পলাইন'} />
+        <meta property="og:description" content={selectedCategory ? `${selectedCategory.title} এর প্রয়োজনীয় সকল নাম্বার ও তথ্য খুঁজুন।` : 'পূর্বধলার সকল জরুরি ও প্রয়োজনীয় নাম্বার, ডাক্তার, হাসপাতাল, রক্তদাতা এবং আরও অনেক কিছু একসাথে।'} />
+      </Helmet>
       
       {/* Header */}
       <header className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg sticky top-0 z-40 transition-all border-b border-emerald-500/20">

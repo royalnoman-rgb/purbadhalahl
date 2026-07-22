@@ -1,17 +1,31 @@
 const fs = require('fs');
-let content = fs.readFileSync('src/index.tsx', 'utf8');
+let code = fs.readFileSync('src/index.tsx', 'utf8');
 
-const patch = `
-const originalError = console.error;
-console.error = (...args) => {
-  if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('Quota exceeded')) return;
-  if (args.length > 0 && args[0]?.message?.includes('Quota exceeded')) return;
-  originalError(...args);
-};
-`;
+const targetImport = `import { BrowserRouter, Routes, Route } from 'react-router-dom';`;
+const replImport = `import { BrowserRouter, Routes, Route } from 'react-router-dom';\nimport { HelmetProvider } from 'react-helmet-async';`;
 
-if (!content.includes('originalError')) {
-  content = patch + content;
-  fs.writeFileSync('src/index.tsx', content);
-  console.log("Patched index.tsx");
-}
+const targetRender = `<BrowserRouter>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/admin" element={<Admin />} />
+      </Routes>
+    </BrowserRouter>`;
+    
+const replRender = `<HelmetProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/category/:categoryId" element={<App />} />
+          <Route path="/category/:categoryId/:subCategory" element={<App />} />
+          <Route path="/community" element={<App />} />
+          <Route path="/map" element={<App />} />
+          <Route path="/admin" element={<Admin />} />
+        </Routes>
+      </BrowserRouter>
+    </HelmetProvider>`;
+
+code = code.replace(targetImport, replImport);
+code = code.replace(targetRender, replRender);
+
+fs.writeFileSync('src/index.tsx', code);
+console.log('Successfully patched index.tsx');
